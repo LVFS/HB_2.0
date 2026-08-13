@@ -1,6 +1,7 @@
 # Epic Birthday Quest
 
 Mini-videogioco 3D per browser costruito con React, Vite e Three.js.
+Disponibile a questo link: https://lvfs.github.io/HB_2.0/
 
 ## Funzionalità iniziali
 

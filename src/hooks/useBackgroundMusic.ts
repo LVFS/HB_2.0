@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Howl } from 'howler';
 import { useSettingsStore } from '@/store/settingsStore';
 
-const THEME_SRC = '/audio/theme.mp3';
+const THEME_SRC = `${import.meta.env.BASE_URL}audio/theme.mp3`;
 
 /**
  * Gestisce la musica di sottofondo seguendo le impostazioni dell'utente.

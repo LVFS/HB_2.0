@@ -1,6 +1,6 @@
-import { useEffect, useMemo } from 'react';
-import { Howl } from 'howler';
-import { useSettingsStore } from '../store/settingsStore';
+import { useEffect, useMemo } from "react";
+import { Howl } from "howler";
+import { useSettingsStore } from "../store/settingsStore";
 
 export function AudioManager() {
   const musicEnabled = useSettingsStore((state) => state.musicEnabled);
@@ -13,29 +13,32 @@ export function AudioManager() {
         loop: true,
         volume,
         html5: true,
-        preload: true
+        preload: true,
       }),
-    []
+    [],
   );
 
+  // Effetto 1: gestisce SOLO play/pause in base a musicEnabled
   useEffect(() => {
+    console.log("AudioManager: musicEnabled changed to", musicEnabled);
     if (!musicEnabled) {
       theme.pause();
       return;
     }
 
     if (!theme.playing()) {
-      try {
-        theme.play();
-      } catch (error) {
-        // L'audio potrebbe richiedere un'interazione utente prima di partire
-        console.warn('Impossibile avviare l\'audio:', error);
-      }
+      theme.play().catch?.(() => {
+        // alcuni browser richiedono un'interazione utente prima di poter avviare l'audio
+      });
     }
+  }, [musicEnabled, theme]);
 
+  // Effetto 2: gestisce SOLO il volume, senza toccare play/pause
+  useEffect(() => {
+    console.log("AudioManager: volume changed to", volume);
     theme.volume(volume);
-    return () => theme.pause();
-  }, [musicEnabled, theme, volume]);
+  }, [volume, theme]);
 
+  
   return null;
 }

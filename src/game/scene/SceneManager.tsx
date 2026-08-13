@@ -1,10 +1,11 @@
+import { Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Physics } from '@react-three/rapier';
 import { OrbitControls } from '@react-three/drei';
 import { EnvironmentScene } from './EnvironmentScene';
 import { Player } from './Player';
 import { Fragments } from './Fragments';
-import { GameOverlay } from '../../components/GameOverlay';
+import { GameOverlay } from '@/components/GameOverlay';
 
 export function SceneManager() {
   return (
@@ -19,12 +20,16 @@ export function SceneManager() {
         <ambientLight intensity={0.45} />
         <directionalLight position={[8, 16, 8]} intensity={1.2} castShadow />
 
-        {/* Physics avvolge gli oggetti fisici del gioco */}
-        <Physics gravity={[0, -9.81, 0]}>
-          <EnvironmentScene />
-          <Player />
-          <Fragments />
-        </Physics>
+        {/* Suspense: gli asset 3D si caricano in modo asincrono e "sospendono".
+            Senza un boundary React solleverebbe un errore al primo caricamento. */}
+        <Suspense fallback={null}>
+          {/* Physics avvolge gli oggetti fisici del gioco */}
+          <Physics gravity={[0, -9.81, 0]}>
+            <EnvironmentScene />
+            <Player />
+            <Fragments />
+          </Physics>
+        </Suspense>
 
         {/* OrbitControls permette di ruotare la camera con il mouse */}
         <OrbitControls

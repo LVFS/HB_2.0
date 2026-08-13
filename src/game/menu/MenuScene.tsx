@@ -1,20 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
-import { useGameStore } from '../../store/gameStore';
-import { useSettingsStore } from '../../store/settingsStore';
+import { useGameStore } from '@/store/gameStore';
 import { MainMenuOverlay } from './MainMenuOverlay';
-import MainmenuSceneAnimation from './MainMenuSceneAnimation';
+import { MainMenuSceneAnimation } from './MainMenuSceneAnimation';
 
+const DOOR_ANIMATION_MS = 1400;
 
 export function MenuScene() {
   const setScreen = useGameStore((state) => state.setScreen);
-  useSettingsStore((state) => console.log(state));
   const [introComplete, setIntroComplete] = useState(false);
   const [doorOpen, setDoorOpen] = useState(false);
   const timeoutRef = useRef<number | null>(null);
 
   function handlePlay() {
     setDoorOpen(true);
-    timeoutRef.current = window.setTimeout(() => setScreen('levelSelect'), 1400);
+    // Diamo al portone il tempo di aprirsi prima di cambiare schermata.
+    timeoutRef.current = window.setTimeout(() => setScreen('levelSelect'), DOOR_ANIMATION_MS);
   }
 
   useEffect(() => {
@@ -27,7 +27,7 @@ export function MenuScene() {
 
   return (
     <div className="scene-shell">
-      <MainmenuSceneAnimation setIntroComplete={setIntroComplete} doorOpen={doorOpen} />
+      <MainMenuSceneAnimation onIntroComplete={() => setIntroComplete(true)} doorOpen={doorOpen} />
 
       <MainMenuOverlay onPlay={handlePlay} doorOpen={doorOpen} introComplete={introComplete} />
     </div>

@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { RigidBody } from '@react-three/rapier';
+import { useEffect, useRef } from 'react';
+import { RigidBody, type RapierRigidBody } from '@react-three/rapier';
 import { useFrame } from '@react-three/fiber';
 import { Vector3 } from 'three';
 
@@ -24,8 +24,10 @@ function handleKeyUp(event: KeyboardEvent) {
 
 export function Player() {
   // body è un riferimento al corpo fisico del giocatore nella scena.
-  const body = useRef<any>(null);
-  const [onGround, setOnGround] = useState(true);
+  const body = useRef<RapierRigidBody>(null);
+  // onGround cambia più volte al secondo: sta in una ref e non in uno state,
+  // perché uno setState dentro useFrame farebbe ri-renderizzare React a ogni frame.
+  const onGround = useRef(true);
 
   useEffect(() => {
     // Ascoltiamo i tasti premuti e rilasciati dal giocatore.
@@ -34,6 +36,9 @@ export function Player() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
+      // Senza questo, un tasto premuto durante l'unmount resterebbe
+      // "premuto" per sempre nel Set globale.
+      keys.clear();
     };
   }, []);
 
@@ -50,16 +55,16 @@ export function Player() {
     if (keys.has('d') || keys.has('arrowright')) direction.add(right);
 
     // Salto solo se il giocatore è a terra.
-    if (keys.has(' ' ) && onGround) {
-      body.current.setLinvel({ x: 0, y: 6.5, z: 0 });
-      setOnGround(false);
+    if (keys.has(' ') && onGround.current) {
+      body.current.setLinvel({ x: 0, y: 6.5, z: 0 }, true);
+      onGround.current = false;
     }
 
     if (direction.length() > 0) {
       direction.normalize().multiplyScalar(speed);
       velocity.copy(direction);
       velocity.y = 0;
-      body.current.setLinvel({ x: velocity.x, y: body.current.linvel().y, z: velocity.z });
+      body.current.setLinvel({ x: velocity.x, y: body.current.linvel().y, z: velocity.z }, true);
     }
   });
 
@@ -70,7 +75,9 @@ export function Player() {
       restitution={0.1}
       friction={1}
       position={[0, 1.4, 8]}
-      onCollisionEnter={() => setOnGround(true)}
+      onCollisionEnter={() => {
+        onGround.current = true;
+      }}
     >
       {/* Il giocatore è rappresentato come una sfera visuale 3D */}
       <mesh castShadow>

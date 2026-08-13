@@ -1,0 +1,77 @@
+/*
+ * Primitivi di interfaccia condivisi da più schermate.
+ * Sono un CSS Module come gli altri: si usano importandoli
+ * (`import ui from '@/styles/ui.module.css'`) e non per nome di classe.
+ */
+
+.button {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.95rem 1.5rem;
+  min-width: 0;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.button:hover {
+  transform: translateY(-1px);
+}
+
+/* `composes` riusa le regole di .button senza doverle ripetere:
+   in JSX basta la sola classe .primary. */
+.primary {
+  composes: button;
+  background: linear-gradient(135deg, #60a5fa, #38bdf8);
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.secondary {
+  composes: button;
+  background: rgba(255, 255, 255, 0.08);
+  color: #e2e8f0;
+}
+
+/* Contenitore di un overlay HTML appoggiato sopra la scena 3D.
+   pointer-events: none lascia passare i click al canvas; il pannello
+   interno se li riprende. */
+.panelOverlay {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  z-index: 20;
+  width: min(360px, 90vw);
+  pointer-events: none;
+}
+
+.panel {
+  pointer-events: auto;
+  padding: 1.25rem;
+  border-radius: 28px;
+  background: rgba(7, 11, 21, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+  color: #eef2ff;
+}
+
+.title {
+  margin: 0 0 0.85rem;
+  font-size: clamp(1.85rem, 3vw, 2.6rem);
+  letter-spacing: 0.06em;
+  color: #dbeafe;
+}
+
+.bodyText {
+  margin: 0 0 1rem;
+  color: #cbd5e1;
+  line-height: 1.6;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+}

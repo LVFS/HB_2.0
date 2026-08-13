@@ -1,0 +1,57 @@
+import { useEffect, useRef } from 'react';
+import { Howl } from 'howler';
+import { useSettingsStore } from '@/store/settingsStore';
+
+const THEME_SRC = '/audio/theme.mp3';
+
+/**
+ * Gestisce la musica di sottofondo seguendo le impostazioni dell'utente.
+ * È un hook e non un componente perché non disegna nulla a video.
+ */
+export function useBackgroundMusic() {
+  const musicEnabled = useSettingsStore((state) => state.musicEnabled);
+  const volume = useSettingsStore((state) => state.volume);
+
+  // La ref (e non useMemo) è il posto giusto per una risorsa con un ciclo
+  // di vita: useMemo può essere ricalcolato da React senza garanzie.
+  const themeRef = useRef<Howl | null>(null);
+
+  useEffect(() => {
+    const theme = new Howl({
+      src: [THEME_SRC],
+      loop: true,
+      html5: true,
+      preload: true
+    });
+    themeRef.current = theme;
+
+    return () => {
+      // Senza unload, il doppio mount di StrictMode lascerebbe
+      // un'istanza orfana che continua a suonare.
+      theme.unload();
+      themeRef.current = null;
+    };
+  }, []);
+
+  // Play/pause: dipende solo da musicEnabled.
+  useEffect(() => {
+    const theme = themeRef.current;
+    if (!theme) return;
+
+    if (!musicEnabled) {
+      theme.pause();
+      return;
+    }
+
+    if (!theme.playing()) {
+      // Alcuni browser bloccano l'autoplay finché l'utente non interagisce
+      // con la pagina: in quel caso il play viene semplicemente ignorato.
+      theme.play();
+    }
+  }, [musicEnabled]);
+
+  // Volume: applicato a parte, senza toccare play/pause.
+  useEffect(() => {
+    themeRef.current?.volume(volume);
+  }, [volume]);
+}

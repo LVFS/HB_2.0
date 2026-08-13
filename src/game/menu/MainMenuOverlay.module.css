@@ -1,0 +1,27 @@
+.buttons {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.buttons button {
+  pointer-events: auto;
+}
+
+.status {
+  composes: bodyText from '../../styles/ui.module.css';
+  font-size: 0.96rem;
+  opacity: 0.88;
+}
+
+.settingsPanel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.statusRow {
+  margin-top: 1.5rem;
+  display: grid;
+  gap: 0.75rem;
+  color: #94a3b8;
+}

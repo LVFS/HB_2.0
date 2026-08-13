@@ -5,17 +5,25 @@ Disponibile a questo link: https://lvfs.github.io/HB_2.0/
 
 ## Funzionalità iniziali
 
-- Menu principale
-- Loading screen
+- Menu principale cinematografico in 3D
+- Selezione livelli
 - Scene manager
-- Audio manager (stub per Howler)
+- Musica di sottofondo con Howler (`useBackgroundMusic`)
 - Settings persistenti con localStorage
 - Prima scena 3D con movimento e raccolta frammenti
+- Stili in CSS Modules, schermate caricate a richiesta (code splitting)
 
 ## Avvio
 
 1. `npm install`
 2. `npm run dev`
+
+## Script
+
+- `npm run dev` — server di sviluppo su http://localhost:4173
+- `npm run build` — typecheck + build di produzione in `dist/`
+- `npm run preview` — anteprima della build
+- `npm run lint` — ESLint su `src/`
 
 ## Build e deploy
 

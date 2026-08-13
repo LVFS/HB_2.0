@@ -21,11 +21,31 @@ Lo stato globale è gestito da `src/store/gameStore.ts` con Zustand.
   - `menu` → menu iniziale cinematografico
   - `levelSelect` → selezione livelli
   - `game` → scena di gioco principale
-- `fragmentsFound`: conta quanti frammenti sono stati raccolti in gioco.
+- `collectedFragmentIds`: elenco degli id dei frammenti già raccolti.
 - `selectedLevel`: id del livello selezionato nella schermata di selezione.
-- `levels`: array che descrive i livelli disponibili.
 
 Zustand è una libreria molto leggera per lo stato globale. Invece di usare Redux o context pesante, si crea uno store con `create()` e poi si leggono solo le parti necessarie.
+
+### Dati statici vs stato
+
+Nello store ci va **solo ciò che cambia**. I contenuti fissi del gioco stanno in `src/data/`:
+
+- `src/data/levels.ts`: elenco dei livelli
+- `src/data/fragments.ts`: id, nome, colore e posizione di ogni frammento
+
+Il vantaggio è che sia la UI (`GameOverlay`) sia la scena 3D (`Fragments`) leggono dalla stessa fonte, senza che uno dei due debba importare dall'altro.
+
+Nota sui frammenti: lo stato tiene gli **id** e non un semplice contatore. Con un contatore, ripassare sullo stesso frammento lo avrebbe contato due volte; con gli id il frammento raccolto sparisce dalla scena e non può essere ripreso.
+
+### Alias `@/`
+
+Gli import usano l'alias `@/` al posto dei percorsi relativi:
+
+```tsx
+import { useGameStore } from '@/store/gameStore'; // invece di '../../store/gameStore'
+```
+
+È configurato in due posti che devono restare allineati: `resolve.alias` in `vite.config.ts` (per il bundler) e `compilerOptions.paths` in `tsconfig.json` (per TypeScript).
 
 ---
 
@@ -38,8 +58,8 @@ Questo file monta React sul DOM:
 ```tsx
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App';
-import './styles.css';
+import App from '@/App';
+import '@/styles.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
@@ -62,13 +82,15 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 
 Questo è il cuore del flusso: la UI cambia in base al valore di `screen`.
 
+`App` chiama anche l'hook `useBackgroundMusic()`, che tiene viva la musica di sottofondo per tutta la durata dell'app, indipendentemente dalla schermata attiva.
+
 ---
 
 ## 3. Componenti principali
 
 ### 3.1 `src/game/menu/MenuScene.tsx`
 
-Questa scena è il menu iniziale 3D.
+Questa scena è il menu iniziale 3D. `MenuScene` tiene lo stato (intro finita, portone aperto) e delega la parte 3D a `MainMenuSceneAnimation.tsx` e l'overlay HTML a `MainMenuOverlay.tsx`.
 
 Cosa fa:
 
@@ -95,7 +117,7 @@ Questa scena mostra i livelli come punti fisici nella scena.
 
 Cosa fa:
 
-- legge `levels` dallo store
+- legge `levels` da `src/data/levels.ts`
 - crea un cilindro per ogni livello, posizionato nello spazio 3D
 - consente di cliccare sul cilindro per selezionare un livello
 - mostra i dettagli del livello selezionato in un overlay HTML
@@ -115,6 +137,8 @@ Cosa fa:
 - inserisce `EnvironmentScene`, `Player` e `Fragments`
 - usa `OrbitControls` per consentire la rotazione della camera con il mouse
 
+I contenuti 3D sono avvolti in `<Suspense>`: componenti come `Environment` e `Text` caricano asset in modo asincrono e "sospendono" il render, e senza un boundary React solleverebbe un errore invece di aspettare.
+
 ### 3.4 `src/components/GameOverlay.tsx`
 
 L'overlay mostra informazioni in HUD:
@@ -123,7 +147,7 @@ L'overlay mostra informazioni in HUD:
 - anteprima dei frammenti con colori
 - mini-guida ai controlli
 
-Il componente legge `fragmentsFound` dallo store e mostra l'elenco di `fragmentData`.
+Il componente legge `collectedFragmentIds` dallo store e mostra l'elenco di `fragments` preso da `src/data/fragments.ts`.
 
 ---
 
@@ -229,13 +253,15 @@ Rappresenta il giocatore come una sfera fisica.
 - `body.current.setLinvel(...)` imposta la velocità del corpo fisico
 - quando il giocatore tocca il suolo, può saltare di nuovo
 
+Attenzione a un dettaglio importante: il fatto di essere a terra è tenuto in una `useRef`, non in uno `useState`. Chiamare `setState` dentro `useFrame` farebbe ri-renderizzare React decine di volte al secondo. **Regola generale in react-three-fiber: lo stato che cambia a ogni fotogramma va in una ref.**
+
 ### 6.2 `src/game/scene/Fragments.tsx`
 
 Rappresenta gli oggetti da raccogliere.
 
-- `fragmentData` contiene nome e colore di ogni frammento
-- `fragmentPositions` indica dove posizionarli nella scena
-- quando il giocatore entra in contatto con un frammento, `addFragment()` aggiorna lo stato globale
+- i dati (id, nome, colore, posizione) arrivano da `src/data/fragments.ts`
+- il `RigidBody` ha la prop `sensor`: senza, Rapier tratterebbe il frammento come un ostacolo solido e non emetterebbe mai `onIntersectionEnter`
+- quando il giocatore attraversa un frammento, `collectFragment(id)` aggiorna lo stato globale e la mesh smette di essere renderizzata
 
 ### 6.3 `src/game/scene/EnvironmentScene.tsx`
 
@@ -248,14 +274,80 @@ Dà un pavimento e alcuni oggetti decorativi.
 
 ## 7. CSS e layout
 
-Tutto lo stile è in `src/styles.css`.
+Lo stile è diviso in due categorie.
 
-- `app-shell` definisce il layout principale
-- `canvas` è impostato per occuparsi dell'intera altezza
-- `game-overlay` e `menu-hero-overlay` sono pannelli fissi sopra la scena 3D
-- i pulsanti hanno classi `.primary` e `.secondary`
+**Globale** — `src/styles/global.css`, importato una volta sola in `main.tsx`.
+Contiene solo ciò che non appartiene a un componente specifico: reset, sfondo
+della pagina, `.app-shell`, `.scene-shell` e il `canvas` a tutto schermo.
+
+**CSS Modules** — un file `NomeComponente.module.css` accanto a ogni componente.
+Si usano importandoli:
+
+```tsx
+import styles from './GameOverlay.module.css';
+
+<aside className={styles.overlay}>
+```
+
+In fase di build la classe `.overlay` diventa qualcosa come `_overlay_a1b2c_3`.
+Il vantaggio è che due componenti possono avere entrambi una classe `.card`
+senza pestarsi i piedi: prima, con un unico file globale, bastava un nome
+ripetuto per rompere una schermata diversa da quella su cui stavi lavorando.
+
+I pezzi condivisi da più schermate (pulsanti, pannelli, titoli) stanno in
+`src/styles/ui.module.css`. Per riusarli senza ripetere le regole si usa
+`composes`:
+
+```css
+.primary {
+  composes: button;   /* eredita tutte le regole di .button */
+  background: linear-gradient(135deg, #60a5fa, #38bdf8);
+}
+```
+
+In JSX basta la sola classe `ui.primary`: React riceverà entrambe.
+
+Attenzione a un limite: TypeScript **non** verifica i nomi delle classi dei
+moduli CSS. Se scrivi `styles.overlya` non ottieni un errore di compilazione,
+solo un elemento senza stile. È l'unico punto del progetto dove un typo passa
+silenziosamente.
 
 La UI è pensata per essere leggibile sopra la scena 3D senza coprirla troppo.
+
+---
+
+## 7-bis. Come è diviso il bundle
+
+Il gioco carica tre librerie molto pesanti: three.js, drei e il motore fisico
+Rapier. Se finissero tutte in un unico file, aprire il menu significherebbe
+scaricare oltre 3 MB prima di vedere qualsiasi cosa.
+
+Due meccanismi lo evitano.
+
+**1. Schermate caricate a richiesta.** In `App.tsx` le tre schermate sono
+importate con `lazy()`:
+
+```tsx
+const SceneManager = lazy(() =>
+  import('@/game/scene/SceneManager').then((m) => ({ default: m.SceneManager }))
+);
+```
+
+Il codice della scena di gioco — e con lui Rapier, che pesa da solo ~2 MB
+perché include il WebAssembly del motore fisico — viene scaricato solo quando
+premi "Avvia livello". `<Suspense>` in `App.tsx` mostra il fallback nell'attesa.
+
+**2. Librerie in chunk separati.** In `vite.config.ts`, l'opzione
+`codeSplitting.groups` con `entriesAware: true` raggruppa le dipendenze in base
+a quali schermate le usano davvero. Il risultato sono file come
+`vendor~MenuScene~LevelSelectScene.js` (usato da due schermate) e
+`vendor~SceneManager.js` (solo dal gioco).
+
+Il primo caricamento della pagina è passato da ~3,3 MB a ~190 KB.
+
+Nota: `npm run build` segnala ancora che un chunk supera i 500 KB. È quello di
+Rapier: 2 MB di motore fisico non si comprimono, e l'unica cosa sensata era
+spostarli fuori dal percorso di avvio — cosa che ora è fatta.
 
 ---
 
@@ -270,9 +362,13 @@ La UI è pensata per essere leggibile sopra la scena 3D senza coprirla troppo.
 
 ### Se vuoi aggiungere livelli
 
-1. Aggiungi nuovi oggetti in `src/store/gameStore.ts` dentro `levels`
+1. Aggiungi nuovi oggetti in `src/data/levels.ts` dentro `levels`
 2. Modifica `LevelSelectScene.tsx` per visualizzare più dettagli
 3. Collega `selectedLevel` alla logica di avvio del livello
+
+### Se vuoi aggiungere frammenti
+
+Basta aggiungere una riga in `src/data/fragments.ts`: la scena 3D e l'HUD si aggiornano da soli, perché leggono entrambi da lì.
 
 ### Se vuoi imparare React
 
@@ -304,18 +400,30 @@ function Counter() {
 
 ## 9. Struttura dei file attuale
 
-- `src/App.tsx`: router delle schermate
+- `src/App.tsx`: router delle schermate (con caricamento lazy)
 - `src/main.tsx`: bootstrap dell'app
-- `src/styles.css`: stili globali
+- `src/styles/global.css`: stili globali (reset e layout di pagina)
+- `src/styles/ui.module.css`: pulsanti, pannelli e titoli condivisi
+- `src/data/levels.ts`: dati statici dei livelli
+- `src/data/fragments.ts`: dati statici dei frammenti
 - `src/store/gameStore.ts`: stato globale del gioco
+- `src/store/settingsStore.ts`: impostazioni audio, persistite in localStorage
+- `src/hooks/useBackgroundMusic.ts`: musica di sottofondo (Howler)
 - `src/game/menu/MenuScene.tsx`: menu iniziale cinematico
+- `src/game/menu/MainMenuSceneAnimation.tsx`: parte 3D del menu (camera e portone)
+- `src/game/menu/MainMenuOverlay.tsx`: overlay HTML del menu
 - `src/game/menu/LevelSelectScene.tsx`: selezione dei livelli
 - `src/game/scene/SceneManager.tsx`: scena di gioco principale
 - `src/components/GameOverlay.tsx`: HUD di gioco
 - `src/game/scene/Player.tsx`: controlli e movimento del giocatore
+- ogni componente con stili propri ha accanto il suo `*.module.css`
 - `src/game/scene/Fragments.tsx`: frammenti da raccogliere
 - `src/game/scene/EnvironmentScene.tsx`: ambiente della scena
-- `src/game/AudioManager.ts`: gestione audio di base
+- `public/audio/theme.mp3`: musica del tema
+
+Tutto ciò che sta in `public/` viene copiato così com'è nella build ed è
+raggiungibile da URL assoluto (`/audio/theme.mp3`). Un file messo fuori da
+`public/` funziona in `npm run dev` ma **non finisce in `dist/`**.
 
 ---
 

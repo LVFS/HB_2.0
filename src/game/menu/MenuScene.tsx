@@ -1,35 +1,55 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { MainMenuOverlay } from './MainMenuOverlay';
 import { MainMenuSceneAnimation } from './MainMenuSceneAnimation';
+import type { MenuPhase } from './menuPhase';
+import type { BreakVariant } from './wall/wallConfig';
 
-const DOOR_ANIMATION_MS = 1400;
-
+/**
+ * Orchestratore della schermata iniziale.
+ *
+ * Non disegna nulla di suo: tiene la fase corrente e la passa ai due figli,
+ * la scena 3D e l'overlay HTML. Tutta la coreografia (camera, audio, fisica)
+ * sta dentro la scena; qui restano solo le transizioni di stato.
+ */
 export function MenuScene() {
   const setScreen = useGameStore((state) => state.setScreen);
-  const [introComplete, setIntroComplete] = useState(false);
-  const [doorOpen, setDoorOpen] = useState(false);
-  const timeoutRef = useRef<number | null>(null);
 
-  function handlePlay() {
-    setDoorOpen(true);
-    // Diamo al portone il tempo di aprirsi prima di cambiare schermata.
-    timeoutRef.current = window.setTimeout(() => setScreen('levelSelect'), DOOR_ANIMATION_MS);
-  }
+  const [phase, setPhase] = useState<MenuPhase>('intro');
+  const [variant, setVariant] = useState<BreakVariant>('radial');
 
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current !== null) {
-        window.clearTimeout(timeoutRef.current);
-      }
-    };
+  // useCallback non è decorativo: queste funzioni finiscono nelle dipendenze
+  // degli effetti che costruiscono le timeline GSAP. Se cambiassero a ogni
+  // render, la timeline verrebbe distrutta e ricreata di continuo e
+  // l'animazione ripartirebbe da capo.
+  const handleIntroComplete = useCallback(() => {
+    setPhase((current) => (current === 'intro' ? 'ready' : current));
   }, []);
+
+  const handlePlay = useCallback(() => {
+    setPhase((current) => (current === 'ready' ? 'breaking' : current));
+  }, []);
+
+  // La timeline è finita: il muro è giù, si passa oltre.
+  const handleBreakComplete = useCallback(() => {
+    setScreen('levelSelect');
+  }, [setScreen]);
 
   return (
     <div className="scene-shell">
-      <MainMenuSceneAnimation onIntroComplete={() => setIntroComplete(true)} doorOpen={doorOpen} />
+      <MainMenuSceneAnimation
+        phase={phase}
+        variant={variant}
+        onIntroComplete={handleIntroComplete}
+        onBreakComplete={handleBreakComplete}
+      />
 
-      <MainMenuOverlay onPlay={handlePlay} doorOpen={doorOpen} introComplete={introComplete} />
+      <MainMenuOverlay
+        phase={phase}
+        variant={variant}
+        onVariantChange={setVariant}
+        onPlay={handlePlay}
+      />
     </div>
   );
 }

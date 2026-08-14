@@ -5,7 +5,8 @@ Disponibile a questo link: https://lvfs.github.io/HB_2.0/
 
 ## Funzionalità iniziali
 
-- Menu principale cinematografico in 3D
+- Menu principale cinematografico in 3D: un muro che si abbatte con la fisica
+  ([docs/MENU_INTRO.md](docs/MENU_INTRO.md))
 - Selezione livelli
 - Scene manager
 - Musica di sottofondo con Howler (`useBackgroundMusic`)

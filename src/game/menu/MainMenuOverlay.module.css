@@ -13,6 +13,52 @@
   opacity: 0.88;
 }
 
+.variantGroup {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.variantLabel {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #94a3b8;
+}
+
+.variantRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.variantButton {
+  flex: 1 1 auto;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 255, 255, 0.04);
+  color: #cbd5e1;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.variantButton:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.variantButton:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.variantActive {
+  border-color: rgba(56, 189, 248, 0.55);
+  background: rgba(56, 189, 248, 0.16);
+  color: #f8fafc;
+}
+
 .settingsPanel {
   display: flex;
   flex-wrap: wrap;

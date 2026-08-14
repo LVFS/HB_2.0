@@ -12,7 +12,7 @@ const LevelSelectScene = lazy(() =>
   import('@/game/menu/LevelSelectScene').then((module) => ({ default: module.LevelSelectScene }))
 );
 const SceneManager = lazy(() =>
-  import('@/game/scene/SceneManager').then((module) => ({ default: module.SceneManager }))
+  import('@/game/levels/Level1/SceneManager').then((module) => ({ default: module.SceneManager }))
 );
 
 // App è il componente principale dell'app React.

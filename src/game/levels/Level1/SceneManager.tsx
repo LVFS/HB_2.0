@@ -24,7 +24,7 @@ export function SceneManager() {
             Senza un boundary React solleverebbe un errore al primo caricamento. */}
         <Suspense fallback={null}>
           {/* Physics avvolge gli oggetti fisici del gioco */}
-          <Physics gravity={[0, -9.81, 0]}>
+          <Physics gravity={[0, -30.81, 0]}>
             <EnvironmentScene />
             <Player />
             <Fragments />

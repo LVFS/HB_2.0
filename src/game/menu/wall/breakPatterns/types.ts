@@ -1,4 +1,4 @@
-import type { WallChunk } from '../buildWallChunks';
+import type { WallChunk } from '../environmentModel';
 
 /** Tutto quello che una variante di rottura può sapere della scena. */
 export interface BreakContext {

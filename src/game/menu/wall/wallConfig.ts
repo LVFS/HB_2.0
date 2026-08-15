@@ -1,37 +1,29 @@
 /**
- * Tutti i numeri del muro in un posto solo.
- *
- * Il layout viene calcolato da questi valori, quindi cambiare `cols`/`rows`
- * o le dimensioni non richiede di toccare nessun componente.
+ * Percorso dell'ambientazione Blender "Ingresso Oristano" (strada, cartello,
+ * case, vegetazione, muro con portone), esportata con +Y Up: le coordinate
+ * Blender (X destra, Y profondità, Z alto) diventano in Three
+ * `x3 = xB`, `y3 = zB` (altezza), `z3 = -yB` (profondità).
  */
-export const WALL = {
-  /** Blocchi in orizzontale. cols * rows = numero di corpi fisici. */
-  cols: 16,
-  /** Blocchi in verticale. */
-  rows: 11,
-  width: 40,
-  height: 26,
-  depth: 1.8,
-  /** Fessura tra un blocco e l'altro: rende visibile la muratura. */
-  gap: 0.05,
-  /** Centro della base del muro nel mondo. */
-  center: [0, 0, -8] as [number, number, number]
-} as const;
+export const MODEL_URL = `${import.meta.env.BASE_URL}models/ingresso-oristano.glb`;
 
-/** Numero totale di chunk: usato per dimensionare l'InstancedMesh. */
-export const CHUNK_COUNT = WALL.cols * WALL.rows;
+/**
+ * Centro del portone in coordinate Three, a metà altezza dell'apertura.
+ * Blender: gate a (0, 115, ~6) → Three (0, 6, -115).
+ * Usato come punto di rottura (`VARIANT_ORIGIN`) e come target camera per lo
+ * shot `break`.
+ */
+export const GATE_ORIGIN: [number, number, number] = [0, 6, -115];
 
-/** Coordinata z della faccia frontale del muro (quella rivolta alla camera). */
-export const WALL_FRONT_Z = WALL.center[2] + WALL.depth / 2;
+/** Coordinata Z della faccia frontale del portone (Blender FRONT_Y=113.25). */
+export const GATE_FRONT_Z = -113.25;
 
 /**
  * Forza degli impulsi.
  *
  * ATTENZIONE, è il punto dove si sbaglia più spesso: un impulso non è una
- * velocità, è massa × variazione-di-velocità. Un blocco di 2.5 × 2.4 × 1.8
- * con densità 1 pesa circa 10 kg, quindi per spedirlo via a ~10 m/s serve un
- * impulso di ~100, non di 5. Se cambi le dimensioni dei blocchi, la massa
- * cambia con il cubo e questi valori vanno ritarati.
+ * velocità, è massa × variazione-di-velocità. I pezzi del portone (ante +
+ * bande metalliche) hanno una massa diversa dai vecchi cubi 2.5×2.4×1.8: i
+ * valori sotto sono un punto di partenza, da ritarare a vista nel browser.
  */
 export const IMPULSE = {
   base: 200,
@@ -42,26 +34,74 @@ export const IMPULSE = {
 export type BreakVariant = 'radial' | 'collapse' | 'punch';
 
 /**
- * Da dove parte la rottura, per ogni variante.
- * Per la variante `punch` questo valore verrà sostituito, in futuro, dalla
- * posizione reale del pugno del personaggio (vedi docs/MENU_INTRO.md).
+ * Range (in Three Y, altezza) entro cui pescare un punto d'impatto casuale:
+ * copre l'anta del portone (0..11.6 in Blender, stesso valore in Three) con
+ * un margine ai due estremi, così l'impatto non capita mai esattamente sul
+ * bordo superiore/inferiore, dove sembrerebbe un errore più che una scelta.
  */
-export const VARIANT_ORIGIN: Record<BreakVariant, [number, number, number]> = {
-  radial: [0, WALL.height * 0.55, WALL_FRONT_Z],
-  collapse: [0, 0, WALL_FRONT_Z],
-  punch: [-4, WALL.height * 0.42, WALL_FRONT_Z + 2]
-};
+const IMPACT_Y_RANGE: [number, number] = [2.2, 9.4];
 
 /**
- * Secondi tra l'inizio della sequenza e il momento in cui il muro incassa.
+ * Pesca un'altezza d'impatto casuale, diversa ogni volta che si preme
+ * "Gioca". Chi la chiama (`MenuScene`) la genera una volta per rottura e la
+ * fa scendere fino a `getVariantOrigin`/alla camera, così tutto — impulsi,
+ * inquadratura — resta coerente sullo stesso punto.
+ */
+export function randomImpactY(): number {
+  const [min, max] = IMPACT_Y_RANGE;
+  return min + Math.random() * (max - min);
+}
+
+/**
+ * Da dove parte la rottura, per ogni variante. Tutte puntano al portone: è
+ * il cuore dell'impatto. Il muro intero (pannelli + contrafforti) è
+ * frantumato in Blender ed è quindi POTENZIALMENTE tutto rompibile, ma solo
+ * la zona entro `AFFECT_RADIUS` da questa origine prende vita per davvero —
+ * vedi il filtro in `WallShatter.tsx`.
  *
- * Per `punch` è più lungo perché è il tempo di caricare il colpo: è esattamente
- * il valore che andrà sostituito con l'istante in cui il pugno tocca il muro
- * nella clip esportata da Blender. Camera, audio e impulsi leggono tutti da
- * qui, quindi cambiando questo numero restano sincronizzati da soli.
+ * `impactY` è casuale a ogni rottura (vedi `randomImpactY`): `collapse` non
+ * lo usa apposta, un crollo parte sempre dalle fondamenta, non da un punto a
+ * mezz'aria.
+ */
+export function getVariantOrigin(
+  variant: BreakVariant,
+  impactY: number
+): [number, number, number] {
+  switch (variant) {
+    case 'radial':
+      return [GATE_ORIGIN[0], impactY, GATE_ORIGIN[2]];
+    case 'collapse':
+      return [GATE_ORIGIN[0], 0, GATE_ORIGIN[2]];
+    case 'punch':
+      return [GATE_ORIGIN[0] - 1.5, impactY - 1, GATE_FRONT_Z];
+  }
+}
+
+/**
+ * Secondi tra l'inizio della sequenza e il momento in cui il portone incassa.
+ *
+ * Per `punch` è più lungo perché è il tempo di caricare il colpo. Camera,
+ * audio e impulsi leggono tutti da qui, quindi cambiando questo numero
+ * restano sincronizzati da soli.
  */
 export const VARIANT_IMPACT_DELAY: Record<BreakVariant, number> = {
   radial: 0.1,
   collapse: 0.1,
   punch: 0.55
+};
+
+/**
+ * Raggio (distanza ORIZZONTALE dall'origine, lungo la faccia del muro) entro
+ * cui un pezzo diventa fisico. L'intero muro è frantumato in Blender —
+ * portone, 34 pannelli, 8 contrafforti, ~218 pezzi in tutto — ma un impatto
+ * deve coinvolgere solo la zona colpita: oltre questo raggio i pezzi restano
+ * scenografia statica, anche se geometricamente "rompibili". Calcolato solo
+ * su X/Z (non l'altezza Y) così un'intera colonna vicina al portone — dal
+ * pannello più basso al più alto — resta coinvolta, invece di escludere i
+ * pezzi in alto perché "lontani" lungo un asse che qui non conta.
+ */
+export const AFFECT_RADIUS: Record<BreakVariant, number> = {
+  radial: 26,
+  collapse: 24,
+  punch: 20
 };

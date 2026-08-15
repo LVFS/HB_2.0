@@ -1,13 +1,12 @@
 import { IMPULSE } from '../wallConfig';
 import type { BreakPattern } from './types';
 
-/** Velocità di propagazione dell'onda d'urto, in unità al secondo. */
-const SHOCKWAVE_SPEED = 26;
-
 /**
  * Esplosione radiale: i blocchi vengono spinti via dal punto d'impatto, con
- * forza che cala con la distanza e un ritardo che simula l'onda d'urto che
- * viaggia lungo il muro.
+ * forza che cala con la distanza. Nessun ritardo tra centro e bordi: con
+ * `AFFECT_RADIUS` ampliato a tutta una sezione di muro, un'onda d'urto che si
+ * propaga visibilmente (fino a ~1s tra il centro e il bordo) leggeva come un
+ * lag piuttosto che un effetto — l'esplosione deve sembrare istantanea.
  */
 export const radialBreak: BreakPattern = ({ chunks, origin }) =>
   chunks.map((chunk) => {
@@ -39,6 +38,6 @@ export const radialBreak: BreakPattern = ({ chunks, origin }) =>
         (chunk.shade * 7.3 - 3.65) * IMPULSE.torque * 0.4,
         (0.5 - chunk.shade) * IMPULSE.torque
       ],
-      delay: distance / SHOCKWAVE_SPEED
+      delay: 0
     };
   });

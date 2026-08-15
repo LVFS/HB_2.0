@@ -1,8 +1,15 @@
 import { IMPULSE } from '../wallConfig';
 import type { BreakPattern } from './types';
 
-/** Ritardo tra una fila e la successiva. */
-const ROW_STAGGER = 0.085;
+/**
+ * Durata totale della cascata dal basso in alto, in secondi. `chunk.row` è un
+ * rank continuo su TUTTI i pezzi (0..N-1), non un indice di fila fisica: se lo
+ * stagger fosse un valore fisso per rank, più pezzi = cascata più lunga, e col
+ * portone diviso in griglia (42 pezzi) le file più alte scatterebbero quasi
+ * alla fine della sequenza di rottura. Normalizzando sul numero di pezzi la
+ * cascata dura sempre uguale, qualunque sia la granularità del muro.
+ */
+const CASCADE_DURATION = 2.2;
 
 /**
  * Crollo: quasi nessun impulso: le fondamenta cedono e il resto lo fa la
@@ -12,8 +19,10 @@ const ROW_STAGGER = 0.085;
  * È la variante che mostra meglio perché conviene lasciar fare alla fisica:
  * la parte più spettacolare qui non è scritta da nessuna parte.
  */
-export const collapseBreak: BreakPattern = ({ chunks }) =>
-  chunks.map((chunk) => {
+export const collapseBreak: BreakPattern = ({ chunks }) => {
+  const maxRow = Math.max(1, ...chunks.map((chunk) => chunk.row));
+
+  return chunks.map((chunk) => {
     // Una spintarella orizzontale casuale ma deterministica: senza, i blocchi
     // resterebbero perfettamente impilati e cadrebbero come un blocco unico.
     const nudge = (chunk.shade - 0.5) * IMPULSE.base * 0.12;
@@ -26,6 +35,7 @@ export const collapseBreak: BreakPattern = ({ chunks }) =>
         0,
         (0.5 - chunk.shade) * IMPULSE.torque * 0.3
       ],
-      delay: chunk.row * ROW_STAGGER
+      delay: (chunk.row / maxRow) * CASCADE_DURATION
     };
   });
+};

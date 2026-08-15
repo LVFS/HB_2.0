@@ -1,38 +1,40 @@
-import { useEffect, useRef } from 'react';
-import type { InstancedMesh } from 'three';
-import { wallChunks } from './buildWallChunks';
-import { applyChunkInstances } from './chunkInstances';
-import { CHUNK_COUNT } from './wallConfig';
+import { useEffect, useMemo } from 'react';
+import { Mesh } from 'three';
+import { isShardMeshName, useEnvironmentGltf } from './environmentModel';
 
 /**
- * Il muro INTATTO: nessuna fisica, nessun corpo rigido, una sola draw call.
+ * L'ambientazione INTATTA: strada, cartello, case, muro e portone chiuso,
+ * nessuna fisica.
  *
- * Tenere separato il muro fermo da quello che esplode non è pignoleria:
- * significa che il menu non ha bisogno di Rapier per essere disegnato, e
- * Rapier pesa circa 2 MB. Finché non premi "Gioca", quel codice non viene
- * nemmeno scaricato.
+ * Tenere separata la scena ferma da quella che esplode (`WallShatter`) non è
+ * pignoleria: significa che il menu non ha bisogno di Rapier per essere
+ * disegnato, e Rapier pesa circa 2 MB. Finché non premi "Gioca", quel codice
+ * non viene nemmeno scaricato.
  */
 export function Wall() {
-  const meshRef = useRef<InstancedMesh>(null);
+  const { scene } = useEnvironmentGltf();
+
+  // Clonato: Wall e WallShatter non sono mai montati insieme, ma clonare
+  // evita qualunque rischio di riparentare lo stesso Object3D tra un mount e
+  // l'altro, ed è il pattern standard quando lo stesso GLTF serve a più
+  // consumatori.
+  const cloned = useMemo(() => scene.clone(true), [scene]);
 
   useEffect(() => {
-    if (meshRef.current) applyChunkInstances(meshRef.current, wallChunks);
-  }, []);
+    cloned.traverse((object) => {
+      if (!(object instanceof Mesh)) return;
+      // I pezzi frantumati (Cell Fracture) hanno crepe visibili anche da
+      // fermi: a muro intatto si nasconde il frammento e si mostra al suo
+      // posto la copertura solida `Solid_*`, senza crepe. Vedi
+      // `environmentModel.ts`.
+      if (isShardMeshName(object.name)) {
+        object.visible = false;
+        return;
+      }
+      object.castShadow = true;
+      object.receiveShadow = true;
+    });
+  }, [cloned]);
 
-  const [chunkW, chunkH, chunkD] = wallChunks[0].size;
-
-  return (
-    <instancedMesh
-      ref={meshRef}
-      // I primi due argomenti sono geometria e materiale: qui sono `undefined`
-      // perché li forniamo come figli JSX, e React Three Fiber li assegna dopo
-      // la costruzione. Il `!` serve solo a convincere TypeScript.
-      args={[undefined!, undefined!, CHUNK_COUNT]}
-      castShadow
-      receiveShadow
-    >
-      <boxGeometry args={[chunkW, chunkH, chunkD]} />
-      <meshStandardMaterial roughness={0.95} metalness={0} />
-    </instancedMesh>
-  );
+  return <primitive object={cloned} />;
 }

@@ -1,0 +1,23 @@
+.container {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Ogni "nuvola" è solo un cerchio molto sfumato: a riposo sta fuori
+   schermo (opacity 0, spostata via GSAP con xPercent) e non costa nulla. */
+.blob {
+  position: absolute;
+  left: 50%;
+  width: 70vw;
+  height: 70vw;
+  max-width: 900px;
+  max-height: 900px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffffff 0%, #ffffff 55%, rgba(255, 255, 255, 0) 75%);
+  opacity: 0;
+  filter: blur(2px);
+}

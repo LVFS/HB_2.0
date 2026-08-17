@@ -10,7 +10,7 @@ const MenuScene = lazy(() =>
   import('@/game/menu/MenuScene').then((module) => ({ default: module.MenuScene }))
 );
 const LevelSelectScene = lazy(() =>
-  import('@/game/menu/LevelSelectScene').then((module) => ({ default: module.LevelSelectScene }))
+  import('@/game/menu/levelSelect/LevelSelectScene').then((module) => ({ default: module.LevelSelectScene }))
 );
 const SceneManager = lazy(() =>
   import('@/game/levels/Level1/SceneManager').then((module) => ({ default: module.SceneManager }))

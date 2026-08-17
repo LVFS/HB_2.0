@@ -1,4 +1,4 @@
-import { Suspense } from 'react';
+import { Suspense, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Physics } from '@react-three/rapier';
 import { OrbitControls } from '@react-three/drei';
@@ -6,8 +6,25 @@ import { EnvironmentScene } from './EnvironmentScene';
 import { Player } from './Player';
 import { Fragments } from './Fragments';
 import { GameOverlay } from '@/components/GameOverlay';
+import { totalFragments } from '@/data/fragments';
+import { useGameStore } from '@/store/gameStore';
+import { useProgressStore } from '@/store/progressStore';
 
 export function SceneManager() {
+  // Segna il livello come completato quando tutti i frammenti sono
+  // raccolti — unico aggancio, oggi, tra la selezione livelli (mappa reale)
+  // e lo sblocco progressivo (`progressStore`): nessun finale/achievement
+  // ancora costruito, questo effetto si limita alla bookkeeping.
+  const selectedLevel = useGameStore((state) => state.selectedLevel);
+  const collectedFragmentIds = useGameStore((state) => state.collectedFragmentIds);
+  const completeLevel = useProgressStore((state) => state.completeLevel);
+
+  useEffect(() => {
+    if (selectedLevel && collectedFragmentIds.length >= totalFragments) {
+      completeLevel(selectedLevel);
+    }
+  }, [selectedLevel, collectedFragmentIds, completeLevel]);
+
   return (
     <div className="scene-shell">
       {/* Overlay in-game con missione, anteprima frammenti e controlli */}

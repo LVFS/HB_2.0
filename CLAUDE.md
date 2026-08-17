@@ -56,14 +56,28 @@ src/
         CharacterIntro.tsx           timeline GSAP unica: piede → volto → battuta → cambio
                                      personaggio → si gira verso il muro → video del salto →
                                      impatto (aggancia `breaking`) → ingresso nel varco
-      LevelSelectScene.tsx
+    levelSelect/                 selezione livelli su mappa reale (vedi sotto)
+      LevelSelectScene.tsx        orchestratore: `displayedLevelId` + `focused` (bool),
+                                     non tre fasi separate — vedi sotto
+      LevelMapScene.tsx             UNA scena Three.js: piano texturizzato (immagine
+                                     statica, vedi sotto) + marker + camera GSAP/MapControls
+      LevelMarker.tsx                pin quando la camera è lontana, modello (cilindro) da
+                                     vicino — scambio automatico per distanza, non un bottone
+      mapProjection.ts               proiezione Web Mercator: lat/lng → posizione sul piano
+      CloudTransition.tsx           nuvole che coprono lo schermo al cambio città (GSAP,
+                                     stesso pattern di skipIntroToken per il trigger)
+      LevelListOverlay.tsx          card dei livelli, quelli bloccati disabilitati
+                                     (isLevelUnlocked in data/levels.ts)
     levels/
       Level1/  SceneManager.tsx, EnvironmentScene.tsx, Player.tsx, Fragments.tsx
   components/           GameOverlay.tsx (HUD), SettingsBar.tsx (icona + pannellino
                          musica/SFX/volume, riusabile in più schermate — non conosce
                          `MenuPhase` o altro stato di scena, solo `settingsStore`)
-  data/                 fragments.ts, levels.ts — contenuto statico, NON nello store
-  store/                gameStore.ts (fase/schermata), settingsStore.ts (persistito)
+  data/                 fragments.ts, levels.ts (luoghi reali + coordinate + ordine di
+                         sblocco, isLevelUnlocked) — contenuto statico, NON nello store
+  store/                gameStore.ts (fase/schermata), settingsStore.ts (persistito),
+                         progressStore.ts (persistito: completedLevelIds, stesso pattern
+                         "Set di id, mai un contatore" di collectedFragmentIds)
   hooks/                useBackgroundMusic.ts, useSfx.ts, useAnyInput.ts (unifica
                          tastiera/mouse-touch/gamepad in un'unica callback "premi
                          qualcosa" — vedi "Regole architetturali")
@@ -347,20 +361,123 @@ un'ambientazione Blender vera e propria ("Ingresso a Oristano"):
   schermata: vedi "Regole architetturali") prima del taglio a "Seleziona livello", che
   sfuma a sua volta DAL bianco invece di apparire di colpo.
 
+La selezione livelli (`game/menu/levelSelect/`) è un'UNICA scena Three.js sempre visibile
+(`LevelMapScene.tsx`, montata subito con la mappa del primo livello — mai uno schermo nero
+in attesa di un click) su tre luoghi REALI (Cinema Ariston a Oristano, Silì, un luogo a
+Cagliari — coordinate vere in `data/levels.ts`; il nome/descrizione di Cagliari sono oggi un
+placeholder onesto, "da confermare", dopo un cambio di coordinate — vedi più sotto). **Niente
+widget di mappa live nel gioco pubblicato**: le tre mappe sono immagini statiche (Maps Static
+API, generate UNA TANTUM in sviluppo con `scripts/generate-map-images.mjs` e salvate come
+asset locali in `public/maps/`, stessa logica dei modelli Blender/audio) applicate come
+texture su un piano Three.js — non le Photorealistic 3D Tiles (Enterprise a fatturazione
+ricorrente, copertura incerta su Silì, vietano cache/uso offline: valutate e scartate) né un
+widget Google Maps JS live (avrebbe richiesto una chiave esposta e attiva per sempre nel
+gioco pubblicato, oltre a due livelli di rendering — DOM + Canvas — da tenere sincronizzati).
+Il marker di ogni livello (`LevelMarker.tsx`) è un pin quando la camera è lontana, il modello
+3D (oggi il cilindro placeholder, in futuro un modello Blender per luogo) quando ci si
+avvicina — scambio automatico legato alla DISTANZA camera↔marker (letta ogni fotogramma), non
+a un bottone: uno zoom continuo, non un taglio tra "mappa" e "vicino". La camera ha due
+padroni che si alternano come ovunque nel progetto (mai insieme): GSAP durante il dolly
+avanti/indietro (click su un livello / "Elenco livelli"), `MapControls` di drei il resto del
+tempo (pan/zoom liberi dell'utente, rotazione bloccata) — l'handoff è esplicito via un flag
+`isAnimating` che spegne `controls.enabled` durante il dolly, altrimenti un drag a metà
+animazione la romperebbe. La posizione del marker sul piano viene da una proiezione Web
+Mercator pura (`mapProjection.ts`, la stessa matematica di Google Maps: lat/lng → pixel →
+posizione locale sul piano), non hardcoded — oggi il marker cade sempre vicino al centro
+(la mappa è generata centrata proprio sul luogo), ma la funzione resta generale. Sblocco
+progressivo via `progressStore` (`completedLevelIds`, persistito): un livello è giocabile se
+il precedente per `order` è completato, resta sempre rigiocabile una volta fatto —
+`SceneManager.tsx` chiama `completeLevel` quando tutti i frammenti sono raccolti (l'unico
+aggancio oggi, nessun finale/achievement costruito ancora). Cambiare città fa passare lo
+schermo da una transizione a nuvole (`CloudTransition.tsx`, GSAP, stesso pattern del
+contatore-trigger di `skipIntroToken`) invece di uno scatto secco. `SettingsBar` (già
+esistente) è montata anche qui.
+
+**Copertura per livello: una griglia di tile, non un'unica immagine — e non più la stessa
+per tutti i livelli.** La Maps Static API si ferma a 640x640px per richiesta — per vedere più
+del proprio isolato, `scripts/generate-map-images.mjs` scarica una griglia `mapGrid x mapGrid`
+di tile da 640px (`TILE_SIZE`) allo stesso zoom e le incolla in un'unica immagine (`pngjs`,
+devDependency: decodifica/codifica PNG in Node, mai nel bundle del gioco) — il centro di ogni
+tile viene dalla stessa proiezione Web Mercator di `mapProjection.ts`, non spostato a mano,
+altrimenti le tile non si allineerebbero bordo a bordo. `mapGrid` è un campo di `LevelInfo`
+(`data/levels.ts`), non più una costante `GRID` fissa nello script: Silì resta a 3 (1920×1920
+finali), Oristano e Cagliari sono a 5 (3200×3200) per coprire un'area cittadina più ampia.
+Cambiarlo per un livello richiede sempre rigenerare la sua immagine (`node
+scripts/generate-map-images.mjs` rigenera tutti e tre). In `LevelMapScene.tsx`,
+`PLANE_SIZE`/`IMAGE_SIZE` **non sono più costanti di modulo**: `getMapGeometry(level)` le
+deriva da `level.mapGrid` (`PLANE_SIZE = 12 * mapGrid`, `IMAGE_SIZE = 640 * mapGrid`) insieme
+a tutto ciò che ne dipende — `CAMERA_FAR`, `maxDistance` di `MapControls`, `near`/`far` della
+nebbia — come RAPPORTI fissati sul livello di riferimento (Silì, invariato) invece che numeri
+per-livello scritti a mano. Lo style `feature:poi|visibility:off` +
+`feature:transit|visibility:off` toglie le icone dei locali/negozi/fermate — strade ed
+etichette restano. **Non rimovibile**: ogni tile porta con sé la scritta "Google"/copyright
+richiesta dai termini di servizio, quindi compare ripetuta a ogni giunzione della griglia —
+non è un difetto da correggere, è obbligatoria per mostrare contenuto Google Maps.
+
+**Tre bug reali scovati verificando a schermo** (nebbia troppo vicina, angolo della camera
+ravvicinata troppo ripido, dimenticato di riscalare camera/nebbia insieme a `PLANE_SIZE` la
+prima volta che è triplicato) **hanno portato a esprimere camera/nebbia/`maxDistance` come
+rapporti di `PLANE_SIZE`, non come numeri fissi** (vedi sopra) — proprio per evitare una
+quarta ricorrenza quando `PLANE_SIZE` è diventato per-livello (Silì 36, Oristano/Cagliari 60):
+verificato via Playwright che non si è ripresentato al primo passaggio. **Lezione generale**:
+con una camera a due padroni e soglie di distanza (`CLOSEUP_DISTANCE` in `LevelMarker.tsx`
+deve stare tra la distanza di `CAMERA_NEAR`, fissa, e quella di `CAMERA_FAR` del livello con
+`mapGrid` più piccolo — oggi Silì, quindi invariata — mentre la nebbia deve coprire la
+distanza massima raggiunta dalla camera più lontana), i numeri vanno verificati insieme, non
+uno alla volta — un singolo valore fuori posto rompe silenziosamente l'intera inquadratura
+senza errori in console.
+
+**Piano di contorno + limite di pan** (aggiunti insieme alla copertura per-livello, stesso
+giro di lavoro): un piano scuro (`ContourSkirt` in `LevelMapScene.tsx`, texture generata via
+canvas con lo stesso procedimento di `CLOUD_TEXTURE` in `MainMenuSceneAnimation.tsx`, ma
+costruita come `THREE.CanvasTexture` sincrona — niente `useTexture`/Suspense, quindi resta
+visibile anche se la texture della mappa sopra non carica) copre il "vuoto" oltre il bordo del
+piano-mappa invece di mostrare la nebbia a nudo dietro un bordo quadrato netto; dimensionato a
+`PLANE_SIZE * 6`, ben oltre `fogFar`/`maxDistance` del livello. `MapControls` è inoltre
+limitato a non far uscire `controls.target` dai bordi del piano (`±(PLANE_SIZE/2 - margine)`,
+clamp applicato in `CameraRig` SOLO quando `!isAnimating`, mai durante il dolly GSAP) — il
+delta di clamp va applicato a `controls.target` E a `camera.position` insieme (stessa
+traslazione rigida), non solo al target, altrimenti al giro di `update()` successivo
+`MapControls` ricalcolerebbe una posizione diversa da quella attesa. Verificato con due
+screenshot dopo un pan volutamente eccessivo (10 vs 25 trascinamenti): identici byte per
+byte, prova che il pan si ferma davvero al limite invece di rallentare soltanto.
+
+Le tre immagini di `public/maps/` sono generate e nel repository (`oristano-ariston.png`
+3200×3200, `sili.png` 1920×1920, `cagliari-bastione.png` 3200×3200 — nessun `scale=2`, i
+pixel sono quelli logici di `TILE_SIZE * mapGrid`) — il blocco che le teneva ferme la prima
+volta era la restrizione per referrer HTTP sulla chiave (impostata per il widget Google Maps
+JS, poi rimosso): una richiesta da Node non manda un header `Referer`, quindi una chiave con
+quella restrizione la rifiuta sempre, a prescindere dalle API abilitate — la chiave usata per
+generarle è una seconda chiave senza restrizioni, dedicata solo a questo. **`LevelMapScene`
+non dipende comunque più da una texture presente per non schiantarsi**: `MapPlaneErrorBoundary`
+(classe React, serve una classe perché l'errore arriva da un loader Suspense) intercetta un
+caricamento fallito e mostra un piano a tinta unita (il colore del livello) invece di mandare
+in crash l'intero `<Canvas>` — verificato rimuovendo apposta i file generati e controllando
+che l'app restasse comunque usabile prima di rigenerarli. Utile ricordarlo se in futuro cambia
+`data/levels.ts` senza rigenerare le immagini in tempo, o per chiunque clona il repository e
+non lancia subito lo script.
+
 **In corso**: taratura fine delle inquadrature della sequenza del personaggio e dei tempi
 della raffica cinematica dello scatto e del finale (verificata funzionante end-to-end, ma
 il posizionamento di camera/personaggio/beat resta "da rifinire a vista" come il resto
 della coreografia GSAP); il file `LEAP_VIDEO_URL` (`public/video/saitama-run-punch.mp4`) è
 nel repository, `SAITAMA_TIMING.leapVideo` (1.3s) è già tarato sulla sua durata reale ma va
 riverificato se il file cambia; SFX del muro collegati nel codice (`useSfx`) ma mancano
-ancora i file `public/audio/sfx/wall-impact.mp3` e `rubble.mp3`.
+ancora i file `public/audio/sfx/wall-impact.mp3` e `rubble.mp3`; il livello `cagliari-bastione`
+in `data/levels.ts` ha coordinate reali aggiornate (39.204583, 9.131139 — zona costiera vicino
+allo stadio, non più il Bastione di Saint Remy) ma `name`/`description` sono un placeholder
+onesto ("Cagliari" / "nome da confermare") in attesa di sapere cosa rappresenta esattamente
+quel punto per l'utente — non blocca nient'altro (mappa/marker/gioco funzionano comunque),
+ma va sistemato prima che il livello sia "finito".
 
-**Da fare**: eventuale vera animazione scheletrica per il personaggio, se in futuro si
-deciderà di riaprire il problema dell'export con skin (oggi tutto il movimento è
-camera/GSAP su mesh statiche, nessun mixer), terreno e scenografia oltre il Level1,
-puzzle, sistema achievement, finale celebrativo, esecuzione effettiva del deploy su
-GitHub Pages (script `npm run deploy` già pronto — occhio al PATH di `git` su Windows se
-`gh-pages` fallisce con `spawn git ENOENT`, vedi `README.md`).
+**Da fare**: eventuale vera animazione
+scheletrica per il personaggio principale se in futuro si deciderà di riaprire il problema
+dell'export con skin (oggi tutto il movimento è camera/GSAP su mesh statiche, nessun mixer),
+modelli Blender per i tre luoghi della selezione livelli al posto del cilindro placeholder,
+terreno e scenografia oltre il Level1, puzzle, sistema achievement, finale celebrativo,
+esecuzione effettiva del deploy su GitHub Pages (script `npm run deploy` già pronto — occhio
+al PATH di `git` su Windows se `gh-pages` fallisce con `spawn git ENOENT`, vedi
+`README.md`).
 
 Per il dettaglio di architettura scena-menu, sequenza personaggio e pipeline Blender vedi
 `docs/MENU_INTRO.md`; per la spiegazione generale dell'app vedi `docs/APP_EXPLAINER.md`.

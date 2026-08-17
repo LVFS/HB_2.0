@@ -1,1 +1,0 @@
-var e={button:`_button_s8tin_13`,primary:`_primary_s8tin_41 _button_s8tin_13`,secondary:`_secondary_s8tin_57 _button_s8tin_13`,panelOverlay:`_panelOverlay_s8tin_75`,panel:`_panel_s8tin_75`,title:`_title_s8tin_113`,bodyText:`_bodyText_s8tin_127`,pill:`_pill_s8tin_139`};export{e as t};

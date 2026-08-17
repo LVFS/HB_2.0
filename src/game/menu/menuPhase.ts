@@ -12,9 +12,16 @@
  * fratelli, quindi lo stato sta nel loro genitore e scende come prop.
  */
 export type MenuPhase =
-  /** Volo di camera iniziale: il pulsante Gioca è ancora disabilitato. */
+  /** Volo di camera iniziale: una pressione qualsiasi lo salta (vedi `useAnyInput`). */
   | 'intro'
-  /** Muro intatto, in attesa del click. */
+  /** Muro intatto, "Premi un tasto per iniziare" a schermo. */
   | 'ready'
+  /**
+   * Sequenza cinematica del personaggio (piede, volto, battuta, si gira verso
+   * il muro, video del salto): precede `breaking`, che parte da qui
+   * esattamente nel fotogramma dell'impatto — vedi `CharacterIntro.tsx` e
+   * `characterConfig.ts`.
+   */
+  | 'punching'
   /** Timeline in corso: camera, audio e fisica dei detriti. */
   | 'breaking';

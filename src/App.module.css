@@ -1,0 +1,19 @@
+/* Fade to white che sopravvive al cambio di schermata (`useGameStore.screen`):
+   vive qui, non nella schermata che lo innesca, perché quella sparisce di
+   colpo nel momento esatto del taglio (nessun cross-fade tra componenti
+   React) — l'overlay deve restare per coprire il taglio e poi sfumare da
+   solo sulla schermata nuova. Vedi `MainMenuSceneAnimation.tsx`
+   (`CameraDirector`, finale "attraverso il varco") per chi lo innesca oggi. */
+.whiteout {
+  position: fixed;
+  inset: 0;
+  background: #ffffff;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s ease-in;
+  z-index: 30;
+}
+
+.whiteoutActive {
+  opacity: 1;
+}

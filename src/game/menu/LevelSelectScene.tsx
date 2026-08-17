@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { Environment, OrbitControls, Text } from '@react-three/drei';
+import { Environment, Lightformer, OrbitControls, Text } from '@react-three/drei';
 import { levels } from '@/data/levels';
 import { useGameStore } from '@/store/gameStore';
 import ui from '@/styles/ui.module.css';
@@ -32,9 +32,19 @@ export function LevelSelectScene() {
           <meshStandardMaterial color="#07121d" />
         </mesh>
 
-        {/* Environment e Text caricano asset in modo asincrono e "sospendono". */}
+        {/* Environment e Text caricano asset in modo asincrono e "sospendono".
+            Ambient/riflessi via cubemap procedurale (`Lightformer`), non un
+            preset HDR scaricato da un CDN esterno — stesso motivo/fix di
+            `MainMenuSceneAnimation.tsx` (vedi CLAUDE.md, "Bundle/performance"):
+            i preset drei vanno a scaricare da raw.githubusercontent.com, che
+            sotto rate limit (429) manda in crash l'intero Canvas. Toni freddi
+            per restare coerenti con la scena scura (fog/pavimento quasi neri). */}
         <Suspense fallback={null}>
-          <Environment preset="dawn" />
+          <Environment resolution={64}>
+            <Lightformer form="rect" intensity={2} color="#3fa9d8" position={[-15, 12, 8]} scale={[14, 8, 1]} />
+            <Lightformer form="rect" intensity={1.2} color="#0b2233" position={[15, 10, -8]} scale={[16, 10, 1]} />
+            <Lightformer form="ring" intensity={1.6} color="#f8fafc" position={[0, 14, 12]} scale={6} />
+          </Environment>
 
           {levels.map((level) => (
             <group key={level.id} position={level.position}>

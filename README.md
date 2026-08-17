@@ -5,11 +5,14 @@ Disponibile a questo link: https://lvfs.github.io/HB_2.0/
 
 ## Funzionalità iniziali
 
-- Menu principale cinematografico in 3D: un muro che si abbatte con la fisica
+- Menu principale cinematografico in 3D: un'ambientazione completa (strada,
+  cartello di ingresso città, case, distributore, binari, muro stile Attack on
+  Titan) con una sequenza cinematica del personaggio che sfonda il muro a
+  pugno prima che la fisica prenda il sopravvento
   ([docs/MENU_INTRO.md](docs/MENU_INTRO.md))
 - Selezione livelli
 - Scene manager
-- Musica di sottofondo con Howler (`useBackgroundMusic`)
+- Musica di sottofondo ed effetti con Howler (`useBackgroundMusic`, `useSfx`)
 - Settings persistenti con localStorage
 - Prima scena 3D con movimento e raccolta frammenti
 - Stili in CSS Modules, schermate caricate a richiesta (code splitting)
@@ -33,7 +36,9 @@ Disponibile a questo link: https://lvfs.github.io/HB_2.0/
 
 ## Prossimi passi
 
-- aggiungere asset Blender / Mixamo
-- animazioni del personaggio
+- rifinire a vista la sequenza cinematica del personaggio (inquadrature, timing)
+- eventuali animazioni vere per il personaggio (oggi è tutto camera/GSAP, niente mixer)
 - puzzle e portale finale
 - schermata celebrazione con foto, video e messaggi
+- eseguire il deploy vero su GitHub Pages (`npm run deploy`; su Windows, se fallisce
+  con `spawn git ENOENT`, controllare il PATH di `git`)

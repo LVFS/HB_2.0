@@ -15,7 +15,7 @@ export const MODEL_URL = `${import.meta.env.BASE_URL}models/ingresso-oristano.gl
 export const GATE_ORIGIN: [number, number, number] = [0, 6, -115];
 
 /** Coordinata Z della faccia frontale del portone (Blender FRONT_Y=113.25). */
-export const GATE_FRONT_Z = -113.25;
+export const GATE_FRONT_Z = -115.25;
 
 /**
  * Forza degli impulsi.
@@ -80,14 +80,18 @@ export function getVariantOrigin(
 /**
  * Secondi tra l'inizio della sequenza e il momento in cui il portone incassa.
  *
- * Per `punch` è più lungo perché è il tempo di caricare il colpo. Camera,
- * audio e impulsi leggono tutti da qui, quindi cambiando questo numero
- * restano sincronizzati da soli.
+ * `punch` era più lungo (0.55) per dare il tempo di "caricare il colpo" con
+ * uno scatto in 3D prima dell'impatto — quello scatto non c'è più (il video
+ * del salto lo sostituisce, vedi `SAITAMA_TIMING.leapVideo` in
+ * `characterConfig.ts`): il pugno tocca già il muro quando questa fase
+ * inizia, quindi qui serve un valore quasi immediato come le altre varianti,
+ * non un'attesa. Camera, audio e impulsi leggono tutti da qui, quindi
+ * cambiando questo numero restano sincronizzati da soli.
  */
 export const VARIANT_IMPACT_DELAY: Record<BreakVariant, number> = {
   radial: 0.1,
   collapse: 0.1,
-  punch: 0.55
+  punch: 0.05
 };
 
 /**

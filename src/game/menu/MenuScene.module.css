@@ -1,0 +1,19 @@
+/* Video del salto: copre tutto lo schermo (canvas 3D + overlay UI) per la
+   durata di `SAITAMA_TIMING.leapVideo` — vedi `CharacterIntro.tsx`
+   (`onLeapVideo`). Stesso z-index del pannello UI (`ui.module.css`): vince
+   per ordine nel DOM, essendo l'ultimo elemento renderizzato qui. */
+.leapVideo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease-out;
+  z-index: 20;
+}
+
+.leapVideoActive {
+  opacity: 1;
+}

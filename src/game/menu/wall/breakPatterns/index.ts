@@ -19,13 +19,6 @@ export const breakPatterns: Record<BreakVariant, BreakPattern> = {
   punch: punchBreak
 };
 
-/** Etichette per la UI: stanno qui così l'overlay non conosce le implementazioni. */
-export const breakVariantLabels: Record<BreakVariant, string> = {
-  radial: 'Esplosione',
-  collapse: 'Crollo',
-  punch: 'Pugno'
-};
-
 /**
  * Applica una variante e restituisce gli impulsi ORDINATI PER RITARDO.
  *

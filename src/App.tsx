@@ -1,6 +1,7 @@
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, useEffect, useState } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { useBackgroundMusic } from '@/hooks/useBackgroundMusic';
+import styles from './App.module.css';
 
 // Ogni schermata viene scaricata solo quando serve davvero (code splitting).
 // Il guadagno grosso è la scena di gioco: si porta dietro il motore fisico
@@ -23,12 +24,31 @@ function App() {
   // Musica di sottofondo: vive quanto l'app, indipendente dallo schermo attivo.
   useBackgroundMusic();
 
+  // Fade to white di chiusura del menu (vedi CameraDirector, finale
+  // "attraverso il varco"): vive QUI, non dentro `MenuScene`, perché quando
+  // `screen` cambia `MenuScene` sparisce di colpo (nessun cross-fade tra
+  // componenti React) — se l'overlay vivesse lì, sparirebbe insieme a lei
+  // nel fotogramma esatto del taglio, e non ci sarebbe più nulla a coprirlo.
+  const [whiteout, setWhiteout] = useState(false);
+
+  // Ogni cambio di schermata con il bianco ancora attivo lo riporta a
+  // trasparente un istante dopo il mount della schermata nuova: si legge
+  // come "sfuma dal bianco", non come un secondo taglio secco. Chi ha
+  // acceso il bianco (oggi solo `CameraDirector`) decide QUANDO cambiare
+  // schermata, non se riportarlo giù: quello è generico, sta qui una volta sola.
+  useEffect(() => {
+    if (!whiteout) return;
+    const id = requestAnimationFrame(() => setWhiteout(false));
+    return () => cancelAnimationFrame(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- si vuole reagire SOLO al cambio schermata, non a ogni variazione di whiteout (altrimenti si richiuderebbe da solo appena acceso)
+  }, [screen]);
+
   return (
     <div className="app-shell">
       {/* Suspense mostra il fallback mentre il codice della schermata arriva. */}
       <Suspense fallback={<div className="screen-fallback">Caricamento...</div>}>
         {/* Menu cinematografico in 3D con portone e animazione */}
-        {screen === 'menu' && <MenuScene />}
+        {screen === 'menu' && <MenuScene onWhiteout={setWhiteout} />}
 
         {/* Schermata di selezione dei livelli dopo aver aperto il portone */}
         {screen === 'levelSelect' && <LevelSelectScene />}
@@ -36,6 +56,8 @@ function App() {
         {/* Mostra la scena di gioco 3D quando è il momento di giocare */}
         {screen === 'game' && <SceneManager />}
       </Suspense>
+
+      <div className={`${styles.whiteout} ${whiteout ? styles.whiteoutActive : ''}`} />
     </div>
   );
 }

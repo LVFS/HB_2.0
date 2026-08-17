@@ -1,0 +1,28 @@
+/* Angolo in alto a destra: lontano dal centro (dove compare il prompt "premi
+   un tasto") e da "Seleziona livello" (in basso a sinistra nel menu). */
+.container {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 25;
+  pointer-events: auto;
+  display: grid;
+  justify-items: end;
+  gap: 0.6rem;
+}
+
+.toggle {
+  padding: 0.6rem 1.1rem;
+  font-size: 0.85rem;
+}
+
+.panel {
+  display: grid;
+  gap: 0.6rem;
+  padding: 1rem;
+  border-radius: 20px;
+  background: rgba(7, 11, 21, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+  min-width: 220px;
+}

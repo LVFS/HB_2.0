@@ -90,25 +90,44 @@ Questo è il cuore del flusso: la UI cambia in base al valore di `screen`.
 
 ### 3.1 `src/game/menu/MenuScene.tsx`
 
-Questa scena è il menu iniziale 3D. `MenuScene` tiene lo stato (intro finita, portone aperto) e delega la parte 3D a `MainMenuSceneAnimation.tsx` e l'overlay HTML a `MainMenuOverlay.tsx`.
+Questa scena è il menu iniziale 3D: un'intera "ambientazione di ingresso"
+(strada, cartello di benvenuto, case, un distributore di benzina, i binari
+del treno) con in fondo un muro stile Attack on Titan che chiude la strada,
+con un portone al centro. `MenuScene` possiede la **fase** (una macchina a
+stati, non solo "aperto/chiuso") e delega la parte 3D a
+`MainMenuSceneAnimation.tsx` e l'overlay HTML a `MainMenuOverlay.tsx`.
 
-Cosa fa:
+Le fasi, in ordine (`menuPhase.ts`):
 
-- genera una camera che parte dal basso e vola verso un portone
-- disegna un ambiente semplice con una piattaforma e un portone
-- mostra un overlay HTML in cui ci sono le azioni `Gioca` e `Seleziona livello`
-- se premi `Gioca`, apre il portone e poi passa a `levelSelect`
+1. `intro` — la camera vola dall'alto verso l'inquadratura ferma sul muro.
+2. `ready` — muro intatto in attesa, a schermo compare "Premi un tasto per
+   iniziare"; qualunque input (tastiera, mouse/touch, gamepad) avvia la
+   sequenza — niente più un pulsante da cliccare.
+3. `punching` — parte una sequenza cinematica: un personaggio (stile Saitama)
+   entra in scena, recita, poi scatta verso il muro e lo colpisce.
+4. `breaking` — il pugno ha innescato la rottura vera e propria del muro
+   (fisica dei detriti); a rottura finita si passa alla schermata
+   `levelSelect`.
 
-Libriere usate:
+Il muro non è un modello unico: è fatto di centinaia di frammenti pre-rotti
+in Blender (vedi `docs/MENU_INTRO.md`), ma solo quelli vicini al punto colpito
+diventano fisici — il resto resta scenografia immobile.
+
+Librerie usate:
 
 - `@react-three/fiber`: per creare una scena 3D dentro React.
-- `@react-three/drei`: fornisce componenti utili come `Environment` e `Text`.
+- `@react-three/drei`: componenti utili come `Environment`, `Text`, `Sky`,
+  `Cloud`, `useGLTF` (per caricare i modelli `.glb` esportati da Blender).
+- `@react-three/rapier`: la fisica dei detriti quando il muro si rompe.
+- `gsap`: tutte le animazioni "a comando" (camera, personaggio, dissolvenze).
 - `three`: usata per vettori e tipi di mesh.
 
 Alcuni dettagli tecnici:
 
-- `CameraIntro` usa `useFrame` per aggiornare la camera ad ogni fotogramma.
-- `DoorFrame` ruota le due ante della porta quando l'utente preme `Gioca`.
+- `CameraDirector` (dentro `MainMenuSceneAnimation.tsx`) usa `useFrame` per
+  aggiornare la camera ad ogni fotogramma nelle fasi `intro`/`ready`/`breaking`.
+- `CharacterIntro` (`game/menu/character/`) fa lo stesso lavoro nelle fasi
+  `punching`/`breaking`: i due si escludono a vicenda, mai attivi insieme.
 - l'overlay in HTML è mostrato sopra la scena 3D con CSS.
 
 ### 3.2 `src/game/menu/LevelSelectScene.tsx`
@@ -125,7 +144,10 @@ Cosa fa:
 
 Il modello è semplice, ma la logica è già pronta per aggiungere altri elementi come colline, modelli 3D o descrizioni più complesse.
 
-### 3.3 `src/game/scene/SceneManager.tsx`
+### 3.3 `src/game/levels/Level1/SceneManager.tsx`
+
+(rinominato da `src/game/scene/` per supportare più livelli in futuro — se
+una fonte più vecchia cita `game/scene/`, è superata)
 
 Questa è la scena di gioco vera e propria.
 
@@ -244,7 +266,7 @@ Nel gioco, `Player` e `Fragments` usano `RigidBody` per muoversi e interagire.
 
 ## 6. Spiegazione dei componenti di gioco
 
-### 6.1 `src/game/scene/Player.tsx`
+### 6.1 `src/game/levels/Level1/Player.tsx`
 
 Rappresenta il giocatore come una sfera fisica.
 
@@ -255,7 +277,7 @@ Rappresenta il giocatore come una sfera fisica.
 
 Attenzione a un dettaglio importante: il fatto di essere a terra è tenuto in una `useRef`, non in uno `useState`. Chiamare `setState` dentro `useFrame` farebbe ri-renderizzare React decine di volte al secondo. **Regola generale in react-three-fiber: lo stato che cambia a ogni fotogramma va in una ref.**
 
-### 6.2 `src/game/scene/Fragments.tsx`
+### 6.2 `src/game/levels/Level1/Fragments.tsx`
 
 Rappresenta gli oggetti da raccogliere.
 
@@ -263,7 +285,7 @@ Rappresenta gli oggetti da raccogliere.
 - il `RigidBody` ha la prop `sensor`: senza, Rapier tratterebbe il frammento come un ostacolo solido e non emetterebbe mai `onIntersectionEnter`
 - quando il giocatore attraversa un frammento, `collectFragment(id)` aggiorna lo stato globale e la mesh smette di essere renderizzata
 
-### 6.3 `src/game/scene/EnvironmentScene.tsx`
+### 6.3 `src/game/levels/Level1/EnvironmentScene.tsx`
 
 Dà un pavimento e alcuni oggetti decorativi.
 
@@ -329,7 +351,7 @@ importate con `lazy()`:
 
 ```tsx
 const SceneManager = lazy(() =>
-  import('@/game/scene/SceneManager').then((m) => ({ default: m.SceneManager }))
+  import('@/game/levels/Level1/SceneManager').then((m) => ({ default: m.SceneManager }))
 );
 ```
 
@@ -355,10 +377,13 @@ spostarli fuori dal percorso di avvio — cosa che ora è fatta.
 
 ### Se vuoi cambiare il menu iniziale
 
-1. Apri `src/game/menu/MenuScene.tsx`
-2. Modifica `CameraIntro` per cambiare la traiettoria della camera
-3. Modifica il portone o aggiungi oggetti 3D nella scena
-4. Cambia il testo dell'overlay HTML
+1. Apri `src/game/menu/MenuScene.tsx` per capire il flusso delle fasi
+2. Modifica `CameraDirector` (dentro `MainMenuSceneAnimation.tsx`) per
+   cambiare la traiettoria della camera nelle fasi intro/ready/breaking, o
+   `CharacterIntro` (`game/menu/character/`) per la sequenza del personaggio
+3. Modifica il muro/portone (Blender, vedi `docs/MENU_INTRO.md`) o aggiungi
+   oggetti 3D nella scena
+4. Cambia il testo dell'overlay HTML in `MainMenuOverlay.tsx`
 
 ### Se vuoi aggiungere livelli
 
@@ -408,18 +433,31 @@ function Counter() {
 - `src/data/fragments.ts`: dati statici dei frammenti
 - `src/store/gameStore.ts`: stato globale del gioco
 - `src/store/settingsStore.ts`: impostazioni audio, persistite in localStorage
-- `src/hooks/useBackgroundMusic.ts`: musica di sottofondo (Howler)
-- `src/game/menu/MenuScene.tsx`: menu iniziale cinematico
-- `src/game/menu/MainMenuSceneAnimation.tsx`: parte 3D del menu (camera e portone)
+- `src/hooks/useBackgroundMusic.ts`, `useSfx.ts`: musica di sottofondo ed effetti (Howler)
+- `src/game/menu/MenuScene.tsx`: menu iniziale, possiede la fase (macchina a stati)
+- `src/game/menu/MainMenuSceneAnimation.tsx`: parte 3D del menu (camera nelle fasi
+  intro/ready/breaking, luci, cielo)
 - `src/game/menu/MainMenuOverlay.tsx`: overlay HTML del menu
+- `src/game/menu/menuPhase.ts`: tipo delle fasi (`intro`/`ready`/`punching`/`breaking`)
+- `src/game/menu/wall/`: l'ambientazione e il muro distruttibile
+  - `environmentModel.ts`: carica `ingresso-oristano.glb`, scopre i frammenti rompibili
+  - `wallConfig.ts`: URL modello, punto d'origine del portone, forza degli impulsi
+  - `Wall.tsx`: l'ambientazione intatta; `WallShatter.tsx`: la rottura vera e propria
+  - `breakPatterns/`: le varianti di rottura (esplosione/crollo/pugno), una funzione pura ciascuna
+- `src/game/menu/character/`: la sequenza cinematica del personaggio prima della rottura
+  - `characterConfig.ts`: coreografie disponibili e durate di ogni fase
+  - `characterModel.ts`: carica i due modelli del personaggio
+  - `CharacterIntro.tsx`: la timeline GSAP che orchestra camera e personaggio
 - `src/game/menu/LevelSelectScene.tsx`: selezione dei livelli
-- `src/game/scene/SceneManager.tsx`: scena di gioco principale
+- `src/game/levels/Level1/SceneManager.tsx`: scena di gioco principale
 - `src/components/GameOverlay.tsx`: HUD di gioco
-- `src/game/scene/Player.tsx`: controlli e movimento del giocatore
+- `src/game/levels/Level1/Player.tsx`: controlli e movimento del giocatore
 - ogni componente con stili propri ha accanto il suo `*.module.css`
-- `src/game/scene/Fragments.tsx`: frammenti da raccogliere
-- `src/game/scene/EnvironmentScene.tsx`: ambiente della scena
+- `src/game/levels/Level1/Fragments.tsx`: frammenti da raccogliere
+- `src/game/levels/Level1/EnvironmentScene.tsx`: ambiente della scena
 - `public/audio/theme.mp3`: musica del tema
+- `public/models/`: i modelli `.glb` esportati da Blender (ambientazione del menu e
+  personaggio) — vedi `docs/MENU_INTRO.md` per come sono fatti e da dove vengono
 
 Tutto ciò che sta in `public/` viene copiato così com'è nella build ed è
 raggiungibile da URL assoluto (`/audio/theme.mp3`). Un file messo fuori da
@@ -435,6 +473,6 @@ Se vuoi imparare con calma, questi sono i pezzi migliori da studiare in ordine:
 2. `src/store/gameStore.ts` — guarda come cambia lo stato globale
 3. `src/game/menu/MenuScene.tsx` — vedi la scena 3D del menu
 4. `src/game/menu/LevelSelectScene.tsx` — impara come funzionano i livelli
-5. `src/game/scene/SceneManager.tsx` — entra nel gioco vero e proprio
+5. `src/game/levels/Level1/SceneManager.tsx` — entra nel gioco vero e proprio
 
 Buono studio! Se vuoi, posso anche creare un secondo file con una mini-guida punto per punto su come modificare un elemento specifico (ad esempio aggiungere un nuovo livello o cambiare i controlli).

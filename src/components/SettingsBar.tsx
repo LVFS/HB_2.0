@@ -56,7 +56,9 @@ export function SettingsBar() {
             {sfxEnabled ? 'Disattiva SFX' : 'Attiva SFX'}
           </button>
           <label className={ui.pill}>
-            Volume
+            {/* `ui.label` e non testo nudo: era l'unica etichetta rimasta in
+                minuscolo, in mezzo a un'interfaccia tutta in maiuscoletto. */}
+            <span className={ui.label}>Volume</span>
             <input
               type="range"
               min="0"

@@ -17,6 +17,9 @@
   max-height: 900px;
   transform: translate(-50%, -50%);
   border-radius: 50%;
+  /* Bianco puro e non un token: qui non è un colore dell'interfaccia ma un
+     lampo, come `App.whiteout`. Deve restare bianco anche se la palette
+     dell'UI cambia. */
   background: radial-gradient(circle, #ffffff 0%, #ffffff 55%, rgba(255, 255, 255, 0) 75%);
   opacity: 0;
   filter: blur(2px);

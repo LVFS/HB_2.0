@@ -1,56 +1,78 @@
+/* Il pannello prende forma, profilo e ombra da `ui.panel` (applicato in JSX
+   insieme a questa classe): qui restano solo le differenze di questo elenco. */
 .panel {
   max-width: 420px;
   display: grid;
-  gap: 1rem;
+  gap: var(--space-4);
 }
 
 .grid {
   display: grid;
-  gap: 0.75rem;
+  gap: var(--space-2);
 }
 
+/* Voce di livello. Non usa `ui.button` né la sagoma smussata dei pannelli:
+   è una RIGA DI ELENCO, e nel sistema le righe sono squadrate con un filo di
+   stato a sinistra — stessa regola di `GameOverlay.previewItem`. La
+   smussatura resta un tratto dei contenitori, non del loro contenuto. */
 .card {
   display: grid;
-  gap: 0.25rem;
+  gap: var(--space-1);
   text-align: left;
-  padding: 0.9rem 1.1rem;
-  border-radius: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.04);
-  color: #e2e8f0;
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-inset);
+  color: var(--text);
   cursor: pointer;
-  transition: background 0.2s ease, border-color 0.2s ease;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out);
 }
 
+/* Ambra al passaggio: nel sistema l'accento caldo segnala l'AZIONE, e
+   cliccare qui avvia un livello. */
 .card:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.09);
-  border-color: rgba(56, 189, 248, 0.4);
+  background: var(--surface-inset-hover);
+  border-color: var(--line-strong);
+  border-left-color: var(--accent);
 }
 
 .card:disabled {
   cursor: default;
-  opacity: 0.5;
+  opacity: 0.45;
+}
+
+/* Acciaio: STATO, non azione. Il filo a sinistra rende la progressione
+   leggibile a colpo d'occhio, senza dover leggere le etichette. */
+.cardCompleted {
+  border-left-color: var(--steel);
 }
 
 .cardName {
+  font-family: var(--font-display);
+  font-weight: 700;
   font-size: 1.05rem;
-  font-weight: 600;
-  color: #f8fafc;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text);
 }
 
 .cardDescription {
   font-size: 0.85rem;
-  color: #94a3b8;
+  line-height: 1.5;
+  color: var(--text-dim);
 }
 
 .completedHint {
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: #86efac;
+  composes: label from '../../../styles/ui.module.css';
+  font-size: 0.72rem;
+  color: var(--steel);
 }
 
 .lockedHint {
-  font-size: 0.75rem;
-  color: #64748b;
+  composes: label from '../../../styles/ui.module.css';
+  font-size: 0.72rem;
+  color: var(--text-faint);
 }

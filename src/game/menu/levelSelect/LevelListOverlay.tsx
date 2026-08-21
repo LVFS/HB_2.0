@@ -28,7 +28,7 @@ export function LevelListOverlay({ completedLevelIds, onSelect, onBack }: LevelL
               <button
                 key={level.id}
                 type="button"
-                className={styles.card}
+                className={`${styles.card} ${completed ? styles.cardCompleted : ''}`}
                 disabled={!unlocked}
                 onClick={() => onSelect(level.id)}
               >

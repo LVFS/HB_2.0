@@ -1,0 +1,125 @@
+/*
+ * TOKEN DI DESIGN — la sorgente unica di verità di colori, forme e tempi.
+ *
+ * Regola: nessun file `*.module.css` deve contenere un colore letterale.
+ * Se scrivi `#f8fafc` da qualche parte, quel valore diventa invisibile a
+ * chiunque voglia cambiare la palette. Qui invece cambi una riga e cambia
+ * tutta l'interfaccia.
+ *
+ * Direzione artistica: HUD militare/anime. I colori sono presi dalla scena
+ * (cemento, acciaio, notte) invece di combatterla, più UN accento caldo che
+ * segnala l'azione. L'ambra è scelta apposta per legare con la pietra del
+ * muro: un blu saturo ci galleggerebbe sopra come un pannello estraneo.
+ */
+
+:root {
+  /* ---------- Superfici ---------- */
+  --bg-deep: #06080c;
+  --bg: #0a0d12;
+  /* Alone in alto nel gradiente della pagina. */
+  --bg-glow: #16202b;
+  /* Pannelli: semitrasparenti perché la scena 3D deve trasparire sotto. */
+  --surface: rgba(12, 16, 23, 0.88);
+  --surface-raised: rgba(18, 24, 34, 0.94);
+  /* Righe/pillole DENTRO un pannello: schiariscono ciò che hanno sotto.
+     Funzionano solo sopra una superficie già scura. */
+  --surface-inset: rgba(255, 255, 255, 0.045);
+  --surface-inset-hover: rgba(255, 255, 255, 0.09);
+  /* Controlli che stanno DIRETTAMENTE sopra la scena 3D: devono portarsi
+     dietro il proprio sfondo scuro. Il menu è in pieno giorno, con un cielo
+     quasi bianco: una superficie fatta di bianco trasparente lì sopra
+     sparisce, insieme al testo che contiene. */
+  --surface-control: rgba(10, 14, 22, 0.82);
+  --surface-control-hover: rgba(16, 22, 33, 0.92);
+
+  /* ---------- Bordi ---------- */
+  --line: rgba(255, 255, 255, 0.1);
+  --line-strong: rgba(255, 255, 255, 0.2);
+
+  /* ---------- Testo ---------- */
+  --text: #e8eef8;
+  --text-dim: #93a1b5;
+  --text-faint: #64748b;
+  /* Testo sopra il colore d'accento: scuro, non bianco. */
+  --text-on-accent: #17120a;
+
+  /* ---------- Accenti ---------- */
+  /* Ambra = azione, impatto, "premi qui". Usane UNO solo, o non accenta più niente. */
+  --accent: #ffb224;
+  /* Variante chiara per hover/focus. Un token esplicito invece di color-mix():
+     nessuna dipendenza dal supporto del browser, e il valore si vede. */
+  --accent-bright: #ffc756;
+  --accent-soft: rgba(255, 178, 36, 0.16);
+  --accent-line: rgba(255, 178, 36, 0.55);
+  /* Acciaio = informazione e stato. Mai per le azioni. */
+  --steel: #7dd3fc;
+  --steel-soft: rgba(125, 211, 252, 0.16);
+
+  /* ---------- Ombre ----------
+     Sono `filter: drop-shadow(...)`, non `box-shadow`. Motivo: gli elementi
+     ritagliati con clip-path perdono la box-shadow (viene disegnata fuori
+     dalla forma e quindi ritagliata via), mentre drop-shadow segue il
+     profilo reale, smussature comprese. */
+  --drop-panel: drop-shadow(0 18px 34px rgba(0, 0, 0, 0.55));
+  --drop-card: drop-shadow(0 14px 26px rgba(0, 0, 0, 0.45));
+  --drop-control: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.4));
+
+  /* ---------- Forma ----------
+     `--cut` è la smussatura diagonale degli angoli dei pannelli: è il singolo
+     dettaglio che fa leggere "interfaccia di gioco" invece di "pannello web".
+     Diventerà un clip-path nella fase dei primitivi. */
+  --cut: 14px;
+  --cut-sm: 7px;
+  --radius-sm: 4px;
+
+  /* Le due sagome del sistema: due angoli opposti smussati in diagonale.
+     `--cut` viene letto al momento dell'uso, quindi un elemento può
+     ridefinirlo e la sagoma si adatta da sola. */
+  --clip-panel: polygon(
+    var(--cut) 0,
+    100% 0,
+    100% calc(100% - var(--cut)),
+    calc(100% - var(--cut)) 100%,
+    0 100%,
+    0 var(--cut)
+  );
+  --clip-control: polygon(
+    var(--cut-sm) 0,
+    100% 0,
+    100% calc(100% - var(--cut-sm)),
+    calc(100% - var(--cut-sm)) 100%,
+    0 100%,
+    0 var(--cut-sm)
+  );
+
+  /* ---------- Spazi ---------- */
+  --space-1: 0.35rem;
+  --space-2: 0.6rem;
+  --space-3: 0.85rem;
+  --space-4: 1.25rem;
+  --space-5: 1.75rem;
+
+  /* ---------- Tipografia ----------
+     Due famiglie con ruoli distinti: la display è angolare e va SOLO in
+     maiuscolo su titoli, etichette e numeri dell'HUD; la ui è pensata per
+     essere letta a corpo piccolo. Scambiare il font display è una riga. */
+  --font-display: 'Chakra Petch', 'Inter', system-ui, sans-serif;
+  --font-ui: 'Inter', system-ui, sans-serif;
+  --tracking-label: 0.16em;
+  --tracking-title: 0.04em;
+
+  /* ---------- Movimento ---------- */
+  --dur-fast: 120ms;
+  --dur: 220ms;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+/* Chi ha chiesto meno animazioni al sistema operativo le riceve: azzerando i
+   token, ogni transizione che li usa diventa istantanea senza toccare i
+   singoli componenti. Le @keyframes vanno spente a parte (vedi global.css). */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 0ms;
+    --dur: 0ms;
+  }
+}

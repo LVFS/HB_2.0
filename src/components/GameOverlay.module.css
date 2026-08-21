@@ -1,68 +1,79 @@
 .overlay {
   position: absolute;
-  top: 1rem;
-  right: 1rem;
+  top: var(--space-4);
+  right: var(--space-4);
   z-index: 20;
   width: min(320px, 92vw);
   display: grid;
-  gap: 1rem;
-  padding: 0.75rem;
+  gap: var(--space-3);
+  padding: var(--space-2);
 }
 
+/* Come SettingsBar: la forma del pannello arriva da ui.module.css. */
 .card {
-  padding: 1rem;
-  border-radius: 22px;
-  background: rgba(9, 14, 25, 0.88);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.25);
+  composes: panelCompact from '../styles/ui.module.css';
 }
 
 .cardTitle {
-  margin: 0 0 0.6rem;
-  font-size: 0.95rem;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: #cbd5e1;
+  composes: label from '../styles/ui.module.css';
+  display: block;
+  margin: 0 0 var(--space-2);
 }
 
 .text {
-  color: #e2e8f0;
-  margin-bottom: 0.75rem;
+  color: var(--text);
+  margin-bottom: var(--space-2);
 }
 
+/* Il contatore è un DATO, non testo: font display e corpo grande, perché
+   deve essere leggibile con un'occhiata mentre giochi. */
 .counter {
-  composes: text;
-  font-size: 1.35rem;
+  margin-bottom: var(--space-1);
+  font-family: var(--font-display);
   font-weight: 700;
+  font-size: 1.75rem;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: var(--accent);
 }
 
 .previewList {
   display: grid;
-  gap: 0.55rem;
+  gap: 2px;
 }
 
+/* Righe squadrate con un filo a sinistra: lette come voci di una lista di
+   stato, non come pulsanti. Il filo è il posto dove si accende il colore
+   quando il frammento viene raccolto. */
 .previewItem {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.85rem;
-  padding: 0.7rem 0.85rem;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.04);
-  color: #d3dbe2;
-  font-size: 0.95rem;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-left: 2px solid transparent;
+  border-radius: var(--radius-sm);
+  background: var(--surface-inset);
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
 }
 
+/* Raccolto: acciaio, che nel nostro sistema vuol dire "stato/informazione".
+   L'ambra resta riservata alle azioni, così non perde forza. */
 .collected {
-  background: rgba(56, 189, 248, 0.16);
-  color: #f8fafc;
+  border-left-color: var(--steel);
+  background: var(--steel-soft);
+  color: var(--text);
 }
 
 .badge {
-  width: 0.9rem;
-  height: 0.9rem;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line-strong);
   flex-shrink: 0;
 }
 
@@ -70,15 +81,19 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.7rem 0.75rem;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.04);
-  color: #cbd5e1;
-  font-size: 0.92rem;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--surface-inset);
+  color: var(--text-dim);
+  font-size: 0.88rem;
 }
 
+/* Il tasto da premere è l'informazione utile: display, come una serigrafia
+   sul tasto vero. */
 .controlKey {
+  font-family: var(--font-display);
   font-weight: 700;
-  color: #f8fafc;
+  letter-spacing: 0.06em;
+  color: var(--text);
 }

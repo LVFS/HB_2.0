@@ -9,8 +9,12 @@ import styles from './App.module.css';
 const MenuScene = lazy(() =>
   import('@/game/menu/MenuScene').then((module) => ({ default: module.MenuScene }))
 );
+// ⚠️ SOLO SU QUESTO BRANCH (buon-compleanno-easter-egg): al posto della
+// selezione livelli si monta la sequenza di auguri. La selezione livelli vera
+// resta intatta negli altri branch — questo è l'unico punto in cui i due rami
+// divergono, tenuto apposta su una riga sola perché i merge restino puliti.
 const LevelSelectScene = lazy(() =>
-  import('@/game/menu/LevelSelectScene').then((module) => ({ default: module.LevelSelectScene }))
+  import('@/game/birthday/BirthdayScene').then((module) => ({ default: module.BirthdayScene }))
 );
 const SceneManager = lazy(() =>
   import('@/game/levels/Level1/SceneManager').then((module) => ({ default: module.SceneManager }))

@@ -1,0 +1,72 @@
+.root {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  /* In basso al centro, non al centro dello schermo: è lì che i Souls-like
+     mettono la targhetta del boss. */
+  align-content: end;
+  justify-items: center;
+  padding-bottom: 18vh;
+  background: #05040a;
+}
+
+/* Vignettatura rossastra: il rosso non viene dai bordi verso il centro ma
+   resta confinato agli angoli, altrimenti diventa una luce e non un'ombra. */
+.vignette {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at center, transparent 35%, rgba(60, 6, 10, 0.55) 100%),
+    radial-gradient(ellipse at center, transparent 60%, rgba(0, 0, 0, 0.9) 100%);
+}
+
+.frame {
+  position: relative;
+  display: grid;
+  gap: 1.1rem;
+  width: min(680px, 86vw);
+  text-align: center;
+}
+
+.rule {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+/* Il filo dorato sfuma ai due capi invece di finire di netto: è ciò che lo fa
+   sembrare inciso e non un semplice bordo CSS. */
+.line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(198, 164, 96, 0.75) 22%,
+    rgba(232, 205, 143, 0.9) 50%,
+    rgba(198, 164, 96, 0.75) 78%,
+    transparent
+  );
+}
+
+.diamond {
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  transform: rotate(45deg);
+  background: rgba(214, 182, 114, 0.9);
+}
+
+.text {
+  /* Distribuisce le parole sulle righe invece di riempirne una e lasciare
+     l'ultima con una parola sola: senza, "te." restava orfano in fondo. */
+  text-wrap: balance;
+  margin: 0;
+  font-family: 'EB Garamond', Georgia, serif;
+  font-style: italic;
+  font-size: clamp(1.05rem, 2.2vw, 1.5rem);
+  letter-spacing: 0.02em;
+  line-height: 1.5;
+  color: #d8cdb6;
+  text-shadow: 0 0 26px rgba(0, 0, 0, 0.9);
+}

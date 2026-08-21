@@ -1,0 +1,115 @@
+.root {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  padding: 6vw;
+  background: radial-gradient(ellipse at 50% 60%, #131018 0%, #07060a 70%, #030205 100%);
+}
+
+.content {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 1.6rem;
+  width: min(760px, 92vw);
+  text-align: center;
+}
+
+.kicker {
+  font-family: 'Anton', Impact, sans-serif;
+  font-size: clamp(0.85rem, 1.8vw, 1.1rem);
+  letter-spacing: 0.42em;
+  text-indent: 0.42em;
+  text-transform: uppercase;
+  color: #ffd447;
+  opacity: 0.9;
+}
+
+.stats {
+  display: grid;
+  gap: 0.4rem;
+  width: min(440px, 100%);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.statRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.45rem 0.7rem;
+  border-left: 2px solid rgba(255, 212, 71, 0.5);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.statLabel {
+  font-family: 'Chakra Petch', system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 0.8rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #9aa7b8;
+}
+
+/* Cifre a larghezza fissa: senza, il numero che sale fa ballare la riga a
+   ogni cambio di cifra e l'occhio lo legge come uno sfarfallio. */
+.statValue {
+  font-family: 'Anton', Impact, sans-serif;
+  font-size: 1.35rem;
+  letter-spacing: 0.04em;
+  color: #f8fafc;
+  font-variant-numeric: tabular-nums;
+}
+
+.title {
+  margin: 0;
+  display: grid;
+  gap: 0.1rem;
+  font-family: 'Anton', Impact, sans-serif;
+  font-weight: 400;
+  font-size: clamp(2.1rem, 8vw, 5.4rem);
+  line-height: 0.98;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #f5f0e6;
+  text-shadow:
+    0 3px 0 rgba(0, 0, 0, 0.6),
+    0 0 60px rgba(255, 200, 80, 0.25);
+}
+
+.name {
+  color: #ffd447;
+  text-shadow:
+    0 3px 0 rgba(0, 0, 0, 0.6),
+    0 0 70px rgba(255, 200, 80, 0.5);
+}
+
+.confetto {
+  position: absolute;
+  top: -24px;
+  border-radius: 1px;
+  animation-name: fall;
+  animation-timing-function: cubic-bezier(0.35, 0.1, 0.7, 1);
+  animation-iteration-count: infinite;
+}
+
+@keyframes fall {
+  0% {
+    transform: translate3d(0, -10vh, 0) rotateZ(0deg);
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(60px, 112vh, 0) rotateZ(540deg);
+    opacity: 0;
+  }
+}

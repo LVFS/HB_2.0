@@ -60,6 +60,7 @@ export function SettingsBar() {
                 minuscolo, in mezzo a un'interfaccia tutta in maiuscoletto. */}
             <span className={ui.label}>Volume</span>
             <input
+              className={ui.range}
               type="range"
               min="0"
               max="1"

@@ -72,9 +72,19 @@
   pointer-events: none;
 }
 
-/* ---------- Comandi ---------- */
+/* ---------- Comandi ----------
+ * Struttura unica per tutte le varianti, così lo stato di fuoco funziona
+ * allo stesso modo ovunque:
+ *   - lo SFONDO dell'elemento è lo strato "anello";
+ *   - lo pseudo-elemento rientrato di `--rim` è il riempimento vero.
+ * A riposo `--rim` vale 1px (bordo sottile) o 0 (nessun bordo); in fuoco
+ * diventa 2px e l'anello cambia colore. L'anello segue la smussatura, cosa
+ * che un `outline` non potrebbe fare: verrebbe disegnato fuori dalla forma e
+ * il clip-path lo taglierebbe via.
+ */
 
 .button {
+  --rim: 0px;
   position: relative;
   isolation: isolate;
   border: 0;
@@ -89,13 +99,39 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   cursor: pointer;
+  filter: var(--drop-control);
   transition:
     transform var(--dur-fast) var(--ease-out),
-    filter var(--dur-fast) var(--ease-out);
+    background var(--dur-fast) var(--ease-out);
+}
+
+.button::before {
+  content: '';
+  position: absolute;
+  inset: var(--rim);
+  z-index: -1;
+  clip-path: var(--clip-control);
+  background: var(--fill);
+  transition: background var(--dur-fast) var(--ease-out);
 }
 
 .button:hover:not(:disabled) {
   transform: translateY(-1px);
+}
+
+/* Da -1px a +1px: il pulsante si abbassa sotto il dito invece di limitarsi
+   a cambiare colore. È il feedback che fa sembrare un comando "fisico". */
+.button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+/* `:focus-visible` e non `:focus`: l'anello compare per tastiera e navigazione
+   assistita, NON al click del mouse — che è il motivo per cui gli anelli di
+   fuoco venivano disattivati a mano prima che esistesse questa pseudo-classe. */
+.button:focus-visible {
+  outline: none;
+  --rim: 2px;
+  background: var(--focus-ring);
 }
 
 .button:disabled {
@@ -103,16 +139,19 @@
   opacity: 0.45;
 }
 
-/* Pieno, senza doppio strato: il colore è già solido, un profilo non serve. */
 .primary {
   composes: button;
+  --fill: var(--accent);
+  /* Nessun bordo a riposo: il colore è già solido e stacca da solo. */
+  --rim: 0px;
+  /* Ambra su ambra sarebbe invisibile: qui l'anello di fuoco è scuro. */
+  --focus-ring: var(--text-on-accent);
   background: var(--accent);
   color: var(--text-on-accent);
   font-weight: 700;
-  filter: var(--drop-control);
 }
 
-.primary:hover:not(:disabled) {
+.primary:hover:not(:disabled)::before {
   background: var(--accent-bright);
 }
 
@@ -121,24 +160,60 @@
    base. Dentro un pannello continua a funzionare, letto come incassato. */
 .secondary {
   composes: button;
+  --fill: var(--surface-control);
+  --rim: 1px;
+  --focus-ring: var(--accent);
   background: var(--line);
   color: var(--text);
-  filter: var(--drop-control);
 }
 
 .secondary::before {
-  content: '';
-  position: absolute;
-  inset: 1px;
-  z-index: -1;
-  clip-path: var(--clip-control);
-  background: var(--surface-control);
   backdrop-filter: blur(6px);
-  transition: background var(--dur-fast) var(--ease-out);
 }
 
 .secondary:hover:not(:disabled)::before {
   background: var(--surface-control-hover);
+}
+
+/* Cursore del volume: era l'ultimo comando rimasto con l'aspetto predefinito
+   del browser (barra blu di sistema) dentro un'interfaccia ambra e acciaio.
+   I due pseudo-elementi del pallino vanno in regole SEPARATE: messi nella
+   stessa lista di selettori, i browser che non ne riconoscono uno scartano
+   l'intera regola. */
+.range {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--surface-inset-hover);
+  cursor: pointer;
+}
+
+.range::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  cursor: pointer;
+}
+
+.range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  cursor: pointer;
+}
+
+/* Qui l'outline va bene: il cursore non è ritagliato con clip-path. */
+.range:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
 }
 
 /* ---------- Testo ---------- */

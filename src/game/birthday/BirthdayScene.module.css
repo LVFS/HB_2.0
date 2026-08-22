@@ -16,34 +16,3 @@
   opacity: 0;
   visibility: hidden;
 }
-
-.hint {
-  position: absolute;
-  bottom: 1.6rem;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 10;
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 0.72rem;
-  letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.28);
-  pointer-events: none;
-  animation: fadeIn 1.2s ease-out both;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .hint {
-    animation: none;
-  }
-}

@@ -25,8 +25,13 @@ const SceneManager = lazy(() =>
 function App() {
   const screen = useGameStore((state) => state.screen);
 
-  // Musica di sottofondo: vive quanto l'app, indipendente dallo schermo attivo.
-  useBackgroundMusic();
+  // Musica di sottofondo: vive quanto l'app, indipendente dallo schermo
+  // attivo — MA silenziata (non distrutta) durante `levelSelect`, perché su
+  // questo branch quello schermo è `BirthdayScene`, che ha una musica sua
+  // (`useBirthdayMusic`, un quadro alla volta): senza il muted, il tema del
+  // menu continuerebbe a suonare sotto, sovrapposto. Stessa riga-sola
+  // "SOLO SU QUESTO BRANCH" del commento sopra, per lo stesso motivo.
+  useBackgroundMusic({ muted: screen === 'levelSelect' });
 
   // Fade to white di chiusura del menu (vedi CameraDirector, finale
   // "attraverso il varco"): vive QUI, non dentro `MenuScene`, perché quando

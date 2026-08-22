@@ -3,8 +3,49 @@ import { AGE, TEXTS } from '../birthdayConfig';
 import styles from './ExpeditionTableau.module.css';
 
 const PETAL_COUNT = 24;
+const PAINT_DAB_COUNT = 140;
+const PAINT_PALETTE = ['#8a6a3a', '#c9974f', '#e8c37a', '#5c4326', '#f0d9a0'];
 const prefersReducedMotion = () =>
   typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/**
+ * Texture pittorica generata via canvas — pennellate (ellissi ruotate,
+ * opacità bassa e casuale) nella stessa palette calda già in uso nel
+ * quadro, non un'immagine sourcata: un asset scaricato rischierebbe di
+ * stonare col resto (tutto il resto del quadro è gradiente+CSS), questa si
+ * integra invece perché nasce con la stessa "grana" del resto. Stessa
+ * tecnica di `createCloudTexture`/`createRockCanvas` già in uso altrove nel
+ * progetto (menu 3D, selezione livelli) per lo stesso motivo: nessun asset
+ * da scaricare. Generata una volta sola a livello di modulo, non a ogni
+ * render.
+ */
+function createPaintTexture(): string {
+  const canvas = document.createElement('canvas');
+  canvas.width = 320;
+  canvas.height = 320;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return '';
+
+  for (let i = 0; i < PAINT_DAB_COUNT; i++) {
+    const x = Math.random() * canvas.width;
+    const y = Math.random() * canvas.height;
+    const w = 18 + Math.random() * 55;
+    const h = 4 + Math.random() * 13;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(Math.random() * Math.PI);
+    ctx.globalAlpha = 0.04 + Math.random() * 0.09;
+    ctx.fillStyle = PAINT_PALETTE[Math.floor(Math.random() * PAINT_PALETTE.length)];
+    ctx.beginPath();
+    ctx.ellipse(0, 0, w / 2, h / 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  return canvas.toDataURL();
+}
+
+const PAINT_TEXTURE = createPaintTexture();
 
 interface Props {
   active: boolean;
@@ -35,6 +76,12 @@ export function ExpeditionTableau({ active }: Props) {
 
   return (
     <div className={styles.root}>
+      {/* Slot opzionale: resta trasparente se il file manca, il gradiente
+          di `.root` fa comunque da base. Sta SOTTO la texture pittorica
+          (vedi il CSS) — l'artwork reale come base, la grana dipinta sopra. */}
+      <div className={styles.bgImage} />
+      <div className={styles.paintTexture} style={{ backgroundImage: `url(${PAINT_TEXTURE})` }} />
+
       {petals.map((petal) => (
         <span
           key={petal.id}
@@ -54,7 +101,7 @@ export function ExpeditionTableau({ active }: Props) {
         {AGE !== null && (
           <span className={`${styles.number} ${active ? styles.numberActive : ''}`}>{AGE}</span>
         )}
-        <p className={styles.caption}>
+        <p className={`${styles.caption} ${active ? styles.captionActive : ''}`}>
           {AGE !== null ? TEXTS.expedition : TEXTS.expeditionFallback}
         </p>
       </div>

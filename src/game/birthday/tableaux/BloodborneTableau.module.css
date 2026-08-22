@@ -10,6 +10,22 @@
   background: #05040a;
 }
 
+/* Slot opzionale per public/images/birthday/bloodborne-bg.jpg: se il file
+   manca, `background-image` fallisce in silenzio (nessuna icona rotta,
+   nessun errore in console) e resta il gradiente di `.root` sotto. Il
+   prefisso `/HB_2.0/` è lo stesso `base` di vite.config.ts, scritto a mano
+   perché un file .css non ha accesso a `import.meta.env.BASE_URL` (solo il
+   codice JS/TS ce l'ha) — comportamento documentato di Vite quando `base`
+   non è `/`. */
+.bgImage {
+  position: absolute;
+  inset: 0;
+  background-image: url('/HB_2.0/images/birthday/bloodborne-bg.jpg');
+  background-size: cover;
+  background-position: center;
+  opacity: 0.55;
+}
+
 /* Vignettatura rossastra: il rosso non viene dai bordi verso il centro ma
    resta confinato agli angoli, altrimenti diventa una luce e non un'ombra. */
 .vignette {
@@ -18,6 +34,78 @@
   background:
     radial-gradient(ellipse at center, transparent 35%, rgba(60, 6, 10, 0.55) 100%),
     radial-gradient(ellipse at center, transparent 60%, rgba(0, 0, 0, 0.9) 100%);
+}
+
+/* Brace: sale piano e sfarfalla appena, non un movimento lineare come i
+   pulviscoli di Hollow Knight — qui il registro è più inquieto. */
+.ember {
+  position: absolute;
+  bottom: -6px;
+  width: 2.5px;
+  height: 2.5px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 150, 90, 0.95), rgba(150, 20, 20, 0.5));
+  /* Si intensifica leggermente col basso (`--audio-pulse`, vedi
+     `useAudioPulse` in BirthdayScene.tsx) — su `box-shadow`, non su
+     `opacity`/`transform`: `emberRise` sotto anima già entrambe, sommarci
+     il pulse avrebbe creato un conflitto. `var(--audio-pulse, 0)` degrada
+     a 0 se la property non c'è ancora o se `prefers-reduced-motion`
+     disattiva l'hook a monte. */
+  box-shadow: 0 0 calc(6px + var(--audio-pulse, 0) * 6px) rgba(220, 80, 40, 0.7);
+  animation-name: emberRise;
+  animation-timing-function: ease-in;
+  animation-iteration-count: infinite;
+}
+
+@keyframes emberRise {
+  0% {
+    transform: translateY(0) translateX(0);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.85;
+  }
+  50% {
+    transform: translateY(-45vh) translateX(-8px);
+    opacity: 0.5;
+  }
+  85% {
+    opacity: 0.3;
+  }
+  100% {
+    transform: translateY(-92vh) translateX(10px);
+    opacity: 0;
+  }
+}
+
+.icon {
+  /* Un <svg> dentro un grid item non si allinea al centro da solo come un
+     testo: senza `justify-self`, `.frame` (grid) lo tiene incollato a
+     sinistra invece che sopra il testo. */
+  justify-self: center;
+  width: 22px;
+  height: auto;
+  margin-bottom: 0.2rem;
+  overflow: visible;
+}
+
+.iconStroke {
+  fill: none;
+  stroke: rgba(214, 182, 114, 0.85);
+  stroke-width: 1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.iconFlame {
+  fill: rgba(232, 150, 70, 0.85);
+  stroke: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ember {
+    display: none;
+  }
 }
 
 .frame {

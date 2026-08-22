@@ -1,0 +1,4 @@
+Metti qui i sei stinger opzionali della sequenza di auguri (vedi
+src/hooks/useBirthdayMusic.ts per la convenzione dei nomi file):
+bloodborne.mp3, godofwar.mp3, hollowknight.mp3, expedition.mp3,
+residentevil.mp3, gta.mp3. Finché mancano, la sequenza scorre silenziosa.

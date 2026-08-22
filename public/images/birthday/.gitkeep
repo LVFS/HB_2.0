@@ -1,0 +1,12 @@
+Sfondi dei sei quadri (vedi i rispettivi *.module.css per la classe
+.bgImage di ognuno): bloodborne-bg.jpg, godofwar-bg.jpg,
+hollowknight-bg.jpg, expedition-bg.jpg, residentevil-bg.jpg, gta-bg.jpg —
+generati da artwork reali via scripts/compress-birthday-images.mjs
+(ridimensionati/ricompressi, sorgenti originali in
+assets/birthday-images/ — FUORI da public/, che Vite copia per intero
+nella build: lì dentro spedirebbero 13+ MB non compressi). Se uno di
+questi file manca, il quadro corrispondente resta
+comunque utilizzabile (fallback silenzioso al gradiente CSS, nessuna
+icona rotta). Expedition ha in più una texture pittorica generata via
+canvas sopra l'immagine (vedi createPaintTexture in
+ExpeditionTableau.tsx).

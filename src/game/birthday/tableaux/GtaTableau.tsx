@@ -73,6 +73,42 @@ export function GtaTableau({ active }: Props) {
 
   return (
     <div className={styles.root}>
+      {/* Slot opzionale: resta trasparente se il file manca, il gradiente
+          sotto fa comunque da base. */}
+      <div className={styles.bgImage} />
+
+      {/* Vampata bianca brevissima, la tipica "flash" dei title-card
+          action/mission-passed, prima che partano coriandoli e contatori.
+          Un <span> a schermo intero che sfuma via in fretta — nessun nuovo
+          asset. Rimontata da zero a ogni volta che `active` torna true
+          (key sul valore stesso) così l'animazione riparte anche se il
+          quadro venisse rivisitato. */}
+      {active && <span key="flash" aria-hidden="true" className={styles.flash} />}
+
+      <svg className={styles.skyline} viewBox="0 0 400 90" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+        <circle className={styles.sun} cx="200" cy="60" r="26" />
+        <g className={styles.buildings}>
+          <rect x="18" y="40" width="20" height="50" />
+          <rect x="42" y="26" width="16" height="64" />
+          <rect x="62" y="46" width="22" height="44" />
+          <rect x="316" y="42" width="20" height="48" />
+          <rect x="340" y="24" width="16" height="66" />
+          <rect x="360" y="50" width="22" height="40" />
+        </g>
+        <g className={styles.palms}>
+          <path d="M100 90 L102 58" />
+          <path d="M102 60 Q90 52 84 58" />
+          <path d="M102 60 Q92 46 98 40" />
+          <path d="M102 60 Q112 48 110 40" />
+          <path d="M102 60 Q114 54 120 60" />
+          <path d="M280 90 L282 55" />
+          <path d="M282 57 Q270 48 264 55" />
+          <path d="M282 57 Q272 42 278 36" />
+          <path d="M282 57 Q292 44 290 36" />
+          <path d="M282 57 Q294 51 300 58" />
+        </g>
+      </svg>
+
       {active &&
         confetti.map((piece) => (
           <span

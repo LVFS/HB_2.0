@@ -1,0 +1,64 @@
+/* In basso al centro: lontano dal nome/titolo che compare a metà schermo
+   in quasi tutti i quadri. `pointer-events: none` a riposo, così quando è
+   nascosta non intercetta comunque i movimenti del mouse sotto di lei. */
+.container {
+  position: absolute;
+  left: 50%;
+  bottom: var(--space-5);
+  z-index: 30;
+  width: min(560px, 92vw);
+  display: grid;
+  gap: var(--space-2);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 10px);
+  transition:
+    opacity var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+
+.visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, 0);
+}
+
+.track {
+  height: 3px;
+  border-radius: 999px;
+  background: var(--surface-inset-hover);
+  overflow: hidden;
+}
+
+.fill {
+  height: 100%;
+  width: 0%;
+  background: var(--accent);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.button {
+  display: grid;
+  place-items: center;
+  padding: var(--space-2);
+}
+
+.icon {
+  width: 18px;
+  height: 18px;
+}
+
+.counter {
+  flex: 1;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-dim);
+}

@@ -7,6 +7,30 @@
   background: #0a0505;
 }
 
+/* Slot opzionale per public/images/birthday/residentevil-bg.jpg: se il
+   file manca, `background-image` fallisce in silenzio e resta lo sfondo
+   scuro di `.root`. Prefisso `/HB_2.0/` = `base` di vite.config.ts, scritto
+   a mano perché un .css non ha accesso a `import.meta.env.BASE_URL`. */
+.bgImage {
+  position: absolute;
+  inset: 0;
+  background-image: url('/HB_2.0/images/birthday/residentevil-bg.jpg');
+  background-size: cover;
+  background-position: center;
+  opacity: 0.35;
+}
+
+/* Simbolo universale di rischio biologico — non un'icona proprietaria del
+   gioco, nessuno lo possiede — molto tenue, in filigrana dietro il timbro. */
+.biohazard {
+  position: absolute;
+  width: 52vh;
+  max-width: 68vw;
+  height: auto;
+  color: rgba(184, 31, 31, 0.12);
+  pointer-events: none;
+}
+
 /* Righe orizzontali finissime: la firma visiva del videotape. Vanno tenute
    molto tenui, altrimenti diventano un motivo decorativo invece di un
    disturbo. */
@@ -19,6 +43,13 @@
     transparent 1px 3px
   );
   animation: roll 7s linear infinite;
+  /* Si intensifica leggermente col basso (`--audio-pulse`, vedi
+     `useAudioPulse` in BirthdayScene.tsx) — coerente con l'estetica
+     nervosa già del quadro. `roll` sopra anima solo `transform`, mai
+     `opacity`: nessun conflitto tra le due. `var(--audio-pulse, 0)`
+     degrada a 0 se la property non c'è ancora o se
+     `prefers-reduced-motion` disattiva l'hook a monte. */
+  opacity: calc(0.55 + var(--audio-pulse, 0) * 0.45);
 }
 
 @keyframes roll {
@@ -86,6 +117,69 @@
   text-shadow: 0 0 18px rgba(224, 52, 52, 0.35);
 }
 
+/* Le due copie sfalsate rosso/ciano del testo: stesso `.stampText`, solo
+   sovrapposte e colorate diversamente. `position: absolute` le impila sulla
+   prima (che resta l'unica a occupare spazio nel layout). */
+.glitchRed,
+.glitchCyan {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Ritardo ≈ la durata di `slam` (0.42s): il glitch scatta nell'istante in
+   cui il timbro atterra, non mentre sta ancora arrivando. */
+.glitchRed {
+  color: #ff3b3b;
+  animation: glitchRed 0.3s steps(1, end) 0.4s 1;
+}
+
+.glitchCyan {
+  color: #38e0e0;
+  animation: glitchCyan 0.3s steps(1, end) 0.4s 1;
+}
+
+@keyframes glitchRed {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+  25% {
+    opacity: 0.75;
+    transform: translate(-3px, 1px);
+  }
+  55% {
+    opacity: 0.5;
+    transform: translate(2px, -1px);
+  }
+  80% {
+    opacity: 0.6;
+    transform: translate(-1px, 0);
+  }
+}
+
+@keyframes glitchCyan {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+  25% {
+    opacity: 0.75;
+    transform: translate(3px, -1px);
+  }
+  55% {
+    opacity: 0.5;
+    transform: translate(-2px, 1px);
+  }
+  80% {
+    opacity: 0.6;
+    transform: translate(1px, 0);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .scanlines,
   .stampActive {
@@ -93,5 +187,11 @@
   }
   .stampActive {
     opacity: 0.92;
+  }
+
+  .glitchRed,
+  .glitchCyan {
+    animation: none;
+    opacity: 0;
   }
 }

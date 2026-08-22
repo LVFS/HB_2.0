@@ -8,6 +8,21 @@
   background: radial-gradient(ellipse at 50% 45%, #0d1018 0%, #05070c 70%, #030408 100%);
 }
 
+/* Slot opzionale per public/images/birthday/hollowknight-bg.jpg: se il file
+   manca, `background-image` fallisce in silenzio e resta il gradiente
+   sopra. Molto tenue apposta ("in filigrana", non un vero sfondo) — il
+   quadro è il più silenzioso della sequenza. Prefisso `/HB_2.0/` = `base`
+   di vite.config.ts, scritto a mano perché un .css non ha accesso a
+   `import.meta.env.BASE_URL`. */
+.bgImage {
+  position: absolute;
+  inset: 0;
+  background-image: url('/HB_2.0/images/birthday/hollowknight-bg.jpg');
+  background-size: cover;
+  background-position: center;
+  opacity: 0.18;
+}
+
 .text {
   /* Distribuisce le parole sulle righe invece di riempirne una e lasciare
      l'ultima con una parola sola: senza, "te." restava orfano in fondo. */
@@ -52,6 +67,54 @@
   }
   100% {
     transform: translateY(-102vh) translateX(14px);
+    opacity: 0;
+  }
+}
+
+.moth {
+  position: absolute;
+  top: 40%;
+  left: -8vw;
+  width: 52px;
+  height: auto;
+  opacity: 0;
+  /* Durata pensata sulla finestra di vita del quadro (fadeIn+hold+fadeOut
+     ≈ 5.4s in TIMINGS): un solo passaggio che finisce appena prima che il
+     quadro sfumi del tutto, non un loop. */
+  animation: mothCross 5s ease-in-out 0.4s 1 forwards;
+}
+
+.moth path {
+  fill: rgba(205, 222, 245, 0.32);
+}
+
+.mothBody {
+  stroke: rgba(205, 222, 245, 0.45);
+  stroke-width: 1;
+}
+
+/* Percorso leggermente ondulato, non una linea retta: stesso principio di
+   `drift` in Expedition, ma orizzontale e molto più lento. */
+@keyframes mothCross {
+  0% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.55;
+  }
+  30% {
+    transform: translate(35vw, -3.5vh);
+  }
+  55% {
+    transform: translate(62vw, 3vh);
+  }
+  80% {
+    transform: translate(90vw, -2.5vh);
+    opacity: 0.5;
+  }
+  100% {
+    transform: translate(118vw, 1.5vh);
     opacity: 0;
   }
 }

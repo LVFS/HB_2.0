@@ -57,6 +57,14 @@ src/
                                      personaggio → si gira verso il muro → video del salto →
                                      impatto (aggancia `breaking`) → ingresso nel varco
       LevelSelectScene.tsx
+    birthday/                    sequenza di auguri (SOLO questo branch, vedi sotto)
+      birthdayConfig.ts            "DA COMPILARE A MANO": SEQUENCE, TIMINGS, HOLD_SCALE,
+                                     testi, età, nome, statistiche GTA
+      BirthdayScene.tsx             timeline GSAP unica (etichette per quadro, play/
+                                     pausa/seek), un quadro alla volta
+      BirthdayControls.tsx          barra di riproduzione (prev/play-pausa/next/salta
+                                     tutto/progresso), auto-nascosta come un player video
+      tableaux/                    un componente + un .module.css per quadro
     levels/
       Level1/  SceneManager.tsx, EnvironmentScene.tsx, Player.tsx, Fragments.tsx
   components/           GameOverlay.tsx (HUD), SettingsBar.tsx (icona + pannellino
@@ -64,9 +72,11 @@ src/
                          `MenuPhase` o altro stato di scena, solo `settingsStore`)
   data/                 fragments.ts, levels.ts — contenuto statico, NON nello store
   store/                gameStore.ts (fase/schermata), settingsStore.ts (persistito)
-  hooks/                useBackgroundMusic.ts, useSfx.ts, useAnyInput.ts (unifica
-                         tastiera/mouse-touch/gamepad in un'unica callback "premi
-                         qualcosa" — vedi "Regole architetturali")
+  hooks/                useBackgroundMusic.ts, useSfx.ts, useBirthdayMusic.ts,
+                         useAudioPulse.ts (questi due SOLO su questo branch, crossfade e
+                         reattività musicale per la sequenza di auguri), useAnyInput.ts
+                         (unifica tastiera/mouse-touch/gamepad in un'unica callback
+                         "premi qualcosa" — vedi "Regole architetturali")
   styles/               tokens.css (custom properties: colori/spazi/font/tempi — nessun
                          colore letterale nei module) + global.css (reset/layout) +
                          ui.module.css (primitivi condivisi) + *.module.css per componente
@@ -81,6 +91,9 @@ public/
                               terzo modello dedicato, vedi "sequenza cinematica" sotto.
 assets/blender/
   ingresso_oristano.blend    sorgente Blender dell'ambientazione, versionato nel repo
+assets/birthday-images/     SOLO questo branch: artwork sorgente non compressi dei sei
+                             quadri di auguri, versionati ma FUORI da public/ (vedi
+                             scripts/compress-birthday-images.mjs)
 docs/
   APP_EXPLAINER.md      spiegazione generale dell'app
   MENU_INTRO.md         architettura dettagliata scena menu, sequenza personaggio,
@@ -356,6 +369,134 @@ della coreografia GSAP); il file `LEAP_VIDEO_URL` (`public/video/saitama-run-pun
 nel repository, `SAITAMA_TIMING.leapVideo` (1.3s) è già tarato sulla sua durata reale ma va
 riverificato se il file cambia; SFX del muro collegati nel codice (`useSfx`) ma mancano
 ancora i file `public/audio/sfx/wall-impact.mp3` e `rubble.mp3`.
+
+**Sequenza di auguri** (`game/birthday/`, SOLO su questo branch — sostituisce
+`LevelSelectScene` per un solo import, vedi il commento "SOLO SU QUESTO BRANCH" in
+`App.tsx`, così i merge con gli altri branch restano puliti): sei quadri in dissolvenza
+incrociata, uno per gioco citato, orchestrati da un'unica timeline GSAP in
+`BirthdayScene.tsx` (`SEQUENCE`/`TIMINGS` in `birthdayConfig.ts`, "DA COMPILARE A MANO" —
+testi/età/nome/statistiche vivono lì) — la timeline decide QUANDO ogni quadro appare/
+sparisce, ogni quadro (`tableaux/*.tsx`) decide COME si presenta con le proprie
+`@keyframes`, stessa divisione GSAP/CSS del resto del progetto. Skip con `useAnyInput`
+(stesso hook del menu) che salta `activeIndex` direttamente all'ultimo quadro: GSAP non
+esegue le `.call()` di una timeline quando si salta con `.progress(1)`, quindi
+`activeIndex` va impostato a mano o l'ultimo quadro comparirebbe senza le sue animazioni
+interne.
+
+Ogni quadro ha un'icona SVG disegnata a mano (poche righe di `<path>`, non un asset del
+gioco citato — vincolo di copyright) più un'animazione propria: lanterna+braci rosse
+(Bloodborne); runa che si "incide" con `stroke-dashoffset` sincronizzata alla stessa
+durata/curva di `carve` sul titolo, `pathLength="1"` per normalizzare tratti SVG di
+lunghezza diversa senza calcolarla (God of War); falena che attraversa lo schermo UNA
+sola volta (Hollow Knight); texture pittorica generata via canvas invece di un'immagine
+sourcata (Expedition 33, `createPaintTexture` — stessa tecnica di
+`createCloudTexture`/`createRockCanvas` altrove nel progetto — e dissolvenza estesa dal
+numero anche alla didascalia, con un piccolo ritardo, così sembrano dipinti con la stessa
+tecnica); simbolo universale di rischio biologico in filigrana (non un'icona proprietaria
+di Resident Evil — nessun gioco possiede il simbolo del rischio biologico) + glitch RGB
+sincronizzato con `slam`, l'istante in cui il timbro atterra (Resident Evil); skyline/
+palme/sole stilizzati in fondo allo schermo + vampata bianca brevissima all'ingresso del
+quadro, prima di coriandoli/contatori (GTA). Ogni sfondo opzionale
+(`public/images/birthday/{quadro}-bg.jpg`) fallisce in silenzio via CSS se il file manca
+— nessuna icona rotta, stesso trattamento tollerante degli asset audio mancanti nel
+resto del progetto.
+
+**Bug reale**: un'animazione one-shot innescata al MOUNT del componente (non a un cambio
+di `active`) parte con l'orologio sbagliato quando tutti i quadri sono montati insieme
+fin dall'inizio, come qui (vedi il commento su questo in `BirthdayScene.tsx`) — la falena
+di Hollow Knight, inizialmente montata sempre, finiva il suo passaggio (e spariva,
+`animation-fill-mode: forwards`) ben prima che il suo quadro diventasse visibile, verso
+l'ottavo secondo di sequenza. Fix: montarla SOLO quando `active` diventa vero
+(`{active && <svg>...}`), stesso principio già in uso per coriandoli/contatori GTA e il
+glitch di Resident Evil.
+
+**Riferimento CSS non ovvio**: un file `.module.css` non ha accesso a
+`import.meta.env.BASE_URL` (solo il codice JS/TS ce l'ha) — gli slot immagine opzionali
+referenziano `/HB_2.0/images/birthday/...` scritto a mano (stesso `base` di
+`vite.config.ts`), comportamento documentato di Vite quando `base` non è `/`. Se cambia
+`base` in `vite.config.ts`, questi riferimenti vanno aggiornati a mano (non c'è
+templating per i file `.css`).
+
+Musica: `useBirthdayMusic` (`src/hooks/useBirthdayMusic.ts`) fa un crossfade Howler tra
+uno stinger per quadro (`public/audio/birthday/{quadro}.mp3`, sei slot opzionali, stesso
+trattamento tollerante di `useSfx`), guidato dal cambio di `SEQUENCE[activeIndex]` (che
+`BirthdayScene` passa già), con le stesse durate di fade di `TIMINGS`: audio e immagine
+restano sincronizzati senza duplicare i tempi in due posti. `useBackgroundMusic` (il tema
+del menu, usata da `App.tsx`) ha ora un parametro opzionale `muted` — silenzia il tema
+senza distruggere l'istanza Howl — passato `true` quando `screen === 'levelSelect'` SOLO
+su questo branch: senza, il tema del menu continuerebbe a suonare sotto gli stinger.
+
+**Bug reale**: `BirthdayScene` non disattivava `gsap.ticker.lagSmoothing` sulla propria
+timeline one-shot — stesso identico problema già documentato sopra per
+`CharacterIntro.tsx` ("GSAP lagSmoothing"), con lo stesso sintomo: un fotogramma che
+tarda (tipico proprio all'apertura, con font e canvas da caricare) rallenta la timeline
+invece di farla recuperare, e il ritardo si accumula quadro dopo quadro — verificando la
+sequenza intera con screenshot temporizzati, al quinto quadro il tempo reale era già
+diversi secondi indietro rispetto a quanto previsto da `TIMINGS`. Fix: stessa riga di
+`CharacterIntro.tsx`, `gsap.ticker.lagSmoothing(0)`, aggiunta anche qui.
+
+**Artwork reali dei sei quadri**: `public/images/birthday/{quadro}-bg.jpg` sono generati
+da `scripts/compress-birthday-images.mjs` (devDependency `sharp`, stesso pattern una
+tantum di `generate-map-images.mjs`) — ridimensiona il lato lungo a 1920px e ricomprime
+in JPEG qualità 82, portando artwork da 6+ MB a poche centinaia di KB. **Bug reale
+scovato PRIMA di committare, non a schermo**: i sorgenti grezzi, una volta compressi,
+erano stati spostati in `public/images/birthday/sources/` — ma TUTTO ciò che sta sotto
+`public/` viene copiato per intero nella build da Vite, referenziato o meno, quindi
+quei 13+ MB di sorgenti non compressi sarebbero finiti comunque nel gioco pubblicato,
+vanificando lo scopo della compressione. Fix: spostati in `assets/birthday-images/`
+(fuori da `public/`, stesso principio già in uso per `assets/blender/` — versionati nel
+repo ma mai serviti). Lo script cerca prima lì e, se non trova un sorgente, controlla
+anche `public/images/birthday/` (per un file nuovo appena scaricato) e lo sposta da solo
+in `assets/` prima di comprimerlo. Expedition 33 in più ha una `.bgImage` SOTTO la
+texture pittorica procedurale (non sopra, a differenza degli altri cinque che non hanno
+una texture propria): l'artwork reale fa da base, la "grana dipinta" generata via canvas
+si fonde sopra con `mix-blend-mode: overlay`.
+
+**Controlli di riproduzione**: `BirthdayScene` estende (non riscrive) la stessa timeline
+GSAP con `.addLabel(id, at)` per quadro, così avanti/indietro sono `timeline.seek(id)` —
+stesso principio già usato per lo skip (ora rimosso, vedi sotto): un `.seek()` non esegue
+le `.call()` della timeline, quindi `activeIndex` va sempre impostato a mano dopo un
+seek, altrimenti il quadro di destinazione non farebbe partire le sue animazioni interne
+(contatori GTA, falena, glitch...). Play/pausa è `timeline.play()`/`.pause()` seguendo
+uno stato `playing`. La barra di avanzamento (`BirthdayControls.tsx`) non è pilotata da
+stato React: un `onUpdate` sulla timeline calcola `(timeline.time() - inizio del quadro
+attivo) / durata del quadro attivo` e scrive `width` direttamente sul nodo via ref —
+stessa tecnica dei contatori GTA, un valore che cambia ogni fotogramma non deve
+ridisegnare l'albero. L'indice del quadro attivo, dentro quell'`onUpdate` (che vive in un
+effetto con dipendenze `[]`, la timeline si costruisce una volta sola), è letto da una
+ref aggiornata a ogni render — altrimenti l'`onUpdate` vedrebbe per sempre il valore di
+`activeIndex` al mount, stesso principio già in uso per `settings` in `useSfx`/
+`useBirthdayMusic`. `BirthdayControls` è nascosta di default e compare al movimento di
+mouse/tocco/tastiera come i controlli di un player video (si mostra comunque subito
+all'ingresso, per farsi scoprire, poi si nasconde da sola dopo un po' di inattività) —
+stesso pattern `stopPropagation` di `SettingsBar.tsx`. **Sostituisce** il vecchio gesto
+"un tocco qualsiasi salta tutta la sequenza" (`useAnyInput` + il suggerimento testuale):
+con avanti/indietro veri, quel gesto avrebbe reso scomodo rivedere un quadro (un tocco
+fuori dai controlli e si saltava tutto per sbaglio). Scorciatoie da tastiera aggiuntive:
+frecce per avanti/indietro, spazio per play/pausa, Fine per saltare tutto.
+
+**Reattività musicale**: `useAudioPulse` (`src/hooks/useAudioPulse.ts`) collega un
+`AnalyserNode` a `Howler.masterGain` (il nodo Web Audio condiviso da TUTTE le tracce,
+quando gli Howl non sono in modalità `html5` — vedi `useBirthdayMusic`) senza toccare il
+collegamento esistente verso l'uscita (`connect()` aggiunge un'uscita, non sostituisce
+quelle già presenti) — dà i dati di ampiezza di qualunque cosa stia suonando in quel
+momento, senza dover sapere quale traccia è attiva. È reattività all'AMPIEZZA (media sulle
+bande basse, smussata con una media mobile), non riconoscimento del battito: non sa dove
+cade la battuta, reagisce solo a quanto è forte il suono — sufficiente per un accenno
+"vivo" senza dover taggare a mano il BPM di ogni traccia. Il risultato (0-1) è scritto
+come custom property CSS `--audio-pulse` sul contenitore della scena (non nello stato
+React, stessa tecnica di sopra) — CASCADE a ogni quadro discendente come qualunque
+custom property, letta con `var(--audio-pulse, 0)` (il fallback a 0 copre sia il primo
+istante prima che l'hook scriva un valore, sia `prefers-reduced-motion`, che disattiva
+l'hook con un solo controllo in `BirthdayScene` invece di ripeterlo in ogni
+`.module.css`). Usata sul bagliore del titolo (God of War, GTA), sull'opacità delle
+scanline (Resident Evil), sull'opacità della texture pittorica (Expedition) e sul
+`box-shadow` delle braci (Bloodborne) — sempre su una proprietà NON già animata dalle
+`@keyframes` esistenti del quadro (es. la texture pittorica e non `.number`, che ha già
+un `transform` animato da `dissolve`: sommarci il pulse sulla stessa proprietà avrebbe
+creato un conflitto). Hollow Knight non la legge MAI apposta: è il quadro pensato per
+essere il più silenzioso e immobile di tutti, un elemento che pulsa a tempo ci
+stonerebbe proprio per la ragione opposta.
 
 **Da fare**: eventuale vera animazione scheletrica per il personaggio, se in futuro si
 deciderà di riaprire il problema dell'export con skin (oggi tutto il movimento è

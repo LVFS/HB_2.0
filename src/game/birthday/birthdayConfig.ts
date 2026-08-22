@@ -51,7 +51,16 @@ export interface TableauTiming {
   fadeOut: number;
 }
 
-export const TIMINGS: Record<TableauId, TableauTiming> = {
+/**
+ * Moltiplica tutti gli `hold` insieme — un numero solo per allungare/
+ * accorciare l'intera sequenza mantenendo il ritmo relativo tra un quadro e
+ * l'altro. `fadeIn`/`fadeOut` restano invariati apposta: sono le
+ * transizioni, già tarate per "sentirsi giuste" a prescindere da quanto
+ * dura la sequenza — solo il tempo "fermo" di ogni quadro si allunga.
+ */
+export const HOLD_SCALE = 1;
+
+const BASE_TIMINGS: Record<TableauId, TableauTiming> = {
   // Apertura misteriosa: entra lentissimo, è il tono che dà il via.
   bloodborne: { fadeIn: 1.2, hold: 1.8, fadeOut: 1 },
   godOfWar: { fadeIn: 0.9, hold: 2.6, fadeOut: 0.8 },
@@ -64,6 +73,10 @@ export const TIMINGS: Record<TableauId, TableauTiming> = {
   // Il climax: resta a schermo, non svanisce.
   gta: { fadeIn: 0.7, hold: 5, fadeOut: 0 }
 };
+
+export const TIMINGS: Record<TableauId, TableauTiming> = Object.fromEntries(
+  Object.entries(BASE_TIMINGS).map(([id, timing]) => [id, { ...timing, hold: timing.hold * HOLD_SCALE }])
+) as Record<TableauId, TableauTiming>;
 
 export type TableauId =
   | 'bloodborne'

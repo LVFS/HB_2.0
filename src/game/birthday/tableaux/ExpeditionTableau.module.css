@@ -7,6 +7,45 @@
   background: radial-gradient(ellipse at 50% 50%, #16110d 0%, #0a0806 65%, #050403 100%);
 }
 
+/* Slot opzionale per public/images/birthday/expedition-bg.jpg: se il file
+   manca, `background-image` fallisce in silenzio e resta il gradiente
+   sopra. Sta SOTTO `.paintTexture` (non sopra come negli altri quadri, che
+   non hanno una texture propria) apposta: l'artwork reale fa da base, la
+   grana pittorica generata via canvas si fonde sopra con lo stesso
+   `mix-blend-mode: overlay` — il risultato è l'artwork con la stessa
+   "grana dipinta" del resto del quadro, non un'immagine nuda che stona.
+   Prefisso `/HB_2.0/` = `base` di vite.config.ts, scritto a mano perché un
+   .css non ha accesso a `import.meta.env.BASE_URL`. */
+.bgImage {
+  position: absolute;
+  inset: 0;
+  background-image: url('/HB_2.0/images/birthday/expedition-bg.jpg');
+  background-size: cover;
+  background-position: center;
+  opacity: 0.6;
+}
+
+/* Texture pittorica generata via canvas (vedi createPaintTexture nel
+   componente) — ripetuta a piastrelle e fusa con `overlay` sopra il
+   gradiente/artwork base, per una "grana" pittorica invece di un colore
+   piatto. */
+.paintTexture {
+  position: absolute;
+  inset: 0;
+  background-repeat: repeat;
+  background-size: 320px 320px;
+  mix-blend-mode: overlay;
+  /* Le pennellate respirano appena col basso (`--audio-pulse`, vedi
+     `useAudioPulse` in BirthdayScene.tsx) — su `.paintTexture` invece che
+     su `.number`/`.numberActive`, che hanno già un loro `transform`
+     animato via `dissolve` (vedi sotto): sommarci un pulse sulla stessa
+     proprietà avrebbe creato un conflitto. `var(--audio-pulse, 0)` degrada
+     a 0 se la property non c'è ancora o se `prefers-reduced-motion`
+     disattiva l'hook a monte. */
+  opacity: calc(0.55 + var(--audio-pulse, 0) * 0.25);
+  pointer-events: none;
+}
+
 .stack {
   position: relative;
   display: grid;
@@ -62,6 +101,17 @@
   letter-spacing: 0.02em;
   color: #d9c295;
   text-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
+  /* Base per l'animazione sotto: senza, il primo fotogramma di `dissolve`
+     (opacity: 0) lampeggerebbe dalla visibilità piena del fade del quadro
+     prima che l'animazione parta. */
+  opacity: 0;
+}
+
+/* Stesso "scioglimento" del numero sopra (dissolve), con un ritardo breve:
+   un istante dopo il numero, così i due elementi sembrano dipinti con la
+   stessa tecnica invece di due animazioni diverse per caso. */
+.captionActive {
+  animation: dissolve 3.4s ease-in-out 0.25s both;
 }
 
 /* Petalo: un cerchio schiacciato da un lato con border-radius asimmetrico.
@@ -94,5 +144,17 @@
   100% {
     transform: translate3d(-20px, 112vh, 0);
     opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .numberActive {
+    animation: none;
+    opacity: 1;
+  }
+
+  .captionActive {
+    animation: none;
+    opacity: 1;
   }
 }

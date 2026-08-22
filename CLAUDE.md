@@ -59,8 +59,10 @@ src/
     levelSelect/                 selezione livelli su mappa reale (vedi sotto)
       LevelSelectScene.tsx        orchestratore: `displayedLevelId` + `focused` (bool),
                                      non tre fasi separate — vedi sotto
-      LevelMapScene.tsx             UNA scena Three.js: piano texturizzato (immagine
-                                     statica, vedi sotto) + marker + camera GSAP/MapControls
+      LevelMapScene.tsx             UNA scena Three.js: isola frastagliata fluttuante nello
+                                     spazio (coperchio texturizzato con l'immagine statica +
+                                     pancia rocciosa, stesso contorno, vedi sotto) + stelle +
+                                     marker + camera GSAP/MapControls
       LevelMarker.tsx                pin quando la camera è lontana, modello (cilindro) da
                                      vicino — scambio automatico per distanza, non un bottone
       mapProjection.ts               proiezione Web Mercator: lat/lng → posizione sul piano
@@ -408,41 +410,96 @@ Cambiarlo per un livello richiede sempre rigenerare la sua immagine (`node
 scripts/generate-map-images.mjs` rigenera tutti e tre). In `LevelMapScene.tsx`,
 `PLANE_SIZE`/`IMAGE_SIZE` **non sono più costanti di modulo**: `getMapGeometry(level)` le
 deriva da `level.mapGrid` (`PLANE_SIZE = 12 * mapGrid`, `IMAGE_SIZE = 640 * mapGrid`) insieme
-a tutto ciò che ne dipende — `CAMERA_FAR`, `maxDistance` di `MapControls`, `near`/`far` della
-nebbia — come RAPPORTI fissati sul livello di riferimento (Silì, invariato) invece che numeri
-per-livello scritti a mano. Lo style `feature:poi|visibility:off` +
-`feature:transit|visibility:off` toglie le icone dei locali/negozi/fermate — strade ed
-etichette restano. **Non rimovibile**: ogni tile porta con sé la scritta "Google"/copyright
-richiesta dai termini di servizio, quindi compare ripetuta a ogni giunzione della griglia —
-non è un difetto da correggere, è obbligatoria per mostrare contenuto Google Maps.
+a tutto ciò che ne dipende — `CAMERA_FAR`, `maxDistance` di `MapControls` — come RAPPORTI
+fissati sul livello di riferimento (Silì, invariato) invece che numeri per-livello scritti a
+mano. Lo style `feature:poi|visibility:off` + `feature:transit|visibility:off` toglie le icone
+dei locali/negozi/fermate — strade ed etichette restano. **Non rimovibile**: ogni tile porta
+con sé la scritta "Google"/copyright richiesta dai termini di servizio, quindi compare
+ripetuta a ogni giunzione della griglia — non è un difetto da correggere, è obbligatoria per
+mostrare contenuto Google Maps.
 
-**Tre bug reali scovati verificando a schermo** (nebbia troppo vicina, angolo della camera
-ravvicinata troppo ripido, dimenticato di riscalare camera/nebbia insieme a `PLANE_SIZE` la
-prima volta che è triplicato) **hanno portato a esprimere camera/nebbia/`maxDistance` come
-rapporti di `PLANE_SIZE`, non come numeri fissi** (vedi sopra) — proprio per evitare una
-quarta ricorrenza quando `PLANE_SIZE` è diventato per-livello (Silì 36, Oristano/Cagliari 60):
-verificato via Playwright che non si è ripresentato al primo passaggio. **Lezione generale**:
-con una camera a due padroni e soglie di distanza (`CLOSEUP_DISTANCE` in `LevelMarker.tsx`
-deve stare tra la distanza di `CAMERA_NEAR`, fissa, e quella di `CAMERA_FAR` del livello con
-`mapGrid` più piccolo — oggi Silì, quindi invariata — mentre la nebbia deve coprire la
-distanza massima raggiunta dalla camera più lontana), i numeri vanno verificati insieme, non
-uno alla volta — un singolo valore fuori posto rompe silenziosamente l'intera inquadratura
-senza errori in console.
+**Isola frastagliata fluttuante nello spazio**, non più un piano quadrato piatto: il piano
+"quadrato" (`PLANE_SIZE`/`IMAGE_SIZE`) resta solo la matematica di riferimento per UV e
+proiezione del marker — la geometria VISIBILE è un ritaglio irregolare di quel quadrato,
+calcolato (non un asset), sommando 3 sinusoidi di frequenza/fase diversa al raggio attorno al
+centro (rumore a bassa frequenza: spuntoni indipendenti punto-per-punto darebbero una stella,
+non un'isola). La fase di ogni armonica è seminata sull'`id` del livello (PRNG mulberry32),
+quindi il contorno è deterministico per livello — stesso livello, stesso contorno identico a
+ogni render, diverso da un livello all'altro — e "stellato" rispetto all'origine per
+costruzione (raggio sempre positivo), quindi non può mai autointersecarsi. Tre mesh dalla
+STESSA `Shape` (mai duplicata a mano, garantisce che il bordo combaci sempre esattamente),
+impilate lungo la verticale: `ShapeGeometry` per il coperchio (texturizzato con la mappa, UV
+rimappate a mano sul quadrato PIENO invece che sul bounding box della shape — altrimenti
+mappa/marker si disallineano non appena il contorno smette di essere un quadrato),
+`ExtrudeGeometry` per una sottile "gonna" di transizione terra→roccia appena sotto (texture a
+gradiente verticale via canvas — maschera il cambio di stile visivo tra la foto satellitare
+sopra e la roccia procedurale sotto, che anche a bordo geometrico perfetto leggeva come due
+dischi scollegati) e un'altra `ExtrudeGeometry` per la pancia rocciosa vera e propria (texture
+procedurale via canvas, nessun asset scaricato). Il "vuoto" oltre il bordo frastagliato è oggi
+voluto — è lo spazio stesso (`<Stars>` di drei, procedurali, nessun HDR esterno, più un
+pianeta/luna decorativo con gradiente via canvas) — quindi la vecchia `<fog>` e il piano di
+contorno a tinta neutra che copriva il vuoto oltre il piano quadrato sono stati rimossi del
+tutto: non servono più, coprivano un bordo che ora non esiste (l'isola sfuma naturalmente
+nello spazio).
 
-**Piano di contorno + limite di pan** (aggiunti insieme alla copertura per-livello, stesso
-giro di lavoro): un piano scuro (`ContourSkirt` in `LevelMapScene.tsx`, texture generata via
-canvas con lo stesso procedimento di `CLOUD_TEXTURE` in `MainMenuSceneAnimation.tsx`, ma
-costruita come `THREE.CanvasTexture` sincrona — niente `useTexture`/Suspense, quindi resta
-visibile anche se la texture della mappa sopra non carica) copre il "vuoto" oltre il bordo del
-piano-mappa invece di mostrare la nebbia a nudo dietro un bordo quadrato netto; dimensionato a
-`PLANE_SIZE * 6`, ben oltre `fogFar`/`maxDistance` del livello. `MapControls` è inoltre
-limitato a non far uscire `controls.target` dai bordi del piano (`±(PLANE_SIZE/2 - margine)`,
-clamp applicato in `CameraRig` SOLO quando `!isAnimating`, mai durante il dolly GSAP) — il
-delta di clamp va applicato a `controls.target` E a `camera.position` insieme (stessa
-traslazione rigida), non solo al target, altrimenti al giro di `update()` successivo
-`MapControls` ricalcolerebbe una posizione diversa da quella attesa. Verificato con due
-screenshot dopo un pan volutamente eccessivo (10 vs 25 trascinamenti): identici byte per
-byte, prova che il pan si ferma davvero al limite invece di rallentare soltanto.
+**Quattro bug reali scovati verificando a schermo, non ovvi dal codice**: primo, `ExtrudeGeometry`
+estrude sempre lungo +Z LOCALE, che con la rotazione del gruppo (-90° su X: locale (x,y,z) →
+mondo (x,z,-y)) mappa a +Y di MONDO — cioè verso l'ALTO, l'opposto di quanto serve per una
+pancia che deve pendere SOTTO il coperchio. Con `depth` positivo la pancia finiva sopra la
+mappa invece che sotto, bloccando la vista dall'alto (si vedeva solo roccia scura); un primo
+tentativo di correzione con una scala negativa a livello di mesh (`scale={[1,1,-1]}`) NON ha
+funzionato (Three.js reinterpreta winding/normali per un oggetto specchiato in modo meno
+prevedibile di quanto sembri) — la correzione che ha funzionato è passare direttamente un
+`depth` NEGATIVO a `ExtrudeGeometry`: stesso algoritmo, endpoint diverso, winding/normali
+corretti fin dalla costruzione, senza alcuna riflessione da ragionare a parte. Diagnosticato
+disattivando temporaneamente la pancia (`{false && <IslandBelly .../>}`) per isolare che il
+coperchio da solo renderizzava già correttamente — tecnica di bisezione utile da riproporre
+per bug di occlusione simili. Secondo, il primo pianeta/luna decorativo aveva raggio/distanza
+scelti senza calcolare l'angolo sotteso: riempiva quasi tutto il frame invece di leggersi come
+un dettaglio di sfondo — fissato calcolando esplicitamente il diametro angolare (raggio/
+distanza ≈ tangente del semi-angolo) e tenendolo sotto i ~6°, con posizione/raggio FISSI (non
+proporzionali a `PLANE_SIZE`, a differenza di camera/piano: il pianeta è sfondo cosmico, non
+parte della scala reale del luogo). Terzo, il bevel di `ExtrudeGeometry` sulla pancia (e sulla
+gonna) rientrava rispetto al contorno esatto nei tratti CONCAVI del profilo — "stellato" (mai
+autointersecante, garantito dalla costruzione) non vuol dire "convesso": il contorno può
+comunque scendere e risalire lungo l'angolo. Il bevel sposta il bordo di una quantità fissa
+perpendicolare ad esso, quindi nei tratti concavi il bordo superiore della pancia finiva più
+all'interno di quello esatto del coperchio sopra — da lato/dal basso la mappa sembrava
+"staccata" dalla roccia. Fix: `bevelEnabled: false` su entrambe le estrusioni (pancia e gonna
+di transizione) — il contorno di ogni strato combacia così ESATTAMENTE con quello del
+coperchio, nessun inset. Non è un limite specifico di questo progetto: è un limite noto di
+`ExtrudeGeometry` con bevel su contorni non convessi, utile da ricordare se in futuro serve
+un bordo smussato su una shape generata proceduralmente (va costruito a mano, non con
+l'opzione automatica). Quarto (scovato DOPO aver risolto il terzo: il bordo combaciava già
+alla perfezione, ma la pancia restava una macchia scura pressoché uniforme vista da un
+angolo basso/laterale — sintomo diverso, causa diversa): un'unica `directionalLight`
+dall'alto lascia le superfici della pancia/gonna rivolte verso il basso con la sola
+`ambientLight` su una texture già scura di base (`#39332c`) — leggevano come nero piatto
+invece che come roccia texturizzata, lo stesso problema che hanno quasi sempre le isole
+fluttuanti nei videogiochi illuminate da una sola fonte dall'alto. Fix: una seconda
+`directionalLight` di riempimento, debole (`intensity=0.45`) e fredda (`#5b7fbd`, come un
+riflesso dello spazio), posizionata da sotto/di lato, senza ombre proprie (non ne vale il
+costo per un riempimento così debole). Sospetto collaterale confermato per lo stesso
+sintomo: `depth` negativo su `ExtrudeGeometry` (usato apposta, vedi sopra) è un caso meno
+comune nella libreria — le normali delle pareti laterali potevano risultare invertite,
+facendo sì che Three.js culli proprio le facce rivolte verso la camera; `side: THREE.DoubleSide`
+sui materiali di pancia e gonna elimina il rischio a costo trascurabile (poche mesh a bassa
+risoluzione). Infine, gli anelli sottili visibili sulla pancia in alcuni screenshot sono
+riflessi dei due `Lightformer form="ring"` (il bagliore da nebulosa dell'`Environment`
+procedurale) — proporzionalmente molto più visibili su un materiale scuro/opaco che su una
+texture chiara come la mappa sopra: smorzati con `envMapIntensity={0.2}` sugli stessi due
+materiali, invece di toccare i Lightformer (che restano validi per il resto della scena).
+
+**Limite di pan RADIALE**, non più un quadrato: `MapControls` non lascia uscire
+`controls.target` dal contorno frastagliato dell'isola — stessa formula (`islandRadiusAt`)
+usata per costruire la geometria, non una copia separata che potrebbe disallinearsi. Applicato
+in `CameraRig` SOLO quando `!isAnimating` (mai durante il dolly GSAP); il delta di clamp va
+applicato a `controls.target` E a `camera.position` insieme (stessa traslazione rigida), non
+solo al target, altrimenti al giro di `update()` successivo `MapControls` ricalcolerebbe una
+posizione diversa da quella attesa. Verificato con due screenshot dopo un pan volutamente
+eccessivo (10 vs 25 trascinamenti): identici byte per byte — ma solo dopo aver notato che
+`<Stars speed={0.4}>` (lo scintillio) rompe di per sé questo confronto anche a camera ferma,
+quindi il test va fatto con `speed={0}` temporaneo per isolare la sola posizione della camera.
 
 Le tre immagini di `public/maps/` sono generate e nel repository (`oristano-ariston.png`
 3200×3200, `sili.png` 1920×1920, `cagliari-bastione.png` 3200×3200 — nessun `scale=2`, i
@@ -451,10 +508,11 @@ volta era la restrizione per referrer HTTP sulla chiave (impostata per il widget
 JS, poi rimosso): una richiesta da Node non manda un header `Referer`, quindi una chiave con
 quella restrizione la rifiuta sempre, a prescindere dalle API abilitate — la chiave usata per
 generarle è una seconda chiave senza restrizioni, dedicata solo a questo. **`LevelMapScene`
-non dipende comunque più da una texture presente per non schiantarsi**: `MapPlaneErrorBoundary`
+non dipende comunque più da una texture presente per non schiantarsi**: `IslandCapErrorBoundary`
 (classe React, serve una classe perché l'errore arriva da un loader Suspense) intercetta un
-caricamento fallito e mostra un piano a tinta unita (il colore del livello) invece di mandare
-in crash l'intero `<Canvas>` — verificato rimuovendo apposta i file generati e controllando
+caricamento fallito e mostra il coperchio dell'isola a tinta unita (il colore del livello)
+invece di mandare in crash l'intero `<Canvas>` — verificato rimuovendo apposta i file generati
+e controllando
 che l'app restasse comunque usabile prima di rigenerarli. Utile ricordarlo se in futuro cambia
 `data/levels.ts` senza rigenerare le immagini in tempo, o per chiunque clona il repository e
 non lancia subito lo script.

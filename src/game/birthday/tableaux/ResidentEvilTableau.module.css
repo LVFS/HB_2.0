@@ -58,9 +58,24 @@
   }
 }
 
+/* Contenitore del timbro. Non ha stile suo: esiste per dare un riferimento
+   alle due metà tagliate e alle scintille, che devono coprire ESATTAMENTE il
+   timbro. Non è trasformato, così `inset: 0` sulle metà combacia con la
+   scatola del timbro prima della sua rotazione. */
+.stampWrap {
+  position: relative;
+}
+
 .stamp {
   position: relative;
-  padding: 1.1rem 2rem;
+  /* In variabili perché le copie del glitch qui sotto devono ricalcarle
+     esattamente: un elemento assoluto dentro il timbro parte dal bordo
+     INTERNO, quindi per sovrapporsi al testo vero deve rientrare del
+     padding. Con due numeri scritti a mano in due posti diversi la cosa
+     regge fino al primo ritocco. */
+  --pad-y: 1.1rem;
+  --pad-x: 2rem;
+  padding: var(--pad-y) var(--pad-x);
   border: 4px solid #b81f1f;
   border-radius: 3px;
   transform: rotate(-3.5deg);
@@ -73,7 +88,7 @@
 
 .stampActive {
   animation:
-    slam 0.42s cubic-bezier(0.2, 1.5, 0.4, 1) both,
+    slam 2s cubic-bezier(0.2, 1.5, 0.4, 1) both,
     tremble 2.4s steps(1, end) 0.42s infinite;
 }
 
@@ -123,38 +138,60 @@
 .glitchRed,
 .glitchCyan {
   position: absolute;
-  inset: 0;
+  /* NON `inset: 0`: un figlio assoluto parte dal bordo interno del timbro,
+     quindi con `inset: 0` le copie finivano un padding intero più in alto e
+     più a sinistra del testo vero — uno sdoppiamento di quasi trenta pixel
+     invece dei due o tre di uno strappo RGB. Il difetto c'era da sempre ma
+     durava tre decimi di secondo una volta sola; ora che il glitch torna si
+     vede benissimo. Rientrando del padding le copie si sovrappongono al
+     testo vero, ed è l'animazione a spostarle di quei pochi pixel. */
+  top: var(--pad-y);
+  left: var(--pad-x);
+  right: var(--pad-x);
   opacity: 0;
   pointer-events: none;
 }
 
-/* Ritardo ≈ la durata di `slam` (0.42s): il glitch scatta nell'istante in
-   cui il timbro atterra, non mentre sta ancora arrivando. */
+/* Ritardo ≈ la durata di `slam` (0.42s): il PRIMO scatto arriva nell'istante
+   in cui il timbro atterra, non mentre sta ancora arrivando. Da lì in poi il
+   ciclo si ripete da solo.
+
+   Il ciclo dura molto più dello scatto (0.72s contro i ~0.3s di disturbo
+   vero): il resto del giro è a opacità zero. È la differenza fra un guasto
+   che torna ogni tanto e un tremolio continuo — mettendo `infinite` sulla
+   vecchia animazione da 0.3s si otteneva il secondo, che dopo un istante
+   smette di sembrare un guasto e diventa un effetto.
+
+   Rosso e ciano hanno cicli leggermente diversi (0.72s e 0.68s): partono
+   insieme e poi si sfasano, come farebbe un disturbo analogico vero. Se
+   avessero la stessa durata resterebbero agganciati per sempre e si
+   leggerebbe il metronomo. */
 .glitchRed {
   color: #ff3b3b;
-  animation: glitchRed 0.3s steps(1, end) 0.4s 1;
+  animation: glitchRed 0.72s steps(1, end) 0.4s infinite;
 }
 
 .glitchCyan {
   color: #38e0e0;
-  animation: glitchCyan 0.3s steps(1, end) 0.4s 1;
+  animation: glitchCyan 0.68s steps(1, end) 0.4s infinite;
 }
 
 @keyframes glitchRed {
   0%,
+  40%,
   100% {
     opacity: 0;
     transform: translate(0, 0);
   }
-  25% {
+  10% {
     opacity: 0.75;
     transform: translate(-3px, 1px);
   }
-  55% {
+  23% {
     opacity: 0.5;
     transform: translate(2px, -1px);
   }
-  80% {
+  33% {
     opacity: 0.6;
     transform: translate(-1px, 0);
   }
@@ -162,21 +199,260 @@
 
 @keyframes glitchCyan {
   0%,
+  44%,
   100% {
     opacity: 0;
     transform: translate(0, 0);
   }
-  25% {
+  8% {
     opacity: 0.75;
     transform: translate(3px, -1px);
   }
-  55% {
+  20% {
     opacity: 0.5;
     transform: translate(-2px, 1px);
   }
-  80% {
+  36% {
     opacity: 0.6;
     transform: translate(1px, 0);
+  }
+}
+
+/* ─── L'uscita: la motosega ────────────────────────────────────────────
+   Tutte le durate e i ritardi qui sotto sono gli stessi numeri dichiarati
+   in ResidentEvilTableau.tsx (SWEEP_DURATION, CUT_AT, HALVES_DURATION). Il
+   componente li usa solo per sapere QUANDO accendere l'interruttore; da lì
+   in poi la coreografia è tutta qui. */
+
+/* Il timbro vero resta a schermo finché la lama non lo raggiunge, poi
+   sparisce di colpo (steps: nessuna dissolvenza, verrebbe morbida) e al suo
+   posto restano le due metà. Sostituisce le animazioni di `.stampActive`:
+   il tremolio non ha più senso su un timbro che sta per essere tagliato. */
+.stampCut {
+  animation: vanishAtCut var(--cut-at) steps(1, end) forwards;
+}
+
+@keyframes vanishAtCut {
+  from {
+    opacity: 0.92;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Le due metà ereditano da `.stamp` l'aspetto identico all'originale — un
+   secondo blocco di stili copiato a mano divergerebbe al primo ritocco. */
+.half {
+  composes: stamp;
+  position: absolute;
+  inset: 0;
+  /* Invisibili durante il ritardo: con `forwards` (e non `both`) il
+     fotogramma iniziale non viene applicato all'indietro, quindi finché la
+     lama non arriva resta questo zero e non si vede una seconda copia
+     sovrapposta a quella vera. */
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Il taglio passa a metà altezza. Le percentuali orizzontali vanno oltre
+   0-100% apposta: dentro il ritaglio ci deve stare anche il bordo rosso, che
+   altrimenti verrebbe rasato via sui fianchi. */
+.halfTop {
+  clip-path: polygon(-30% -30%, 130% -30%, 130% 50%, -30% 50%);
+  animation: halfUp var(--halves) cubic-bezier(0.2, 0.6, 0.35, 1) var(--cut-at) forwards;
+}
+
+.halfBottom {
+  clip-path: polygon(-30% 50%, 130% 50%, 130% 130%, -30% 130%);
+  animation: halfDown var(--halves) cubic-bezier(0.45, 0, 0.75, 1) var(--cut-at) forwards;
+}
+
+/* Un istante ferme al loro posto prima di separarsi: senza, sembrano due
+   pezzi che erano già staccati. La metà di sotto cade più lontano e con
+   un'accelerazione diversa — è la gravità che fa la differenza fra "tagliato"
+   e "esploso". */
+@keyframes halfUp {
+  0%,
+  10% {
+    transform: rotate(-3.5deg) translate(0, 0);
+    opacity: 0.92;
+  }
+  100% {
+    transform: rotate(-9deg) translate(-16px, -46px);
+    opacity: 0;
+  }
+}
+
+@keyframes halfDown {
+  0%,
+  10% {
+    transform: rotate(-3.5deg) translate(0, 0);
+    opacity: 0.92;
+  }
+  100% {
+    transform: rotate(1.5deg) translate(12px, 58px);
+    opacity: 0;
+  }
+}
+
+/* Le scintille vivono in un livello ruotato come il timbro: la linea di
+   taglio è inclinata quanto lui, e su un livello dritto schizzerebbero da
+   una riga che non corrisponde a niente. */
+.sparks {
+  position: absolute;
+  inset: 0;
+  transform: rotate(-3.5deg);
+  pointer-events: none;
+}
+
+.spark {
+  position: absolute;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #fff4d6;
+  /* Doppio alone, stretto e largo: sullo sfondo carico di questo quadro un
+     punto chiaro senza alone si perde fra le luci del fondale. */
+  box-shadow:
+    0 0 4px rgba(255, 232, 170, 1),
+    0 0 12px rgba(255, 150, 40, 0.75);
+  opacity: 0;
+  animation-name: sparkFly;
+  animation-timing-function: ease-out;
+  animation-fill-mode: forwards;
+}
+
+@keyframes sparkFly {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--dx), var(--dy)) scale(0.3);
+    opacity: 0;
+  }
+}
+
+/* La motosega attraversa tutto lo schermo, quindi sta appesa a `.root` e non
+   al timbro. `top: 50%` più `translateY(-59%)` mette la BARRA (che nel
+   disegno sta al 59% dell'altezza) sulla mezzeria dello schermo, cioè
+   esattamente sul timbro, a qualunque dimensione. `aspect-ratio` serve
+   perché i tre livelli della scia sono tutti assoluti e da soli non darebbero
+   nessuna altezza al contenitore.
+   La rotazione è la stessa del timbro: così la lama e la linea di taglio
+   sono parallele invece di incrociarsi di tre gradi. */
+.sawFlight {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  --w: min(78vw, 700px);
+  width: var(--w);
+  /* Dove sta la sega nell'istante del taglio. Non è il centro: a metà
+     sweep sul timbro deve esserci la BARRA, non il corpo motore — centrando
+     l'attrezzo il motore finiva sopra la scritta e nel fotogramma del taglio
+     non si leggeva più niente. Spostandolo di tre quarti della sua larghezza
+     il motore è appena uscito dal timbro a sinistra e sopra il testo passa
+     la lama, per tutta la larghezza del timbro. */
+  --cut: calc(var(--w) * -0.61);
+  aspect-ratio: 420 / 100;
+  pointer-events: none;
+  animation: sweep var(--sweep) linear forwards;
+}
+
+/* `linear` non è pigrizia: l'accelerazione è disegnata nella spaziatura dei
+   fotogrammi qui sotto (i quarti coprono 85%, 115%, 110%, 90% di larghezza),
+   così la lama è più veloce proprio nel mezzo, dove taglia. Con una funzione
+   di attenuazione oltre a questa i due effetti si sommerebbero. Il piccolo
+   ballonzolio verticale e di rotazione è un attrezzo pesante che vibra: senza,
+   la traiettoria è una riga e si legge come un rettangolo che scivola. */
+/* Il tragitto è in `vw` e non in percentuali della sega: una percentuale è
+   relativa alla LARGHEZZA DELLA SEGA, quindi su uno schermo largo la stessa
+   percentuale non bastava più a portarla fuori campo e la si vedeva ferma di
+   lato. In `vw` esce sempre, a qualunque risoluzione.
+
+   La spaziatura dei fotogrammi è tutto: la sega arriva veloce, RALLENTA sul
+   timbro (fra il 30% e il 56% percorre appena 16vw contro i 91vw del primo
+   terzo) e riparte scattando. È lì che sta il peso del colpo — a velocità
+   costante la lama passava e basta, e il taglio non si vedeva succedere.
+   `linear` come funzione di attenuazione non è pigrizia: l'accelerazione è
+   già disegnata qui, aggiungerne un'altra sopra le sommerebbe. */
+@keyframes sweep {
+  0% {
+    transform: translate(calc(var(--cut) - 100vw), -59%) rotate(-3.5deg);
+  }
+  30% {
+    transform: translate(calc(var(--cut) - 9vw), -61.5%) rotate(-5deg);
+  }
+  40% {
+    transform: translate(calc(var(--cut) - 3.5vw), -59.5%) rotate(-3.9deg);
+  }
+  /* Il morso. Questa percentuale NON è scelta a occhio: è CUT_AT diviso
+     SWEEP_DURATION (0.85 / 1.8), cioè l'istante in cui il componente fa
+     comparire le due metà. Cambiando quelle costanti va rifatto il conto,
+     altrimenti il timbro si spacca quando la lama non è ancora arrivata. */
+  47% {
+    transform: translate(var(--cut), -59%) rotate(-3.5deg);
+  }
+  56% {
+    transform: translate(calc(var(--cut) + 7vw), -58.4%) rotate(-3deg);
+  }
+  100% {
+    transform: translate(calc(var(--cut) + 100vw), -59%) rotate(-2.2deg);
+  }
+}
+
+
+.sawSvg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.sawGhostFar,
+.sawGhostNear,
+.sawBlade {
+  position: absolute;
+  inset: 0;
+}
+
+.sawGhostFar {
+  opacity: 0.16;
+  transform: translateX(-11%);
+}
+
+.sawGhostNear {
+  opacity: 0.34;
+  transform: translateX(-5.5%);
+}
+
+.sawBlade {
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.85));
+}
+
+/* Scossa di tutto il quadro nell'istante del taglio: pochi pixel, a scatti
+   netti come `tremble`, e finita in un sesto di secondo. Serve a far sentire
+   il peso del colpo, non a farsi notare. */
+.rootShake {
+  animation: cutShake 0.22s steps(1, end) var(--cut-at) 1;
+}
+
+@keyframes cutShake {
+  0% {
+    transform: translate(0, 0);
+  }
+  22% {
+    transform: translate(3px, -2px);
+  }
+  48% {
+    transform: translate(-4px, 2px);
+  }
+  74% {
+    transform: translate(2px, 2px);
+  }
+  100% {
+    transform: translate(0, 0);
   }
 }
 

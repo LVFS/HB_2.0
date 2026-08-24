@@ -23,17 +23,76 @@
   opacity: 0.18;
 }
 
+/* Fregio, messaggio, fregio: una colonna sola, così i tre pezzi restano
+   incolonnati e centrati fra loro qualunque sia la lunghezza del testo.
+   `position: relative` sta qui e non più su `.text` perché ora è il blocco
+   intero a dover stare sopra lo sfondo e i pulviscoli. */
+.block {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: clamp(1rem, 2.4vw, 1.8rem);
+  /* Font e corpo vivono QUI, non su `.text`, per via di `--measure`: è la
+     larghezza della frase, e la usano sia il testo sia i fregi per restare
+     in proporzione fra loro a qualunque dimensione di schermo. `ch` misura
+     il carattere dell'elemento su cui viene risolto, quindi va dichiarato
+     con lo stesso font e lo stesso corpo del testo o misurerebbe altro.
+     Prima i fregi avevano una larghezza propria e a schermo largo erano il
+     doppio della frase: il messaggio sembrava piccolo dentro una cornice
+     grande. */
+  font-family: 'EB Garamond', Georgia, serif;
+  font-size: clamp(1.15rem, 2.6vw, 1.85rem);
+  --measure: min(22ch, 78vw);
+}
+
+/* Volutamente FERMO, senza animazioni né `--audio-pulse`: questo è il quadro
+   pensato per essere il più silenzioso di tutti, e un fregio che si muove
+   ruberebbe l'attenzione proprio alla frase che deve leggersi. */
+.ornament {
+  display: block;
+  /* Un po' più largo della frase, come una cornice deve essere — ma legato
+     alla sua misura, non a un numero scelto a mano. */
+  width: min(calc(var(--measure) * 1.45), 88vw);
+  /* Più spento del testo: fa da cornice, non compete col messaggio. */
+  color: rgba(228, 238, 252, 0.7);
+  /* Stesso alone fioco del testo, ottenuto con drop-shadow perché su un SVG
+     `text-shadow` non ha effetto. */
+  filter: drop-shadow(0 0 9px rgba(190, 220, 255, 0.28));
+}
+
+.ornament svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  /* I tratti sfiorano i bordi del viewBox: senza, la metà esterna dello
+     spessore verrebbe tagliata. */
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Rombo, punta e perline sono pieni, non contornati. */
+.ornamentFill {
+  fill: currentColor;
+  stroke: none;
+}
+
+.ornamentFlipped {
+  transform: scaleY(-1);
+}
+
 .text {
   /* Distribuisce le parole sulle righe invece di riempirne una e lasciare
      l'ultima con una parola sola: senza, "te." restava orfano in fondo. */
   text-wrap: balance;
-  position: relative;
   margin: 0;
-  max-width: 22ch;
+  /* Font e corpo arrivano da `.block`, insieme a questa misura. */
+  max-width: var(--measure);
   text-align: center;
-  font-family: 'EB Garamond', Georgia, serif;
   font-weight: 400;
-  font-size: clamp(1.15rem, 2.6vw, 1.85rem);
   line-height: 1.75;
   letter-spacing: 0.03em;
   color: #eef2f8;

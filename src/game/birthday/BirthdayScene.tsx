@@ -234,7 +234,7 @@ export function BirthdayScene() {
   }, [goNext, goPrev, togglePlaying, skipToEnd]);
 
   return (
-    <div className={styles.root} ref={rootRef}>
+    <div className={`${styles.root} ${playing ? '' : styles.paused}`} ref={rootRef}>
       {SEQUENCE.map((id, index) => (
         <div
           key={id}

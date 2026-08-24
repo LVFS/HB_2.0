@@ -114,14 +114,95 @@
   animation: dissolve 3.4s ease-in-out 0.25s both;
 }
 
+/* Il testo non sfuma: si sbriciola (vedi `useTextDissolve`). Questa classe
+   arriva insieme alle particelle e deve SOSTITUIRE `dissolve` qui sopra —
+   stessa specificità, quindi vince perché è dichiarata dopo. Sostituire
+   un'animazione con un'altra, invece di spegnerla con `animation: none`, è
+   anche l'unico modo per partire da opacità piena a prescindere da dove
+   `dissolve` fosse arrivata: `.caption` ha `opacity: 0` come base, e
+   toglierle l'animazione la farebbe sparire di scatto. */
+.vanishing {
+  animation: textVanish 0.22s ease-out both;
+}
+
+@keyframes textVanish {
+  from {
+    opacity: 1;
+    filter: blur(0);
+  }
+  to {
+    opacity: 0;
+    filter: blur(3px);
+  }
+}
+
+/* Livello delle particelle di testo: coordinate assolute rispetto a `.root`,
+   fuori dalla griglia di `.stack` così non ne tocca il layout. */
+.textParticles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Stessa forma dei petali ambientali, in piccolo: sono la stessa cosa, e
+   devono sembrarlo. `both` serve perché ognuna parte con un ritardo diverso
+   e senza il fill mode resterebbe visibile a piena opacità nell'attesa. */
+.textParticle {
+  position: absolute;
+  border-radius: 60% 20% 60% 20%;
+  background: linear-gradient(140deg, var(--petal-a), var(--petal-b));
+  /* Un alone caldo appena accennato: senza, su un artwork di sfondo carico
+     le particelle si confondono con le pennellate invece di leggersi come
+     petali luminosi che si staccano dalla scritta. */
+  box-shadow: 0 0 6px rgba(255, 214, 150, 0.45);
+  animation-name: scatter;
+  animation-timing-function: cubic-bezier(0.22, 0.61, 0.36, 1);
+  animation-fill-mode: both;
+  will-change: transform, opacity;
+}
+
+/* Le particelle sono a piena opacità in un sesto del tempo, cioè nello
+   stesso istante in cui `textVanish` porta a zero il testo vero: il cambio
+   si legge come una cosa sola, non come due animazioni viste per caso
+   insieme. Poi vanno alla deriva e svaniscono. */
+@keyframes scatter {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+    opacity: 0;
+  }
+  14% {
+    opacity: 1;
+  }
+  /* Restano accese quasi fino alla fine: sbiadire in modo uniforme lungo
+     tutta la deriva le rendeva già smorte a metà strada, e il pezzo che si
+     vuole vedere è proprio il viaggio dei petali, non la loro partenza. */
+  62% {
+    opacity: 0.92;
+  }
+  100% {
+    transform: translate3d(var(--dx), var(--dy), 0) rotate(var(--rot)) scale(0.35);
+    opacity: 0;
+  }
+}
+
 /* Petalo: un cerchio schiacciato da un lato con border-radius asimmetrico.
    Scende ondeggiando, non in linea retta — una caduta dritta si legge come
-   un bug, non come un petalo. */
+   un bug, non come un petalo.
+
+   I due toni arrivano dal componente (`--petal-a`/`--petal-b`, una delle tre
+   varianti in PETAL_PALETTE). I valori qui sotto sono il fallback oro, cioè
+   esattamente il colore unico che c'era prima: se un giorno le custom
+   property non venissero impostate, i petali restano quelli di sempre invece
+   di diventare trasparenti. */
 .petal {
   position: absolute;
   top: -20px;
   border-radius: 60% 20% 60% 20%;
-  background: linear-gradient(140deg, rgba(255, 226, 160, 0.85), rgba(196, 142, 60, 0.35));
+  background: linear-gradient(
+    140deg,
+    var(--petal-a, rgba(255, 226, 160, 0.85)),
+    var(--petal-b, rgba(196, 142, 60, 0.35))
+  );
   animation-name: drift;
   animation-timing-function: linear;
   animation-iteration-count: infinite;

@@ -31,7 +31,7 @@ export function GodOfWarTableau({ active }: Props) {
       {/* Slot opzionale: resta trasparente se il file manca, la texture di
           pietra procedurale sotto fa comunque da base. */}
       <div className={styles.bgImage} />
-      <div className={styles.stone} />
+      {/* <div className={styles.stone} /> */}
       <div className={`${styles.block} ${active ? styles.blockActive : ''}`}>
         <svg className={styles.rune} viewBox="0 0 40 48" aria-hidden="true">
           <g className={styles.runeStroke}>

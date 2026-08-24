@@ -67,9 +67,12 @@ const BASE_TIMINGS: Record<TableauId, TableauTiming> = {
   // Il beat più lento: qui c'è il messaggio vero, deve avere aria intorno.
   hollowKnight: { fadeIn: 1.6, hold: 2.4, fadeOut: 1.4 },
   expedition: { fadeIn: 1, hold: 2.5, fadeOut: 0.9 },
-  // Stacco netto in entrata E in uscita: è una gag, deve arrivare come uno
-  // schiaffo dopo tre quadri solenni. Una dissolvenza la ammorbidirebbe.
-  residentEvil: { fadeIn: 0.05, hold: 2.45, fadeOut: 0.2 },
+  // Stacco netto in ENTRATA: è una gag, deve arrivare come uno schiaffo dopo
+  // tre quadri solenni, e una dissolvenza la ammorbidirebbe.
+  // In uscita invece 0.55 e non più 0.2: il quadro non sfuma e basta, viene
+  // tagliato in due da una motosega (vedi ResidentEvilTableau), e a 0.2s il
+  // taglio si intuiva soltanto. Resta comunque il quadro più rapido di tutti.
+  residentEvil: { fadeIn: 0.05, hold: 5.45, fadeOut: 0.55 },
   // Il climax: resta a schermo, non svanisce.
   gta: { fadeIn: 0.7, hold: 5, fadeOut: 0 }
 };

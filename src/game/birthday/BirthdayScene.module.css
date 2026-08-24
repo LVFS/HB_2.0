@@ -16,3 +16,28 @@
   opacity: 0;
   visibility: hidden;
 }
+
+/* Pausa vera.
+ *
+ * `.pause()` ferma la timeline GSAP, e quindi le entrate/uscite dei quadri —
+ * ma NON le @keyframes CSS che ogni quadro si anima per conto suo (braci,
+ * pulviscoli, falena, tremolio, coriandoli, sbriciolamento del testo di
+ * Expedition): quelle hanno l'orologio del browser e continuavano a correre
+ * a schermo fermo. Su un'animazione in loop si notava poco, su una che
+ * succede una volta sola no: in pausa il testo si sbriciolava lo stesso.
+ *
+ * Tre dettagli, tutti e tre necessari:
+ *  - `animation-play-state` NON si eredita, quindi serve il selettore
+ *    discendente e non basta metterla sulla radice;
+ *  - `!important` perché qualunque regola che usi la scorciatoia
+ *    `animation: ...` rimette implicitamente `running`, e sono la
+ *    maggioranza — senza, chi vince dipenderebbe dall'ordine di import dei
+ *    moduli CSS, che è esattamente il tipo di cosa che si rompe da sola;
+ *  - limitato a `.tableau`: i comandi restano vivi, è la scena che si ferma.
+ */
+.paused .tableau,
+.paused .tableau *,
+.paused .tableau *::before,
+.paused .tableau *::after {
+  animation-play-state: paused !important;
+}

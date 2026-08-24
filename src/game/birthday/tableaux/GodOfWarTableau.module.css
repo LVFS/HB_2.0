@@ -46,7 +46,7 @@
   display: grid;
   justify-items: center;
   gap: 1.4rem;
-  width: min(900px, 88vw);
+  width: min(1100px, 110vw);
 }
 
 .blockActive .title,

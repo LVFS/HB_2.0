@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { TEXTS } from '../birthdayConfig';
 import styles from './BloodborneTableau.module.css';
 
-const EMBER_COUNT = 5;
+const EMBER_COUNT = 25;
 const prefersReducedMotion = () =>
   typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 

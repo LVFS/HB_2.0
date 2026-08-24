@@ -35,20 +35,6 @@ function App() {
   // "SOLO SU QUESTO BRANCH" del commento sopra, per lo stesso motivo.
   useBackgroundMusic({ muted: screen === 'levelSelect' });
 
-  // Rilevato una volta qui, non in ogni schermata che ne ha bisogno: serve
-  // sia all'avviso di sblocco audio qui sotto sia alle etichette L1/R1/AUTO
-  // di `BirthdayScene` (passato giù come prop) — un solo sondaggio
-  // dell'API Gamepad condiviso, non uno per consumatore.
-  const gamepadDetected = useGamepadDetected();
-
-  // I browser bloccano l'audio finché non c'è stata un'interazione
-  // "attendibile" sulla pagina (click/tasto/tocco) — un bottone del
-  // controller non è mai in quella lista, su nessun browser (l'API Gamepad
-  // non ha un evento nativo a cui il browser possa appoggiarsi). Una
-  // sessione condotta SOLO da controller non sblocca mai l'audio da sola:
-  // questo avviso (sotto, nel JSX) resta finché non arriva un'interazione
-  // di altro tipo, da qualunque schermata.
-  const audioLocked = useAudioUnlockHint();
 
   // I browser bloccano l'audio finché non c'è stata un'interazione
   // "attendibile" sulla pagina (click/tasto/tocco) — un bottone del

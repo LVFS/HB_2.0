@@ -17,3 +17,28 @@
 .whiteoutActive {
   opacity: 1;
 }
+
+/* Avviso di sblocco audio (`useAudioUnlockHint`): una pillola piccola e
+   discreta, non un gate — sopra ANCHE il whiteout (z-index più alto),
+   perché il blocco dell'audio non ha nulla a che fare col cambio di
+   schermata e non deve mai sparire dietro di esso. Stesso linguaggio
+   visivo di `.panel`/`.pill` in `ui.module.css` (superficie scura
+   semitrasparente, pillola arrotondata). */
+.audioHint {
+  position: fixed;
+  left: 50%;
+  bottom: 1.25rem;
+  z-index: 40;
+  transform: translateX(-50%);
+  max-width: min(420px, calc(100vw - 2.5rem));
+  padding: 0.7rem 1.1rem;
+  border-radius: 999px;
+  background: rgba(7, 11, 21, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: #e2e8f0;
+  text-align: center;
+  pointer-events: none;
+}

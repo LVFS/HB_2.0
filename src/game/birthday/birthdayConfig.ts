@@ -16,14 +16,14 @@ export const AGE: number | null = null;
 
 /** Testi dei sei quadri. Sono una proposta: riscrivili senza pensarci. */
 export const TEXTS = {
-  bloodborne: 'Un’ombra è passata... un altro anno.',
+  residentEvil: 'Obiettivo: sopravvivere a un altro anno — completato',
   godOfWar: 'Tanti auguri',
   /** Il messaggio vero, quello personale. È il beat più lento della sequenza. */
-  hollowKnight: 'Che questo nuovo capitolo sia gentile con te.',
+  hollowKnight: 'Vent’anni e cinque primavere. Un quarto di secolo attraversato nell’oscurità, tra sogni, cadute e battaglie. Ma sei ancora qui.',
+  bloodborne: 'Un’ombra è passata... un altro anno.',
   /** Mostrata sotto il numero, o al suo posto se AGE è null. */
   expedition: 'e ogni anno un colore in più.',
   expeditionFallback: 'Un altro giro attorno al sole.',
-  residentEvil: 'Obiettivo: sopravvivere a un altro anno — completato',
   gtaTitle: 'Buon compleanno'
 } as const;
 

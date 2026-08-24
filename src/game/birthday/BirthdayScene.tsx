@@ -302,7 +302,14 @@ export function BirthdayScene({ gamepadDetected }: BirthdaySceneProps) {
     const currentTime = timeline.time();
     const next = checkpointsRef.current.find((checkpoint) => checkpoint.at > currentTime + 0.001);
     if (!next) return;
-    timeline.seek(next.at);
+    // `+ 0.001`, non `next.at` esatto: il `.call()` di checkpoint registrato
+    // in quella posizione non viene eseguito da `.seek()` (stesso motivo per
+    // cui `activeIndex` va impostato a mano qui sotto) ma resta "armato" —
+    // un `.play()` successivo che riparte esattamente da lì lo farebbe
+    // scattare di nuovo al primo fotogramma, ripausando la timeline
+    // all'istante (bug reale: un secondo `advance()` sembrava non avere
+    // alcun effetto). Un pelo oltre quella posizione evita di ripassarci.
+    timeline.seek(next.at + 0.001);
     setActiveIndex(next.index);
     if (!autoplayRef.current) {
       timeline.pause();
@@ -378,7 +385,7 @@ export function BirthdayScene({ gamepadDetected }: BirthdaySceneProps) {
         <div className={styles.pauseHint}>
           <span className={styles.pauseHintText}>
             {gamepadDetected
-              ? 'In pausa — premi R1 per continuare, o attiva l’automatico'
+              ? 'In pausa — premi R1 per continuare, o attiva l’automatico con X'
               : 'In pausa — premi → per continuare, o attiva l’automatico'}
           </span>
         </div>

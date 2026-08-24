@@ -67,6 +67,9 @@
     0 1px 2px rgba(0, 0, 0, 0.95),
     0 0 20px rgba(0, 0, 0, 0.8);
   animation: pauseHintPulse 1.8s ease-in-out infinite;
+  background-color: #120e3f;
+  padding: 1rem;
+  border-radius: 30px 30px 30px 30px;
 }
 
 @keyframes pauseHintPulse {

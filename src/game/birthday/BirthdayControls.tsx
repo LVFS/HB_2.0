@@ -178,7 +178,7 @@ export function BirthdayControls({
         </button>
 
         <span className={styles.counter}>
-          Quadro {activeIndex + 1} di {total}
+          Scena {activeIndex + 1} di {total}
         </span>
 
         <button type="button" className={ui.secondary} onClick={onSkipToEnd} disabled={isLast}>

@@ -7,15 +7,17 @@
  * componenti diversi non possono più rubarsi le regole a vicenda.
  *
  * I pochi elementi condivisi da più componenti (pulsanti, pannelli, titoli)
- * stanno in `src/styles/ui.module.css`.
+ * stanno in `src/styles/ui.module.css`; colori e misure in `tokens.css`.
  */
 
 :root {
   color-scheme: dark;
-  font-family: 'Inter', system-ui, sans-serif;
-  background: #05060a;
-  color: #f3f4f6;
+  font-family: var(--font-ui);
+  background: var(--bg);
+  color: var(--text);
   line-height: 1.5;
+  /* Su schermi ad alta densità il testo sottile risulta più nitido. */
+  -webkit-font-smoothing: antialiased;
 }
 
 * {
@@ -31,7 +33,7 @@ body,
 }
 
 body {
-  background: radial-gradient(circle at top, #16202b 0%, #05060a 45%, #030407 100%);
+  background: radial-gradient(circle at top, var(--bg-glow) 0%, var(--bg) 45%, var(--bg-deep) 100%);
 }
 
 button {
@@ -62,10 +64,35 @@ canvas {
 .screen-fallback {
   display: grid;
   place-items: center;
-  gap: 0.75rem;
+  gap: var(--space-2);
   min-height: 100vh;
-  color: #94a3b8;
-  letter-spacing: 0.08em;
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--text-dim);
+  letter-spacing: var(--tracking-label);
   text-transform: uppercase;
   font-size: 0.9rem;
+}
+
+/* Anello di fuoco predefinito, per tutto ciò che non passa dai primitivi di
+   ui.module.css (link, elementi nativi, componenti futuri). I primitivi lo
+   sovrascrivono con una versione che segue la loro smussatura.
+   Senza questa regola, un elemento non previsto resterebbe con l'outline di
+   sistema — o, peggio, senza alcuna indicazione visibile. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* I token azzerano le transizioni (vedi tokens.css), ma le @keyframes hanno
+   bisogno di essere fermate esplicitamente: senza questo, il prompt "premi un
+   tasto" continuerebbe a pulsare anche per chi ha chiesto meno movimento. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

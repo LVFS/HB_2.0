@@ -67,7 +67,9 @@ src/
   hooks/                useBackgroundMusic.ts, useSfx.ts, useAnyInput.ts (unifica
                          tastiera/mouse-touch/gamepad in un'unica callback "premi
                          qualcosa" — vedi "Regole architetturali")
-  styles/               global.css + ui.module.css (primitivi condivisi) + *.module.css per componente
+  styles/               tokens.css (custom properties: colori/spazi/font/tempi — nessun
+                         colore letterale nei module) + global.css (reset/layout) +
+                         ui.module.css (primitivi condivisi) + *.module.css per componente
 public/
   audio/theme.mp3        musica di sottofondo (deve stare in public/, non in src/)
   models/

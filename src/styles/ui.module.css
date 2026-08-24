@@ -2,34 +2,62 @@
  * Primitivi di interfaccia condivisi da più schermate.
  * Sono un CSS Module come gli altri: si usano importandoli
  * (`import ui from '@/styles/ui.module.css'`) e non per nome di classe.
+ *
+ * Nessun valore letterale qui dentro: tutto viene da `tokens.css`.
+ *
+ * ── Il trucco del bordo su una forma ritagliata ──
+ * Un `clip-path` taglia anche il bordo: su una diagonale il `border` sparisce.
+ * Per avere comunque un profilo di 1px si usa uno strato doppio:
+ *   - lo sfondo dell'elemento è il COLORE DEL BORDO;
+ *   - uno pseudo-elemento rientrato di 1px, con la stessa sagoma, ci mette
+ *     sopra il colore vero della superficie.
+ * Lo pseudo sta a `z-index: -1`: nell'ordine di disegno del CSS finisce sopra
+ * lo sfondo del genitore ma sotto il contenuto, quindi il testo resta visibile
+ * senza dover toccare il markup. `isolation: isolate` serve a impedire che
+ * quel -1 scavalchi il genitore e finisca dietro alla scena.
  */
 
-.button {
-  border: 0;
-  border-radius: 999px;
-  padding: 0.95rem 1.5rem;
-  min-width: 0;
-  cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+/* ---------- Superficie: il pannello ---------- */
+
+.panel {
+  position: relative;
+  isolation: isolate;
+  pointer-events: auto;
+  padding: var(--space-4);
+  clip-path: var(--clip-panel);
+  background: var(--line-strong);
+  color: var(--text);
+  filter: var(--drop-panel);
 }
 
-.button:hover {
-  transform: translateY(-1px);
+.panel::before {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  z-index: -1;
+  clip-path: var(--clip-panel);
+  background: var(--surface);
+  backdrop-filter: blur(10px);
 }
 
-/* `composes` riusa le regole di .button senza doverle ripetere:
-   in JSX basta la sola classe .primary. */
-.primary {
-  composes: button;
-  background: linear-gradient(135deg, #60a5fa, #38bdf8);
-  color: #0f172a;
-  font-weight: 700;
+/* Filo d'accento sul bordo superiore, che parte dopo la smussatura.
+   È il dettaglio che dice "questo è un HUD" senza aggiungere rumore. */
+.panel::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: var(--cut);
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent-line), transparent 70%);
 }
 
-.secondary {
-  composes: button;
-  background: rgba(255, 255, 255, 0.08);
-  color: #e2e8f0;
+/* Variante più compatta: stessa sagoma, smussatura e imbottitura minori. */
+.panelCompact {
+  composes: panel;
+  --cut: 10px;
+  padding: var(--space-3);
+  filter: var(--drop-card);
 }
 
 /* Contenitore di un overlay HTML appoggiato sopra la scena 3D.
@@ -37,41 +65,200 @@
    interno se li riprende. */
 .panelOverlay {
   position: absolute;
-  top: 1rem;
-  left: 1rem;
+  top: var(--space-4);
+  left: var(--space-4);
   z-index: 20;
   width: min(360px, 90vw);
   pointer-events: none;
 }
 
-.panel {
-  pointer-events: auto;
-  padding: 1.25rem;
-  border-radius: 28px;
-  background: rgba(7, 11, 21, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
-  color: #eef2ff;
+/* ---------- Comandi ----------
+ * Struttura unica per tutte le varianti, così lo stato di fuoco funziona
+ * allo stesso modo ovunque:
+ *   - lo SFONDO dell'elemento è lo strato "anello";
+ *   - lo pseudo-elemento rientrato di `--rim` è il riempimento vero.
+ * A riposo `--rim` vale 1px (bordo sottile) o 0 (nessun bordo); in fuoco
+ * diventa 2px e l'anello cambia colore. L'anello segue la smussatura, cosa
+ * che un `outline` non potrebbe fare: verrebbe disegnato fuori dalla forma e
+ * il clip-path lo taglierebbe via.
+ */
+
+.button {
+  --rim: 0px;
+  position: relative;
+  isolation: isolate;
+  border: 0;
+  padding: var(--space-3) var(--space-4);
+  min-width: 0;
+  clip-path: var(--clip-control);
+  /* I pulsanti sono "voce dell'interfaccia", non testo da leggere: font
+     display, maiuscolo, spaziato. È metà del carattere da videogioco. */
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.95rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  filter: var(--drop-control);
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
 }
+
+.button::before {
+  content: '';
+  position: absolute;
+  inset: var(--rim);
+  z-index: -1;
+  clip-path: var(--clip-control);
+  background: var(--fill);
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+/* Da -1px a +1px: il pulsante si abbassa sotto il dito invece di limitarsi
+   a cambiare colore. È il feedback che fa sembrare un comando "fisico". */
+.button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+/* `:focus-visible` e non `:focus`: l'anello compare per tastiera e navigazione
+   assistita, NON al click del mouse — che è il motivo per cui gli anelli di
+   fuoco venivano disattivati a mano prima che esistesse questa pseudo-classe. */
+.button:focus-visible {
+  outline: none;
+  --rim: 2px;
+  background: var(--focus-ring);
+}
+
+.button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.primary {
+  composes: button;
+  --fill: var(--accent);
+  /* Nessun bordo a riposo: il colore è già solido e stacca da solo. */
+  --rim: 0px;
+  /* Ambra su ambra sarebbe invisibile: qui l'anello di fuoco è scuro. */
+  --focus-ring: var(--text-on-accent);
+  background: var(--accent);
+  color: var(--text-on-accent);
+  font-weight: 700;
+}
+
+.primary:hover:not(:disabled)::before {
+  background: var(--accent-bright);
+}
+
+/* Sfondo scuro proprio, non "bianco trasparente": questo pulsante compare
+   anche da solo sopra la scena, dove non c'è nessun pannello a fargli da
+   base. Dentro un pannello continua a funzionare, letto come incassato. */
+.secondary {
+  composes: button;
+  --fill: var(--surface-control);
+  --rim: 1px;
+  --focus-ring: var(--accent);
+  background: var(--line);
+  color: var(--text);
+}
+
+.secondary::before {
+  backdrop-filter: blur(6px);
+}
+
+.secondary:hover:not(:disabled)::before {
+  background: var(--surface-control-hover);
+}
+
+/* Cursore del volume: era l'ultimo comando rimasto con l'aspetto predefinito
+   del browser (barra blu di sistema) dentro un'interfaccia ambra e acciaio.
+   I due pseudo-elementi del pallino vanno in regole SEPARATE: messi nella
+   stessa lista di selettori, i browser che non ne riconoscono uno scartano
+   l'intera regola. */
+.range {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--surface-inset-hover);
+  cursor: pointer;
+}
+
+.range::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  cursor: pointer;
+}
+
+.range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  cursor: pointer;
+}
+
+/* Qui l'outline va bene: il cursore non è ritagliato con clip-path. */
+.range:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+
+/* ---------- Testo ---------- */
 
 .title {
-  margin: 0 0 0.85rem;
+  margin: 0 0 var(--space-3);
+  font-family: var(--font-display);
+  font-weight: 700;
   font-size: clamp(1.85rem, 3vw, 2.6rem);
-  letter-spacing: 0.06em;
-  color: #dbeafe;
+  line-height: 1.05;
+  letter-spacing: var(--tracking-title);
+  text-transform: uppercase;
+  color: var(--text);
 }
 
+/* Micro-etichetta di sezione: maiuscolo, molto spaziata, tenue.
+   Serve a nominare un dato senza competere con lui. */
+.label {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-label);
+  color: var(--text-dim);
+}
+
+/* Il testo di lettura resta sul font UI: la display è pensata per titoli
+   corti in maiuscolo, a corpo piccolo e in minuscolo si legge peggio. */
 .bodyText {
-  margin: 0 0 1rem;
-  color: #cbd5e1;
+  margin: 0 0 var(--space-4);
+  color: var(--text-dim);
   line-height: 1.6;
 }
 
+/* ---------- Righe e pillole ----------
+   Squadrate, non a capsula: dentro un pannello smussato le capsule
+   stonavano. Raggio minimo, giusto per non tagliare. */
 .pill {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.7rem 1rem;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.05);
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--surface-inset);
+  border: 1px solid var(--line);
+  color: var(--text-dim);
+  font-size: 0.9rem;
 }

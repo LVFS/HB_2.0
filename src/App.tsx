@@ -50,6 +50,16 @@ function App() {
   // di altro tipo, da qualunque schermata.
   const audioLocked = useAudioUnlockHint();
 
+  // I browser bloccano l'audio finché non c'è stata un'interazione
+  // "attendibile" sulla pagina (click/tasto/tocco) — un bottone del
+  // controller non è mai in quella lista, su nessun browser (l'API Gamepad
+  // non ha un evento nativo a cui il browser possa appoggiarsi). Una
+  // sessione condotta SOLO da controller non sblocca mai l'audio da sola:
+  // questo avviso (sotto, nel JSX) resta finché non arriva un'interazione
+  // di altro tipo, da qualunque schermata.
+  const gamepadDetected = useGamepadDetected();
+  const audioLocked = useAudioUnlockHint();
+
   // Fade to white di chiusura del menu (vedi CameraDirector, finale
   // "attraverso il varco"): vive QUI, non dentro `MenuScene`, perché quando
   // `screen` cambia `MenuScene` sparisce di colpo (nessun cross-fade tra

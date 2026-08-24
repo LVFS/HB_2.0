@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Howl } from 'howler';
 import { useSettingsStore } from '@/store/settingsStore';
-import { TIMINGS, type TableauId } from '@/game/birthday/birthdayConfig';
+import { MUSIC_START_SECONDS, TIMINGS, type TableauId } from '@/game/birthday/birthdayConfig';
 
 /**
  * Uno stinger musicale per quadro della sequenza di auguri.
@@ -96,6 +96,13 @@ export function useBirthdayMusic(activeTableauId: TableauId) {
     incoming.volume(0);
     incoming.play();
     incoming.fade(0, settings.current.volume, fadeInMs);
+
+    const startAt = MUSIC_START_SECONDS[activeTableauId];
+    if (startAt) {
+      const applySeek = () => incoming.seek(startAt);
+      if (incoming.state() === 'loaded') applySeek();
+      else incoming.once('load', applySeek);
+    }
   }, [activeTableauId]);
 
   // Volume: applicato a ogni traccia ancora in riproduzione (inclusa una

@@ -216,14 +216,7 @@ export function ResidentEvilTableau({ active }: Props) {
       <div className={styles.bgImage} />
       <div className={styles.scanlines} />
 
-      <svg className={styles.biohazard} viewBox="0 0 120 120" aria-hidden="true">
-        <g fill="currentColor">
-          <circle cx="60" cy="60" r="7" />
-          <path transform="rotate(0 60 60)" d="M60,60 L60,30 A18,18 0 1,1 41,42 Z" />
-          <path transform="rotate(120 60 60)" d="M60,60 L60,30 A18,18 0 1,1 41,42 Z" />
-          <path transform="rotate(240 60 60)" d="M60,60 L60,30 A18,18 0 1,1 41,42 Z" />
-        </g>
-      </svg>
+      
 
       <div className={styles.stampWrap}>
         <div

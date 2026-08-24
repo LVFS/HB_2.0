@@ -41,3 +41,40 @@
 .paused .tableau *::after {
   animation-play-state: paused !important;
 }
+
+/* Suggerimento contestuale, mostrato ogni volta che la timeline è ferma su
+   un checkpoint di fine quadro (mai sull'ultimo) — stesso linguaggio visivo
+   del prompt "premi un tasto" del menu principale (MainMenuOverlay).
+   `pointer-events: none`: non è un pulsante, l'input che lo fa sparire
+   arriva a `window` (tastiera/gamepad), non a un click su questo elemento. */
+.pauseHint {
+  position: absolute;
+  inset: 0;
+  z-index: 25;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.pauseHintText {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(1rem, 2.4vw, 1.5rem);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text);
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.95),
+    0 0 20px rgba(0, 0, 0, 0.8);
+  animation: pauseHintPulse 1.8s ease-in-out infinite;
+}
+
+@keyframes pauseHintPulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}

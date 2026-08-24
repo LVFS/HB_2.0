@@ -13,6 +13,7 @@ import '@fontsource/anton/latin-400.css';
 
 import { useAudioPulse } from '@/hooks/useAudioPulse';
 import { useBirthdayMusic } from '@/hooks/useBirthdayMusic';
+import { useGamepadNavigation } from '@/hooks/useGamepadNavigation';
 import { SEQUENCE, TIMINGS, type TableauId } from './birthdayConfig';
 import { BirthdayControls } from './BirthdayControls';
 import { BloodborneTableau } from './tableaux/BloodborneTableau';
@@ -83,14 +84,36 @@ function renderTableau(id: TableauId, active: boolean) {
  * supporta nativamente `.play()`/`.pause()`/`.seek()` su una timeline già
  * costruita) — non una seconda macchina a stati in parallelo.
  */
-export function BirthdayScene() {
+interface BirthdaySceneProps {
+  /** Sollevato fino ad `App.tsx` (un solo sondaggio dell'API Gamepad
+   * condiviso, vedi `useGamepadDetected`) — usato qui solo per decidere se
+   * mostrare le etichette L1/R1/AUTO e il testo del suggerimento "in
+   * pausa", non per la rilevazione in sé. */
+  gamepadDetected: boolean;
+}
+
+export function BirthdayScene({ gamepadDetected }: BirthdaySceneProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const tableauRefs = useRef<(HTMLDivElement | null)[]>([]);
   const timelineRef = useRef<gsap.core.Timeline | null>(null);
   const progressFillRef = useRef<HTMLDivElement>(null);
 
   const [activeIndex, setActiveIndex] = useState(0);
-  const [playing, setPlaying] = useState(true);
+  // La sequenza parte da sola all'arrivo su questa schermata (nessun gate
+  // "premi per iniziare"): l'automatico riguarda solo cosa succede DOPO
+  // ogni checkpoint di fine quadro (vedi sotto), non l'avvio.
+  const [autoplayEnabled, setAutoplayEnabled] = useState(false);
+  // Rispecchia se la timeline GSAP sta davvero scorrendo in questo istante
+  // (diverso da `autoplayEnabled`: un `advance()` la fa scorrere anche con
+  // l'automatico spento, fino al prossimo checkpoint) — guida la classe
+  // `.paused` che congela le @keyframes CSS dei quadri, vedi
+  // BirthdayScene.module.css, e il suggerimento "in pausa" sotto.
+  const [isTicking, setIsTicking] = useState(false);
+  // Contatore, non booleano — stesso principio di `skipIntroToken` nel menu
+  // principale: ogni pressione del tasto "mostra/nascondi" deve poter far
+  // scattare di nuovo l'effetto in BirthdayControls anche se capitano due
+  // pressioni ravvicinate, non solo quando il valore "logico" cambia.
+  const [controlsToggleSignal, setControlsToggleSignal] = useState(0);
 
   // Scrive `--audio-pulse` (0-1, ampiezza dei bassi di qualunque stinger
   // stia suonando) sul contenitore della scena — CASCADE a ogni quadro
@@ -115,6 +138,19 @@ export function BirthdayScene() {
   const activeIndexRef = useRef(activeIndex);
   activeIndexRef.current = activeIndex;
 
+  // Letta dentro il `.call()` di checkpoint (sotto), che vive nella timeline
+  // costruita una volta sola in un effetto con dipendenze `[]`: senza una
+  // ref vedrebbe per sempre il valore di `autoplayEnabled` al mount, stesso
+  // motivo di `activeIndexRef` sopra.
+  const autoplayRef = useRef(autoplayEnabled);
+  autoplayRef.current = autoplayEnabled;
+
+  // Popolato una volta sola dall'effetto che costruisce la timeline (sotto)
+  // — un checkpoint per quadro non ultimo, in ordine. Letto da `advance()`
+  // per trovare il prossimo punto di pausa quando viene premuto mentre la
+  // timeline sta già scorrendo (vedi sotto).
+  const checkpointsRef = useRef<{ index: number; at: number }[]>([]);
+
   // Un accenno musicale per quadro, in crossfade: l'hook reagisce da solo
   // al cambio di `SEQUENCE[activeIndex]`, incluso un salto avanti/indietro
   // manuale — non gli importa COME si è arrivati a un quadro, solo QUALE è.
@@ -126,8 +162,17 @@ export function BirthdayScene() {
     // essere buttato: serve sotto, nell'`onUpdate`, per calcolare quanto è
     // avanzato il quadro ATTUALE (non l'intera timeline) in percentuale.
     const tableauStarts: number[] = [];
+    // Un checkpoint per ogni quadro non ultimo: `{ index, at }` nello
+    // stesso ordine della sequenza. Serve ad `advance()` (sotto) per capire
+    // dove saltare se premuto mentre la timeline sta già scorrendo — non
+    // solo per il `.call()` che ci pausa sopra durante il normale avanzare.
+    const checkpoints: { index: number; at: number }[] = [];
 
     const timeline = gsap.timeline({
+      // Nasce ferma a tempo zero: costruita per intero prima di partire,
+      // così i checkpoint sopra sono già pronti quando la si avvia in coda
+      // a questo effetto.
+      paused: true,
       onUpdate: () => {
         const fill = progressFillRef.current;
         if (!fill) return;
@@ -174,26 +219,42 @@ export function BirthdayScene() {
         return;
       }
 
+      // Checkpoint di fine quadro: con l'automatico spento, la timeline si
+      // ferma qui da sola invece di proseguire nel fadeOut — `advance()`
+      // (R1) la fa ripartire da questo stesso punto con la dissolvenza
+      // vera, non un salto secco.
+      checkpoints.push({ index, at: outAt });
+      timeline.call(
+        () => {
+          if (!autoplayRef.current) {
+            timeline.pause();
+            setIsTicking(false);
+          }
+        },
+        undefined,
+        outAt
+      );
       timeline.to(element, { autoAlpha: 0, duration: fadeOut, ease: 'power2.in' }, outAt);
       at = outAt + fadeOut * (1 - OVERLAP);
     });
+
+    checkpointsRef.current = checkpoints;
+
+    // Nessun gate "premi per iniziare": la sequenza parte da sola non
+    // appena arrivati su questa schermata (chi ricarica direttamente qui
+    // durante lo sviluppo, senza passare dal resto del gioco, può non
+    // sentire il primo stinger — i browser bloccano l'audio finché non
+    // c'è stata un'interazione sulla pagina, e qui non ce n'è ancora
+    // stata nessuna; arrivando dal resto del gioco l'interazione è già
+    // avvenuta altrove, quindi l'audio parte regolarmente).
+    timeline.play();
+    setIsTicking(true);
 
     return () => {
       timeline.kill();
       timelineRef.current = null;
     };
   }, []);
-
-  // Play/pausa: GSAP fa il lavoro vero, questo effetto si limita a seguire
-  // lo stato. Dichiarato DOPO l'effetto che costruisce la timeline apposta:
-  // React esegue gli effetti nell'ordine in cui sono dichiarati, quindi al
-  // mount `timelineRef.current` è già valorizzato quando questo gira.
-  useEffect(() => {
-    const timeline = timelineRef.current;
-    if (!timeline) return;
-    if (playing) timeline.play();
-    else timeline.pause();
-  }, [playing]);
 
   const goToIndex = useCallback((index: number) => {
     const timeline = timelineRef.current;
@@ -208,33 +269,94 @@ export function BirthdayScene() {
     setActiveIndex(clamped);
   }, []);
 
-  const goPrev = useCallback(() => goToIndex(activeIndex - 1), [goToIndex, activeIndex]);
-  const goNext = useCallback(() => goToIndex(activeIndex + 1), [goToIndex, activeIndex]);
-  const skipToEnd = useCallback(() => goToIndex(SEQUENCE.length - 1), [goToIndex]);
-  const togglePlaying = useCallback(() => setPlaying((value) => !value), []);
+  // Riprende la timeline da un checkpoint di fine quadro (o dal mount) —
+  // usata sia da `advance()` sotto sia dall'effetto che segue
+  // `autoplayEnabled`: quest'ultimo NON deve mai saltare in avanti, solo
+  // riprendere se la timeline è già ferma, altrimenti attivare l'automatico
+  // mentre una transizione è in corso causerebbe un salto indesiderato.
+  const resume = useCallback(() => {
+    const timeline = timelineRef.current;
+    if (!timeline) return;
+    timeline.play();
+    setIsTicking(true);
+  }, []);
 
-  // Scorciatoie da tastiera, oltre ai pulsanti: frecce per avanti/indietro,
-  // spazio per play/pausa, Fine per saltare tutto.
+  // Avanti "vero" (R1): se la timeline è ferma su un checkpoint (il caso
+  // normale in modalità manuale), la riprende — scorre attraverso il
+  // fadeOut/fadeIn già programmati lì, con la dissolvenza incrociata vera.
+  // Se invece sta GIÀ scorrendo (un quadro può restare a schermo diversi
+  // secondi prima del proprio checkpoint), un secondo `.play()` verrebbe
+  // ignorato da GSAP e il pulsante sembrerebbe non rispondere — qui invece
+  // salta dritto al prossimo checkpoint (stesso comportamento a cui
+  // sarebbe arrivata da sola), così ogni pressione dà sempre un riscontro
+  // visibile.
+  const advance = useCallback(() => {
+    const timeline = timelineRef.current;
+    if (!timeline) return;
+
+    if (timeline.paused()) {
+      resume();
+      return;
+    }
+
+    const currentTime = timeline.time();
+    const next = checkpointsRef.current.find((checkpoint) => checkpoint.at > currentTime + 0.001);
+    if (!next) return;
+    timeline.seek(next.at);
+    setActiveIndex(next.index);
+    if (!autoplayRef.current) {
+      timeline.pause();
+      setIsTicking(false);
+    }
+  }, [resume]);
+
+  // Indietro (L1): resta un salto secco (`.seek()` istantaneo), a
+  // differenza di `advance()` — rifare la coreografia di dissolvenza anche
+  // all'indietro è un lavoro in più per un tasto che serve più che altro a
+  // "torna indietro se ho sbagliato/voglio rivedere", non a essere un
+  // momento coreografato.
+  const back = useCallback(() => goToIndex(activeIndex - 1), [goToIndex, activeIndex]);
+  const skipToEnd = useCallback(() => goToIndex(SEQUENCE.length - 1), [goToIndex]);
+
+  // Interruttore di riproduzione automatica (tasto d'interazione/spazio):
+  // accenderlo riprende subito la timeline se è ferma su un checkpoint;
+  // spegnerlo NON interrompe un quadro a metà, lascia che arrivi al
+  // proprio checkpoint — che lì lo fermerà da solo (vedi il `.call()` nel
+  // `forEach` sopra).
+  const toggleAutoplay = useCallback(() => setAutoplayEnabled((value) => !value), []);
+  const toggleControls = useCallback(() => setControlsToggleSignal((value) => value + 1), []);
+
+  useEffect(() => {
+    if (autoplayEnabled) resume();
+  }, [autoplayEnabled, resume]);
+
+  useGamepadNavigation(
+    { onBack: back, onAdvance: advance, onInteract: toggleAutoplay, onToggleControls: toggleControls },
+    { enabled: true }
+  );
+
+  // Scorciatoie da tastiera, oltre ai pulsanti e al controller: frecce per
+  // avanti/indietro, spazio per l'automatico, Fine per saltare tutto.
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'ArrowRight') {
-        goNext();
+        advance();
       } else if (event.key === 'ArrowLeft') {
-        goPrev();
+        back();
       } else if (event.key === ' ' || event.code === 'Space') {
         // Altrimenti la pagina scorre in basso sulla pressione di spazio.
         event.preventDefault();
-        togglePlaying();
+        toggleAutoplay();
       } else if (event.key === 'End') {
         skipToEnd();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [goNext, goPrev, togglePlaying, skipToEnd]);
+  }, [advance, back, toggleAutoplay, skipToEnd]);
 
   return (
-    <div className={`${styles.root} ${playing ? '' : styles.paused}`} ref={rootRef}>
+    <div className={`${styles.root} ${isTicking ? '' : styles.paused}`} ref={rootRef}>
       {SEQUENCE.map((id, index) => (
         <div
           key={id}
@@ -247,14 +369,31 @@ export function BirthdayScene() {
         </div>
       ))}
 
+      {/* Compare ogni volta che la timeline si ferma a un checkpoint di
+          fine quadro (mai sull'ultimo: GTA non ne registra uno, vedi il
+          `forEach` sopra) — testo che si adatta a cosa è stato rilevato,
+          stesso principio delle etichette L1/R1/AUTO in BirthdayControls:
+          non promette un controller a chi non ne ha uno collegato. */}
+      {!isTicking && (
+        <div className={styles.pauseHint}>
+          <span className={styles.pauseHintText}>
+            {gamepadDetected
+              ? 'In pausa — premi R1 per continuare, o attiva l’automatico'
+              : 'In pausa — premi → per continuare, o attiva l’automatico'}
+          </span>
+        </div>
+      )}
+
       <BirthdayControls
-        playing={playing}
+        autoplayEnabled={autoplayEnabled}
         activeIndex={activeIndex}
         total={SEQUENCE.length}
         progressFillRef={progressFillRef}
-        onTogglePlaying={togglePlaying}
-        onPrev={goPrev}
-        onNext={goNext}
+        gamepadDetected={gamepadDetected}
+        controlsToggleSignal={controlsToggleSignal}
+        onToggleAutoplay={toggleAutoplay}
+        onBack={back}
+        onAdvance={advance}
         onSkipToEnd={skipToEnd}
       />
     </div>

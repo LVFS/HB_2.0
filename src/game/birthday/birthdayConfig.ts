@@ -35,6 +35,36 @@ export const GTA_STATS: { label: string; from: number; to: number; suffix?: stri
 ];
 
 /**
+ * Da che punto del brano deve partire ogni quadro, come "minuti:secondi"
+ * (es. "7:23"). Un quadro assente da questo oggetto (o senza voce qui)
+ * parte semplicemente dall'inizio del file.
+ */
+export const MUSIC_START_TIMES: Partial<Record<TableauId, string>> = {
+  residentEvil: '1:16',
+  hollowKnight: '0:10',
+  godOfWar: '0:00',
+  bloodborne: '0:00',
+  expedition: '7:24',
+  gta: '0:00'
+};
+
+/** "mm:ss" → secondi. Input malformato: avviso in console, si parte da 0. */
+function parseTimecode(value: string): number {
+  const match = value.trim().match(/^(\d+):(\d{1,2})$/);
+  const seconds = match ? Number(match[2]) : NaN;
+  if (!match || seconds > 59) {
+    console.warn(`MUSIC_START_TIMES: timecode "${value}" non valido, parto da 0.`);
+    return 0;
+  }
+  return Number(match[1]) * 60 + seconds;
+}
+
+/** `MUSIC_START_TIMES` già convertito in secondi, calcolato una volta sola. */
+export const MUSIC_START_SECONDS: Partial<Record<TableauId, number>> = Object.fromEntries(
+  Object.entries(MUSIC_START_TIMES).map(([id, value]) => [id, parseTimecode(value as string)])
+);
+
+/**
  * Tempi di ogni quadro, in secondi.
  *
  *   fadeIn  — quanto ci mette a comparire (0 = stacco netto)
@@ -62,19 +92,19 @@ export const HOLD_SCALE = 1;
 
 const BASE_TIMINGS: Record<TableauId, TableauTiming> = {
   // Apertura misteriosa: entra lentissimo, è il tono che dà il via.
-  bloodborne: { fadeIn: 1.2, hold: 1.8, fadeOut: 1 },
-  godOfWar: { fadeIn: 0.9, hold: 2.6, fadeOut: 0.8 },
+  bloodborne: { fadeIn: 1.2, hold: 10, fadeOut: 1 },
+  godOfWar: { fadeIn: 0.9, hold: 10, fadeOut: 0.8 },
   // Il beat più lento: qui c'è il messaggio vero, deve avere aria intorno.
-  hollowKnight: { fadeIn: 1.6, hold: 2.4, fadeOut: 1.4 },
-  expedition: { fadeIn: 1, hold: 2.5, fadeOut: 0.9 },
+  hollowKnight: { fadeIn: 1.6, hold: 10, fadeOut: 1.4 },
+  expedition: { fadeIn: 1, hold: 10, fadeOut: 0.9 },
   // Stacco netto in ENTRATA: è una gag, deve arrivare come uno schiaffo dopo
   // tre quadri solenni, e una dissolvenza la ammorbidirebbe.
   // In uscita invece 0.55 e non più 0.2: il quadro non sfuma e basta, viene
   // tagliato in due da una motosega (vedi ResidentEvilTableau), e a 0.2s il
   // taglio si intuiva soltanto. Resta comunque il quadro più rapido di tutti.
-  residentEvil: { fadeIn: 0.05, hold: 5.45, fadeOut: 0.55 },
+  residentEvil: { fadeIn: 0.05, hold: 10, fadeOut: 0.55 },
   // Il climax: resta a schermo, non svanisce.
-  gta: { fadeIn: 0.7, hold: 5, fadeOut: 0 }
+  gta: { fadeIn: 0.7, hold: 10, fadeOut: 0 }
 };
 
 export const TIMINGS: Record<TableauId, TableauTiming> = Object.fromEntries(

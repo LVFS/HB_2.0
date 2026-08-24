@@ -91,10 +91,10 @@ export type TableauId =
 
 /** L'ordine della sequenza. Cambiarlo qui cambia la scaletta. */
 export const SEQUENCE: TableauId[] = [
-  'bloodborne',
-  'godOfWar',
-  'hollowKnight',
-  'expedition',
   'residentEvil',
+  'hollowKnight',
+  'godOfWar',
+  'bloodborne',
+  'expedition',
   'gta'
 ];

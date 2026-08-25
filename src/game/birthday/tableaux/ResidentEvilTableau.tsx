@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
-import gsap from 'gsap';
+import { useEffect, useMemo, type CSSProperties } from 'react';
 import { useSfx } from '@/hooks/useSfx';
-import { TEXTS, TIMINGS } from '../birthdayConfig';
+import { TEXTS } from '../birthdayConfig';
 import styles from './ResidentEvilTableau.module.css';
 
 /**
@@ -23,18 +22,19 @@ const SWEEP_DURATION = 1.8;
 const CUT_AT = 0.85;
 /** Quanto ci mettono le due metà a separarsi e svanire. */
 const HALVES_DURATION = 1;
-const SAW_TOTAL = CUT_AT + HALVES_DURATION;
-
 /**
- * L'istante in cui parte la motosega, contato da quando il quadro diventa
- * quello corrente. Calcolato sui tempi veri e non scritto a mano, così il
- * taglio finisce sempre esatto quando il contenitore inizia a sfumare anche
- * se cambiano `TIMINGS`/`HOLD_SCALE`.
+ * Quanto dura tutto il taglio, dal primo fotogramma della passata all'ultima
+ * scheggia svanita.
+ *
+ * Esportata perché la LEGGE la timeline (`EXIT_DURATIONS` in
+ * BirthdayScene.tsx): è lei a dare il via con questo anticipo sulla fine del
+ * quadro, così il taglio finisce nell'istante in cui comincia la dissolvenza.
+ * Prima il quadro se lo calcolava da sé con un `gsap.delayedCall` sui
+ * `TIMINGS` — un orologio a parte, che restava indietro appena la timeline
+ * si fermava a un checkpoint o ci si saltava sopra: la sega compariva
+ * congelata fuori campo e poi partiva sopra la dissolvenza (bug reale).
  */
-const SAW_AT = Math.max(
-  0,
-  TIMINGS.residentEvil.fadeIn + TIMINGS.residentEvil.hold - SAW_TOTAL
-);
+export const EXIT_DURATION = CUT_AT + HALVES_DURATION;
 
 const SPARK_COUNT = 18;
 /** Costante di modulo, non un array letterale: deve avere identità stabile. */
@@ -119,6 +119,8 @@ function SawShape({ id }: { id: string }) {
 
 interface Props {
   active: boolean;
+  /** Via alla motosega, dalla timeline (vedi `EXIT_DURATION`). */
+  exiting: boolean;
 }
 
 /**
@@ -140,22 +142,23 @@ interface Props {
  * presente nelle `.scanlines`.
  *
  * L'uscita non è una dissolvenza: una motosega attraversa lo schermo e taglia
- * il timbro in due. Come per lo sbriciolamento di Expedition, il momento non
- * può arrivare dalla prop `active` — resta vera per tutta la dissolvenza del
- * contenitore, quindi il taglio partirebbe a schermo ormai nero. Il quadro se
- * lo programma da sé su `TIMINGS.residentEvil` (vedi `SAW_AT`), e da lì in poi
- * è tutto CSS: un solo interruttore React, i ritardi li tengono le @keyframes.
- * Così il taglio si ferma insieme al resto quando si mette in pausa la
- * sequenza (vedi la regola `.paused` in BirthdayScene.module.css) senza
- * bisogno di saperlo.
+ * il timbro in due. Il via non arriva dalla prop `active` (resta vera per
+ * tutta la dissolvenza del contenitore, quindi il taglio partirebbe a schermo
+ * ormai nero) ma da `exiting`, acceso da un `.call()` sulla timeline con
+ * `EXIT_DURATION` di anticipo sulla fine del quadro. Da lì in poi è tutto
+ * CSS: nessuno stato locale, i ritardi li tengono le @keyframes.
  *
- * Se si salta il quadro a mano mentre la motosega è in volo non serve nessuna
- * regola speciale: `active` diventa falsa, l'effetto qui sotto si smonta e il
- * quadro esce con la sua dissolvenza normale.
+ * Due conseguenze gratuite: in pausa il taglio si ferma col resto (la regola
+ * `.paused` in BirthdayScene.module.css congela le @keyframes), e saltando
+ * avanti a mano il taglio viene semplicemente saltato — GSAP non esegue i
+ * `.call()` quando si salta con `.seek()`, quindi il quadro esce con la sua
+ * dissolvenza normale senza bisogno di nessuna regola speciale.
  */
-export function ResidentEvilTableau({ active }: Props) {
-  const [sawing, setSawing] = useState(false);
+export function ResidentEvilTableau({ active, exiting }: Props) {
   const reducedMotion = prefersReducedMotion();
+  // Nessuno stato locale e nessun timer: la timeline dice quando, il CSS
+  // dice come.
+  const sawing = exiting && !reducedMotion;
   const playSfx = useSfx(WARM_UP);
 
   const sparks = useMemo(() => {
@@ -180,24 +183,17 @@ export function ResidentEvilTableau({ active }: Props) {
   }, [reducedMotion]);
 
   useEffect(() => {
-    if (!active || reducedMotion) return;
-    const timer = gsap.delayedCall(SAW_AT, () => {
-      setSawing(true);
-      // Il file è tarato sulla stessa linea del tempo dell'animazione (morso
-      // a CUT_AT, passata finita a SWEEP_DURATION): parte insieme allo sweep
-      // e da lì in poi i due restano allineati da soli, senza un secondo
-      // temporizzatore da tenere in sincrono.
-      playSfx('chainsaw');
-    });
-    return () => {
-      timer.kill();
-      setSawing(false);
-    };
-  }, [active, reducedMotion, playSfx]);
+    if (!sawing) return;
+    // Il file è tarato sulla stessa linea del tempo dell'animazione (morso a
+    // CUT_AT, passata finita a SWEEP_DURATION): parte insieme allo sweep e da
+    // lì in poi i due restano allineati da soli.
+    playSfx('chainsaw');
+  }, [sawing, playSfx]);
 
-  const stampContent = (
-    <span className={styles.stampText}>{TEXTS.residentEvil}</span>
-  );
+  // Lo stesso contenuto serve tre volte: il timbro vero e le due metà
+  // ritagliate. Scritto una volta sola, o al primo ritocco al testo le copie
+  // resterebbero indietro.
+  const stampContent = <span className={styles.stampText}>{TEXTS.residentEvil}</span>;
 
   // I tempi scendono al CSS da qui: le @keyframes non li riscrivono, li
   // leggono. Una custom property non può stare dentro `@keyframes`, ma può

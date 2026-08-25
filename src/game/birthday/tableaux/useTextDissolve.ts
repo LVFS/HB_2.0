@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, type RefObject } from 'react';
-import gsap from 'gsap';
 
 /** Coppia di toni di un petalo: chiaro + scuro nello stesso gradiente. */
 export type PetalTone = readonly [string, string];
@@ -29,12 +28,13 @@ interface Options {
   /** Rispetto a cui vengono calcolate le coordinate delle particelle. */
   containerRef: RefObject<HTMLElement | null>;
   targets: DissolveTarget[];
-  /** Vero quando il quadro è quello corrente. */
-  active: boolean;
+  /**
+   * Vero quando è ORA di sbriciolare. Arriva dalla timeline (vedi
+   * `EXIT_DURATIONS` in BirthdayScene), non da un timer interno.
+   */
+  armed: boolean;
   /** Falso sotto prefers-reduced-motion: niente campionamento, niente particelle. */
   enabled: boolean;
-  /** Secondi da quando il quadro diventa attivo. */
-  delay: number;
   palette: readonly PetalTone[];
 }
 
@@ -178,27 +178,26 @@ function buildParticles(
  * diretta di Clair Obscur, dove i personaggi si disgregano in petali
  * dipinti.
  *
- * QUANDO scatta è il punto delicato. La dissolvenza in uscita del quadro è
- * una sola tween GSAP sull'intero contenitore, gestita da `BirthdayScene`, e
- * la prop `active` resta vera per tutta la sua durata: cambia solo
- * nell'istante in cui il quadro è già del tutto invisibile. Aspettare che
- * `active` diventi falso vorrebbe dire sbriciolare il testo a schermo nero.
- * Perciò il quadro si programma da sé il momento, calcolato sui suoi
- * `TIMINGS`, in modo che la dissolvenza FINISCA quando il fadeOut del
- * contenitore INIZIA: il testo si è già sparso, poi tutto il quadro (petali
- * compresi) sfuma via insieme come già succede oggi.
+ * QUANDO scatta è il punto delicato, e non lo decide questo hook. La
+ * dissolvenza in uscita del quadro è una sola tween GSAP sull'intero
+ * contenitore, gestita da `BirthdayScene`, e la prop `active` resta vera per
+ * tutta la sua durata: aspettare che diventi falsa vorrebbe dire sbriciolare
+ * il testo a schermo nero. Il via arriva da un `.call()` piazzato SULLA
+ * TIMELINE, tanto prima del checkpoint di fine quadro quanto dura questo
+ * effetto — così finisce nell'istante in cui comincia la dissolvenza.
  *
- * Il timer è un `gsap.delayedCall` sulla timeline globale, non sulla
- * timeline della scena: come le @keyframes CSS degli altri quadri, non si
- * ferma se si mette in pausa la sequenza. Su un salto avanti/indietro
- * invece riparte pulito, perché `active` cambia e l'effetto si rifà.
+ * Sulla timeline e non su un timer a orologio perché la timeline si ferma ai
+ * checkpoint e ci si può saltare sopra: un `gsap.delayedCall` continuava a
+ * contare per conto suo e finiva per accendere l'effetto a quadro fermo,
+ * congelato fuori tempo (bug reale, visto a schermo). Come effetto
+ * collaterale gratuito, saltare avanti a mano salta anche l'effetto: GSAP
+ * non esegue i `.call()` con `.seek()`.
  */
 export function useTextDissolve({
   containerRef,
   targets,
-  active,
+  armed,
   enabled,
-  delay,
   palette
 }: Options): { particles: DissolveParticle[]; dissolving: boolean } {
   const [particles, setParticles] = useState<DissolveParticle[]>([]);
@@ -213,35 +212,30 @@ export function useTextDissolve({
   paletteRef.current = palette;
 
   useEffect(() => {
-    if (!active || !enabled) return;
+    if (!armed || !enabled) return;
 
-    const timer = gsap.delayedCall(Math.max(0, delay), () => {
-      const container = containerRef.current;
-      if (!container) return;
-      const origin = container.getBoundingClientRect();
+    const container = containerRef.current;
+    if (!container) return;
+    const origin = container.getBoundingClientRect();
 
-      const next: DissolveParticle[] = [];
-      targetsRef.current.forEach(({ ref, budget }) => {
-        const element = ref.current;
-        if (!element) return;
-        const points = sampleText(element, origin, budget);
-        const fontSize = parseFloat(getComputedStyle(element).fontSize) || 16;
-        next.push(
-          ...buildParticles(points, fontSize, paletteRef.current, next.length, origin.width)
-        );
-      });
-
-      // Nessun pixel campionato (font non ancora disponibile, elemento a
-      // dimensione zero): meglio non fare nulla che far sparire il testo
-      // senza niente al suo posto — resta lo scioglimento CSS di sempre.
-      if (next.length > 0) setParticles(next);
+    const next: DissolveParticle[] = [];
+    targetsRef.current.forEach(({ ref, budget }) => {
+      const element = ref.current;
+      if (!element) return;
+      const points = sampleText(element, origin, budget);
+      const fontSize = parseFloat(getComputedStyle(element).fontSize) || 16;
+      next.push(
+        ...buildParticles(points, fontSize, paletteRef.current, next.length, origin.width)
+      );
     });
 
-    return () => {
-      timer.kill();
-      setParticles([]);
-    };
-  }, [active, enabled, delay, containerRef]);
+    // Nessun pixel campionato (font non ancora disponibile, elemento a
+    // dimensione zero): meglio non fare nulla che far sparire il testo senza
+    // niente al suo posto — resta lo scioglimento CSS di sempre.
+    if (next.length > 0) setParticles(next);
+
+    return () => setParticles([]);
+  }, [armed, enabled, containerRef]);
 
   return { particles, dissolving: particles.length > 0 };
 }

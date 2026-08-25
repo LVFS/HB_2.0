@@ -109,15 +109,12 @@
 
 .title {
   margin: 0;
-  font-family: 'Cinzel', Georgia, serif;
-  font-weight: 700;
-  font-size: clamp(2.2rem, 7vw, 5.2rem);
-  line-height: 1;
-  letter-spacing: 0.18em;
-  /* Il maiuscoletto spaziato lascia uno spazio vuoto in coda all'ultima
-     lettera: rientrando di quel tanto il blocco torna otticamente centrato. */
-  text-indent: 0.18em;
-  text-transform: uppercase;
+  /* Font e corpo arrivano da `.titleWrap` qui sopra, ma `font: inherit` va
+     scritto: senza, su un <h1> torna a valere la regola predefinita del
+     browser (`font-size: 2em`), che batte l'ereditarietà — e il titolo
+     usciva grande il doppio, mentre brina e schegge restavano alla misura
+     giusta. */
+  font: inherit;
   color: #e6dcc6;
   /* Il bagliore respira leggermente col basso della musica del quadro
      (`--audio-pulse`, scritta da `useAudioPulse` sul contenitore della
@@ -128,6 +125,410 @@
   text-shadow:
     0 1px 0 rgba(0, 0, 0, 0.85),
     0 0 calc(40px + var(--audio-pulse, 0) * 30px) rgba(190, 150, 80, 0.28);
+}
+
+/* ─── L'uscita: ascia, congelamento, schegge ─────────────────────────────
+   Durate e ritardi arrivano tutti da GodOfWarTableau.tsx come custom
+   property (--impact-at, --freeze-hold, --shatter-at, --shatter, --throw):
+   qui c'è solo la FORMA del movimento. Scriverli anche qui vorrebbe dire
+   poterli cambiare in un posto solo e vedere metà effetto spostarsi. */
+
+/* Il riquadro del titolo: riferimento per la brina e per le schegge, che
+   sono copie assolute sovrapposte a quella vera e devono combaciarci al
+   pixel. Non è trasformato, così `inset: 0` sulle copie è esattamente la
+   scatola del titolo. */
+.titleWrap {
+  position: relative;
+  /* La tipografia vive QUI e non su `.title`: brina e schegge sono fratelli
+     del titolo, non figli, quindi il loro `font: inherit` legge questo
+     contenitore. Lasciandola sul titolo ereditavano il font del body e
+     disegnavano una scritta completamente diversa da quella che stanno
+     coprendo/frantumando. */
+  font-family: 'Cinzel', Georgia, serif;
+  font-weight: 700;
+  font-size: clamp(2.2rem, 7vw, 5.2rem);
+  line-height: 1;
+  letter-spacing: 0.18em;
+  /* Il maiuscoletto spaziato lascia uno spazio vuoto in coda all'ultima
+     lettera: rientrando di quel tanto il blocco torna otticamente centrato. */
+  text-indent: 0.18em;
+  text-transform: uppercase;
+}
+
+/* Il titolo vero sparisce nell'istante in cui va in schegge — a passi netti,
+   non in dissolvenza: al suo posto ci sono già i pezzi. Sostituisce `carve`
+   dell'entrata, che a quel punto è finita da un pezzo. */
+/* Due classi e non una: `.blockActive .title` (l'animazione d'entrata) vale
+   quanto due classi, e con un selettore singolo qui `carve` continuava a
+   vincere — il titolo non spariva mai e le schegge volavano via da una
+   scritta ancora intera. Stessa specificità e dichiarata dopo: vince questa. */
+.title.titleBreaking {
+  animation: titleGone var(--shatter-at) steps(1, end) forwards;
+}
+
+@keyframes titleGone {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Copia del titolo in bianco-azzurro, scoperta da un cerchio che si allarga
+   dal punto d'impatto: il ghiaccio si propaga da lì, non compare uniforme su
+   tutta la scritta. Il centro del cerchio è il centro del titolo, cioè dove
+   arriva la lama — se un giorno l'ascia colpisse altrove, va spostato anche
+   questo. */
+.frost {
+  position: absolute;
+  inset: 0;
+  display: block;
+  font: inherit;
+  letter-spacing: inherit;
+  text-indent: inherit;
+  text-transform: inherit;
+  color: #dff1ff;
+  text-shadow:
+    0 0 12px rgba(180, 230, 255, 0.85),
+    0 0 34px rgba(120, 190, 240, 0.5);
+  pointer-events: none;
+  /* Due animazioni: la prima scopre la brina, la seconda la fa sparire di
+     colpo quando il titolo va in schegge. Senza la seconda la copia
+     ghiacciata restava a schermo — `both` tiene l'ultimo fotogramma — e le
+     schegge volavano via da un titolo ancora intero. */
+  animation:
+    frostSpread var(--freeze-spread) cubic-bezier(0.2, 0.7, 0.3, 1) var(--impact-at) both,
+    frostGone var(--shatter-at) steps(1, end) forwards;
+}
+
+@keyframes frostGone {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes frostSpread {
+  from {
+    clip-path: circle(0% at 50% 50%);
+  }
+  to {
+    clip-path: circle(78% at 50% 50%);
+  }
+}
+
+/* Le schegge: sette copie del titolo, ciascuna ritagliata a un poligono
+   irregolare (vedi SHARDS nel .tsx). Restano ferme e congelate finché non è
+   ora, poi partono ognuna per conto suo. `forwards` e non `both`: durante il
+   ritardo devono stare all'opacità di base (0), non al primo fotogramma
+   dell'animazione, o si vedrebbero sette copie sovrapposte a quella vera. */
+.shard {
+  position: absolute;
+  inset: 0;
+  display: block;
+  font: inherit;
+  letter-spacing: inherit;
+  text-indent: inherit;
+  text-transform: inherit;
+  color: #dff1ff;
+  text-shadow: 0 0 10px rgba(170, 220, 255, 0.75);
+  opacity: 0;
+  pointer-events: none;
+  animation: shardFly var(--shatter) cubic-bezier(0.25, 0.5, 0.4, 1) var(--shatter-at) forwards;
+}
+
+@keyframes shardFly {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--dx), var(--dy)) rotate(var(--rot));
+    opacity: 0;
+  }
+}
+
+/* Cristalli che si POSANO intorno al titolo: crescono sul posto e restano
+   quasi fermi, poi svaniscono con le schegge. È la differenza fra "si sta
+   congelando" e "sta esplodendo" — quello viene dopo, ed è compito delle
+   schegge. */
+.crystal {
+  position: absolute;
+  background: linear-gradient(150deg, rgba(232, 248, 255, 0.95), rgba(120, 185, 235, 0.35));
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+  opacity: 0;
+  pointer-events: none;
+  animation: crystalSettle calc(var(--freeze-hold) + var(--shatter)) ease-out both;
+}
+
+@keyframes crystalSettle {
+  0% {
+    opacity: 0;
+    scale: 0.2;
+  }
+  18% {
+    opacity: 0.9;
+    scale: 1;
+  }
+  62% {
+    opacity: 0.85;
+    scale: 1;
+  }
+  100% {
+    opacity: 0;
+    scale: 1.15;
+  }
+}
+
+/* L'ascia. Attraversa tutto lo schermo ruotando su sé stessa: è il movimento
+   che distingue questo quadro dagli altri due con un'uscita (il dash pulito
+   della motosega, il petalo che si disperde) — un'ascia lanciata gira, e se
+   non girasse leggerebbe come un rettangolo che scivola.
+
+   Il tragitto è in `vw` e non in percentuali della sagoma: una percentuale è
+   relativa alla LARGHEZZA DELL'ASCIA, quindi su uno schermo largo non
+   basterebbe a portarla fuori campo (stesso errore già preso con la
+   motosega). `top: 50%` più `translateY(-50%)` la mette sulla mezzeria, cioè
+   sul titolo. */
+.axe {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(34vw, 330px);
+  aspect-ratio: 1;
+  /* Un'ascia lanciata gira attorno al proprio baricentro, che sta nella testa
+     e non al centro dell'immagine: ruotando attorno al centro geometrico il
+     manico faceva da elica e si vedeva l'inganno.
+
+     Questi due numeri sono tarati sull'immagine in `public/images/birthday/
+     axe.png` (testa in alto al centro, manico dritto verso il basso, molto
+     vuoto attorno). Sostituendo il file con un'ascia inquadrata diversamente
+     vanno rifatti a occhio, altrimenti il baricentro cade fuori dal ferro e
+     la rotazione torna a sembrare una girandola. */
+  transform-origin: 47% 24%;
+  pointer-events: none;
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.75));
+  animation: axeThrow var(--throw) linear both;
+}
+
+/* Vale sia per il disegno SVG sia per un'eventuale immagine al suo posto:
+   `contain` dentro il riquadro quadrato del contenitore, così una foto con
+   proporzioni diverse non viene stirata né sborda. */
+.axeSvg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Quattro battute in un'unica animazione: arriva ruotando (due giri e mezzo),
+   COLPISCE — e lì per un fotogramma è ferma e dritta, senza quel fermo il
+   colpo non si legge — poi esce a destra, e infine torna indietro in mano,
+   più veloce dell'andata. Il richiamo dell'ascia è iconico quanto il lancio.
+   Le percentuali dei fotogrammi sono calcolate su --throw, che vale
+   EXIT_DURATION: 30% ≈ IMPACT_AT, 63% ≈ SHATTER_AT. */
+/* Quattro battute in un'unica animazione: arriva ruotando e rallentando, SI
+   CONFICCA (con un contraccolpo di un paio di gradi, come una lama che morde
+   e vibra), resta piantata lì per tutto il gelo, poi viene richiamata e si
+   strappa via a sinistra.
+
+   Le percentuali non sono a occhio: 32% è IMPACT_AT diviso THROW_DURATION,
+   68-70% è SHATTER_AT diviso THROW_DURATION — cioè l'istante in cui il
+   titolo va in schegge. È lo strappo a romperlo, quindi i due devono
+   coincidere.
+
+   La rotazione si ferma a 515°, non a un multiplo di 360: netti 155°
+   lasciano la lama rivolta in avanti e appena inclinata verso il basso, che
+   è come si pianta una lama lanciata. Un multiplo tondo l'avrebbe lasciata
+   dritta come un soprammobile. */
+/* Lo scostamento verticale è -24% e non -50%: deve coincidere con la Y del
+   `transform-origin` qui sopra, così è il BARICENTRO dell'ascia a cadere
+   sulla mezzeria dello schermo — cioè sul titolo. Con -50% ci finiva il
+   centro geometrico dell'immagine, che in un'ascia sta a metà del manico: la
+   testa restava sospesa sopra la scritta invece di entrarci. */
+@keyframes axeThrow {
+  0% {
+    transform: translate(-95vw, -24%) rotate(0deg);
+    opacity: 1;
+  }
+  26% {
+    transform: translate(-66%, -24%) rotate(430deg);
+  }
+  /* il morso */
+  32% {
+    transform: translate(-50%, -24%) rotate(515deg);
+  }
+  34% {
+    transform: translate(-47%, -24%) rotate(505deg);
+  }
+  37% {
+    transform: translate(-52%, -24%) rotate(521deg);
+  }
+  40% {
+    transform: translate(-50%, -24%) rotate(515deg);
+  }
+  /* conficcata e immobile per tutta la durata del gelo */
+  68% {
+    transform: translate(-50%, -24%) rotate(515deg);
+  }
+  /* lo strappo: arretra di scatto ed e' questo a spaccare il titolo */
+  71% {
+    transform: translate(-64%, -24%) rotate(498deg);
+  }
+  100% {
+    transform: translate(-95vw, -24%) rotate(120deg);
+    opacity: 1;
+  }
+}
+
+/* Tinta fredda su tutto il quadro. `saturate` sul retro spegne l'oro della
+   scena mentre il gelo prende piede: è quello a far sentire il freddo, il
+   velo azzurro da solo sembrerebbe solo un filtro appiccicato sopra. */
+.coldOverlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 50%, rgba(150, 205, 245, 0.22), rgba(40, 90, 140, 0.3) 70%);
+  backdrop-filter: saturate(0.5) brightness(0.94);
+  opacity: 0;
+  animation: coldIn calc(var(--shatter-at) + var(--shatter)) ease-out both;
+}
+
+@keyframes coldIn {
+  0% {
+    opacity: 0;
+  }
+  /* sale mentre la brina si propaga... */
+  22% {
+    opacity: 0;
+  }
+  46% {
+    opacity: 1;
+  }
+  /* ...resta per tutta la pausa da congelato, e se ne va con le schegge */
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* La vampata del colpo: bianca e azzurra, brevissima. */
+.frostFlash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 50%, rgba(235, 250, 255, 0.85), transparent 46%);
+  opacity: 0;
+  animation: flashHit 0.3s ease-out var(--impact-at) forwards;
+}
+
+@keyframes flashHit {
+  0% {
+    opacity: 0;
+    scale: 0.4;
+  }
+  14% {
+    opacity: 1;
+    scale: 1;
+  }
+  100% {
+    opacity: 0;
+    scale: 1.5;
+  }
+}
+
+/* Sbuffi di vapore dal punto d'impatto: salgono e si allargano sfocandosi. */
+.vapour {
+  position: absolute;
+  top: 50%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(226, 244, 255, 0.5), transparent 68%);
+  filter: blur(6px);
+  opacity: 0;
+  pointer-events: none;
+  animation-name: vapourRise;
+  animation-timing-function: ease-out;
+  animation-fill-mode: forwards;
+}
+
+@keyframes vapourRise {
+  0% {
+    transform: translate(-50%, -50%) scale(0.35);
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.75;
+  }
+  100% {
+    transform: translate(calc(-50% + var(--drift)), -190%) scale(1.5);
+    opacity: 0;
+  }
+}
+
+/* Anche i due fili e la runa si gelano: erano gli unici pezzi del blocco
+   rimasti dorati mentre il titolo diventava ghiaccio, e stonavano. */
+.blockFrozen .rule {
+  animation: ruleFreeze var(--freeze-spread) ease-out var(--impact-at) both;
+}
+
+@keyframes ruleFreeze {
+  to {
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(150, 205, 240, 0.6) 30%,
+      rgba(224, 246, 255, 0.9) 50%,
+      rgba(150, 205, 240, 0.6) 70%,
+      transparent
+    );
+    box-shadow: 0 0 10px rgba(170, 220, 255, 0.55);
+  }
+}
+
+.blockFrozen .runeStroke line {
+  animation: runeFreeze var(--freeze-spread) ease-out var(--impact-at) both;
+}
+
+@keyframes runeFreeze {
+  from {
+    stroke: rgba(224, 200, 150, 0.8);
+  }
+  to {
+    stroke: rgba(214, 240, 255, 0.95);
+    filter: drop-shadow(0 0 6px rgba(160, 215, 255, 0.8));
+  }
+}
+
+/* Scossa secca all'impatto: pochi pixel, a passi netti, finita in un lampo.
+   Serve a far sentire il peso del colpo, non a farsi notare. */
+.rootHit {
+  animation: hitShake 0.26s steps(1, end) var(--impact-at) 1;
+}
+
+@keyframes hitShake {
+  0% {
+    transform: translate(0, 0);
+  }
+  18% {
+    transform: translate(-7px, 4px);
+  }
+  40% {
+    transform: translate(6px, -3px);
+  }
+  62% {
+    transform: translate(-4px, -2px);
+  }
+  84% {
+    transform: translate(2px, 1px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

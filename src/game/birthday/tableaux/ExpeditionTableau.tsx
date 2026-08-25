@@ -1,5 +1,5 @@
 import { useMemo, useRef, type CSSProperties } from 'react';
-import { AGE, TEXTS, TIMINGS } from '../birthdayConfig';
+import { AGE, TEXTS } from '../birthdayConfig';
 import { useTextDissolve, type PetalTone } from './useTextDissolve';
 import styles from './ExpeditionTableau.module.css';
 
@@ -24,19 +24,15 @@ const PETAL_PALETTE: readonly PetalTone[] = [
  * Quanto dura lo sbriciolamento del testo, dal primo petalo all'ultimo che
  * svanisce. Deve combaciare con `scatter` + il ritardo massimo per particella
  * in ExpeditionTableau.module.css / useTextDissolve.
+ *
+ * Esportata perché la LEGGE la timeline (`EXIT_DURATIONS` in
+ * BirthdayScene.tsx): è lei a dare il via all'effetto con questo anticipo
+ * sulla fine del quadro, così finisce nell'istante in cui comincia la
+ * dissolvenza. Prima il quadro se lo calcolava da sé con un
+ * `gsap.delayedCall` sui `TIMINGS`, e restava indietro appena la timeline
+ * si fermava a un checkpoint o ci si saltava sopra.
  */
-const DISSOLVE_DURATION = 1.5;
-
-/**
- * L'istante in cui far partire lo sbriciolamento, contato da quando il quadro
- * diventa quello corrente. Calcolato sui tempi veri invece che scritto a mano
- * così resta giusto anche cambiando `TIMINGS`/`HOLD_SCALE`: finisce esatto
- * quando comincia il fadeOut del contenitore.
- */
-const DISSOLVE_AT = Math.max(
-  0,
-  TIMINGS.expedition.fadeIn + TIMINGS.expedition.hold - DISSOLVE_DURATION
-);
+export const EXIT_DURATION = 1.5;
 
 const prefersReducedMotion = () =>
   typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -82,6 +78,8 @@ const PAINT_TEXTURE = createPaintTexture();
 
 interface Props {
   active: boolean;
+  /** Via allo sbriciolamento, dalla timeline (vedi `EXIT_DURATION`). */
+  exiting: boolean;
 }
 
 /**
@@ -94,7 +92,7 @@ interface Props {
  * Prima di uscire di scena il testo non sfuma: si sbriciola in petali (vedi
  * `useTextDissolve`), che è il momento più riconoscibile del gioco citato.
  */
-export function ExpeditionTableau({ active }: Props) {
+export function ExpeditionTableau({ active, exiting }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   const numberRef = useRef<HTMLSpanElement>(null);
   const captionRef = useRef<HTMLParagraphElement>(null);
@@ -125,9 +123,8 @@ export function ExpeditionTableau({ active }: Props) {
       { ref: numberRef, budget: 140 },
       { ref: captionRef, budget: 170 }
     ],
-    active,
+    armed: exiting,
     enabled: !reducedMotion,
-    delay: DISSOLVE_AT,
     palette: PETAL_PALETTE
   });
 

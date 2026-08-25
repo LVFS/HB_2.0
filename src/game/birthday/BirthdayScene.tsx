@@ -17,10 +17,10 @@ import { useGamepadNavigation } from '@/hooks/useGamepadNavigation';
 import { SEQUENCE, TIMINGS, type TableauId } from './birthdayConfig';
 import { BirthdayControls } from './BirthdayControls';
 import { BloodborneTableau } from './tableaux/BloodborneTableau';
-import { GodOfWarTableau } from './tableaux/GodOfWarTableau';
+import { GodOfWarTableau, EXIT_DURATION as GOD_OF_WAR_EXIT } from './tableaux/GodOfWarTableau';
 import { HollowKnightTableau } from './tableaux/HollowKnightTableau';
-import { ExpeditionTableau } from './tableaux/ExpeditionTableau';
-import { ResidentEvilTableau } from './tableaux/ResidentEvilTableau';
+import { ExpeditionTableau, EXIT_DURATION as EXPEDITION_EXIT } from './tableaux/ExpeditionTableau';
+import { ResidentEvilTableau, EXIT_DURATION as RESIDENT_EVIL_EXIT } from './tableaux/ResidentEvilTableau';
 import { GtaTableau } from './tableaux/GtaTableau';
 import styles from './BirthdayScene.module.css';
 
@@ -48,18 +48,34 @@ gsap.ticker.lagSmoothing(0);
  */
 const OVERLAP = 0;
 
-function renderTableau(id: TableauId, active: boolean) {
+/**
+ * Quanto dura l'effetto di USCITA di ogni quadro che ne ha uno, in secondi.
+ * Serve alla timeline per sapere con quanto anticipo dare il via, così
+ * l'effetto finisce esattamente quando comincia la dissolvenza del quadro.
+ * I quadri che non compaiono qui escono con la sola dissolvenza.
+ *
+ * Il numero lo dichiara il quadro stesso (`EXIT_DURATION`), non questo file:
+ * chi ritocca la coreografia non deve ricordarsi di aggiornare anche un
+ * secondo posto.
+ */
+const EXIT_DURATIONS: Partial<Record<TableauId, number>> = {
+  godOfWar: GOD_OF_WAR_EXIT,
+  expedition: EXPEDITION_EXIT,
+  residentEvil: RESIDENT_EVIL_EXIT
+};
+
+function renderTableau(id: TableauId, active: boolean, exiting: boolean) {
   switch (id) {
     case 'bloodborne':
       return <BloodborneTableau />;
     case 'godOfWar':
-      return <GodOfWarTableau active={active} />;
+      return <GodOfWarTableau active={active} exiting={exiting} />;
     case 'hollowKnight':
       return <HollowKnightTableau active={active} />;
     case 'expedition':
-      return <ExpeditionTableau active={active} />;
+      return <ExpeditionTableau active={active} exiting={exiting} />;
     case 'residentEvil':
-      return <ResidentEvilTableau active={active} />;
+      return <ResidentEvilTableau active={active} exiting={exiting} />;
     case 'gta':
       return <GtaTableau active={active} />;
   }
@@ -99,6 +115,11 @@ export function BirthdayScene({ gamepadDetected }: BirthdaySceneProps) {
   const progressFillRef = useRef<HTMLDivElement>(null);
 
   const [activeIndex, setActiveIndex] = useState(0);
+  // Quale quadro sta eseguendo il proprio effetto di uscita, se qualcuno lo
+  // sta facendo. Acceso da un `.call()` PIAZZATO SULLA TIMELINE (vedi
+  // sotto), non da un timer a orologio: è l'unica cosa che resta in fase con
+  // una timeline che si può fermare ai checkpoint e a cui si può saltare.
+  const [exitingIndex, setExitingIndex] = useState<number | null>(null);
   // La sequenza parte da sola all'arrivo su questa schermata (nessun gate
   // "premi per iniziare"): l'automatico riguarda solo cosa succede DOPO
   // ogni checkpoint di fine quadro (vedi sotto), non l'avvio.
@@ -203,7 +224,14 @@ export function BirthdayScene({ gamepadDetected }: BirthdaySceneProps) {
       // avanti/indietro (sotto, in `goToIndex`), senza dover ricalcolare a
       // mano l'istante assoluto di ogni quadro fuori da questo `forEach`.
       timeline.addLabel(id, at);
-      timeline.call(() => setActiveIndex(index), undefined, at);
+      timeline.call(
+        () => {
+          setActiveIndex(index);
+          setExitingIndex(null);
+        },
+        undefined,
+        at
+      );
       timeline.fromTo(
         element,
         { autoAlpha: 0 },
@@ -223,6 +251,19 @@ export function BirthdayScene({ gamepadDetected }: BirthdaySceneProps) {
       // ferma qui da sola invece di proseguire nel fadeOut — `advance()`
       // (R1) la fa ripartire da questo stesso punto con la dissolvenza
       // vera, non un salto secco.
+      // Via all'effetto di uscita del quadro, se ne ha uno: tanto prima del
+      // checkpoint quanto dura, così finisce nell'istante esatto in cui
+      // comincia la dissolvenza. `Math.max(at, ...)` per il caso limite di un
+      // `hold` più corto dell'effetto: al più parte insieme al quadro.
+      const exitDuration = EXIT_DURATIONS[id];
+      if (exitDuration) {
+        timeline.call(
+          () => setExitingIndex(index),
+          undefined,
+          Math.max(at, outAt - exitDuration)
+        );
+      }
+
       checkpoints.push({ index, at: outAt });
       timeline.call(
         () => {
@@ -261,6 +302,7 @@ export function BirthdayScene({ gamepadDetected }: BirthdaySceneProps) {
     if (!timeline) return;
     const clamped = Math.min(Math.max(index, 0), SEQUENCE.length - 1);
     timeline.seek(SEQUENCE[clamped]);
+    setExitingIndex(null);
     // `activeIndex` va impostato a mano: GSAP non esegue le `.call()` della
     // timeline quando si salta con `.seek()` (stesso comportamento di
     // `.progress()`), quindi senza questa riga il quadro di destinazione
@@ -311,6 +353,13 @@ export function BirthdayScene({ gamepadDetected }: BirthdaySceneProps) {
     // alcun effetto). Un pelo oltre quella posizione evita di ripassarci.
     timeline.seek(next.at + 0.001);
     setActiveIndex(next.index);
+    // Saltando al checkpoint si è scavalcato il momento in cui sarebbe
+    // partito l'effetto di uscita: GSAP non esegue i `.call()` con `.seek()`,
+    // quindi l'effetto semplicemente non c'è stato. È il comportamento
+    // voluto — chi preme avanti vuole andare avanti, non aspettare una
+    // coreografia — ma il segnale va comunque azzerato, nel caso fosse già
+    // acceso.
+    setExitingIndex(null);
     if (!autoplayRef.current) {
       timeline.pause();
       setIsTicking(false);
@@ -372,7 +421,7 @@ export function BirthdayScene({ gamepadDetected }: BirthdaySceneProps) {
             tableauRefs.current[index] = node;
           }}
         >
-          {renderTableau(id, activeIndex === index)}
+          {renderTableau(id, activeIndex === index, exitingIndex === index)}
         </div>
       ))}
 

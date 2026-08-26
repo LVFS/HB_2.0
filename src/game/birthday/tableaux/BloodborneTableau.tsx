@@ -104,6 +104,12 @@ function Splatter() {
 }
 
 interface Props {
+  /** Vero quando questo è il quadro visibile. Serve solo alla deriva dello
+      sfondo (`.bgImage`/`bgImageActive`): senza, l'animazione partirebbe al
+      montaggio della pagina invece che a quando si vede davvero il quadro,
+      ed essendo tutti e sei montati insieme fin dall'inizio finirebbe già
+      esaurita prima che questo diventi quello a schermo. */
+  active: boolean;
   /** Via al colpo, dalla timeline (vedi `EXIT_DURATION`). */
   exiting: boolean;
 }
@@ -137,7 +143,7 @@ interface Props {
  * poi è tutto CSS. Ne segue, gratis, che in pausa il colpo si ferma col resto
  * e che saltando avanti a mano viene semplicemente saltato.
  */
-export function BloodborneTableau({ exiting }: Props) {
+export function BloodborneTableau({ active, exiting }: Props) {
   const reducedMotion = prefersReducedMotion();
   const striking = exiting && !reducedMotion;
   const playSfx = useSfx(WARM_UP);
@@ -230,7 +236,7 @@ export function BloodborneTableau({ exiting }: Props) {
       {/* Slot opzionale: se public/images/birthday/bloodborne-bg.jpg non
           c'è, questo div resta semplicemente trasparente — il gradiente di
           `.root` sotto fa da base sempre presente, nessuna icona rotta. */}
-      <div className={styles.bgImage} />
+      <div className={`${styles.bgImage} ${active ? styles.bgImageActive : ''}`} />
       {/* La vignettatura è già rossa: al colpo si accende per un istante,
           invece di aggiungere un lampo a parte. */}
       <div className={`${styles.vignette} ${striking ? styles.vignetteHit : ''}`} />

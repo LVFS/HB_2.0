@@ -209,7 +209,7 @@ export function ResidentEvilTableau({ active, exiting }: Props) {
     <div className={`${styles.root} ${sawing ? styles.rootShake : ''}`} style={timing}>
       {/* Slot opzionale: resta trasparente se il file manca, lo sfondo
           scuro di `.root` fa comunque da base. */}
-      <div className={styles.bgImage} />
+      <div className={`${styles.bgImage} ${active ? styles.bgImageActive : ''}`} />
       <div className={styles.scanlines} />
 
       

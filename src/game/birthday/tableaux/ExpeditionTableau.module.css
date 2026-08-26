@@ -16,13 +16,41 @@
    "grana dipinta" del resto del quadro, non un'immagine nuda che stona.
    Prefisso `/HB_2.0/` = `base` di vite.config.ts, scritto a mano perché un
    .css non ha accesso a `import.meta.env.BASE_URL`. */
+/* `inset: -6%` e non 0: da margine a `bgDrift` qui sotto senza scoprire un
+   bordo di `cover` — `.paintTexture` sopra segue lo stesso riquadro con
+   `inset: 0` e non se ne accorge, la sua grana continua a coprire tutto. */
 .bgImage {
   position: absolute;
-  inset: 0;
+  inset: -6%;
   background-image: url('/HB_2.0/images/birthday/expedition-bg.jpg');
   background-size: cover;
   background-position: center;
   opacity: 0.6;
+  transform-origin: 60% 50%;
+}
+
+/* L'animazione vive su questa classe, applicata solo quando `active`
+   e' vero, non su `.bgImage` direttamente: i sei quadri sono montati
+   tutti insieme fin dal caricamento della pagina, quindi un'animazione
+   sempre accesa partirebbe al montaggio e non a quando il quadro
+   diventa quello a schermo — per i quadri più avanti nella sequenza
+   sarebbe già esaurita (fill: forwards, ferma sull'ultimo fotogramma)
+   prima ancora di vederli. Stesso principio già in uso in tutto il
+   progetto per le animazioni d'entrata (classi tipo `.numberActive`/
+   `.blockActive`, gia' presenti in questo file o negli altri quadri). */
+.bgImageActive {
+  animation: bgDrift 14s ease-out forwards;
+}
+
+/* Deriva lenta e in un'unica direzione, mai un loop avanti-indietro. 14s è
+   una costante a sé, non legata a `TIMINGS.expedition.hold` (10s). */
+@keyframes bgDrift {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.09) translate(-1.8%, 0.8%);
+  }
 }
 
 /* Texture pittorica generata via canvas (vedi createPaintTexture nel
@@ -309,6 +337,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .bgImageActive {
+    animation: none;
+  }
+
   .numberActive {
     animation: none;
     opacity: 1;

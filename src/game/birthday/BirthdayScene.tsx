@@ -68,7 +68,7 @@ const EXIT_DURATIONS: Partial<Record<TableauId, number>> = {
 function renderTableau(id: TableauId, active: boolean, exiting: boolean) {
   switch (id) {
     case 'bloodborne':
-      return <BloodborneTableau exiting={exiting} />;
+      return <BloodborneTableau active={active} exiting={exiting} />;
     case 'godOfWar':
       return <GodOfWarTableau active={active} exiting={exiting} />;
     case 'hollowKnight':

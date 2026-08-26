@@ -14,13 +14,45 @@
    quadro è il più silenzioso della sequenza. Prefisso `/HB_2.0/` = `base`
    di vite.config.ts, scritto a mano perché un .css non ha accesso a
    `import.meta.env.BASE_URL`. */
+/* `inset: -4%` e non 0: da margine a `bgDrift` qui sotto senza scoprire un
+   bordo di `cover`. Ampiezza molto più piccola che negli altri quadri
+   apposta (vedi `bgDrift`): questo è l'unico quadro pensato per essere
+   fermo — un pan marcato ruberebbe attenzione alla frase, esattamente il
+   difetto che `.ornament` qui sotto evita di proposito restando immobile. */
 .bgImage {
   position: absolute;
-  inset: 0;
+  inset: -4%;
   background-image: url('/HB_2.0/images/birthday/hollowknight-bg.jpg');
   background-size: cover;
   background-position: center;
   opacity: 0.18;
+  transform-origin: 50% 50%;
+}
+
+/* L'animazione vive su questa classe, applicata solo quando `active`
+   e' vero, non su `.bgImage` direttamente: i sei quadri sono montati
+   tutti insieme fin dal caricamento della pagina, quindi un'animazione
+   sempre accesa partirebbe al montaggio e non a quando il quadro
+   diventa quello a schermo — per i quadri più avanti nella sequenza
+   sarebbe già esaurita (fill: forwards, ferma sull'ultimo fotogramma)
+   prima ancora di vederli. Stesso principio già in uso in tutto il
+   progetto per le animazioni d'entrata (classi tipo `.numberActive`/
+   `.blockActive`, gia' presenti in questo file o negli altri quadri). */
+.bgImageActive {
+  animation: bgDrift 18s ease-out forwards;
+}
+
+/* Deriva appena percettibile, più lenta (18s) e a un terzo dell'ampiezza
+   degli altri quadri — un accenno di respiro, non un movimento di macchina:
+   qui la quiete è voluta, non un difetto da correggere. Unica direzione, mai
+   un loop avanti-indietro. Costante a sé, non legata a `hold` (10s). */
+@keyframes bgDrift {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.025) translate(0.4%, -0.4%);
+  }
 }
 
 /* Fregio, messaggio, fregio: una colonna sola, così i tre pezzi restano
@@ -175,5 +207,14 @@
   100% {
     transform: translate(118vw, 1.5vh);
     opacity: 0;
+  }
+}
+
+/* Le altre animazioni del quadro (pulviscoli, falena) sono già spente lato
+   JS da `prefersReducedMotion()` nel componente — questa è l'unica che vive
+   solo in CSS, quindi le serve la sua media query qui. */
+@media (prefers-reduced-motion: reduce) {
+  .bgImageActive {
+    animation: none;
   }
 }

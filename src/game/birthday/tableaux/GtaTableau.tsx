@@ -75,7 +75,7 @@ export function GtaTableau({ active }: Props) {
     <div className={styles.root}>
       {/* Slot opzionale: resta trasparente se il file manca, il gradiente
           sotto fa comunque da base. */}
-      <div className={styles.bgImage} />
+      <div className={`${styles.bgImage} ${active ? styles.bgImageActive : ''}`} />
 
       {/* Vampata bianca brevissima, la tipica "flash" dei title-card
           action/mission-passed, prima che partano coriandoli e contatori.

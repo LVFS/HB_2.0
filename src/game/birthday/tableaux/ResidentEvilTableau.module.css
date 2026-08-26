@@ -10,14 +10,54 @@
 /* Slot opzionale per public/images/birthday/residentevil-bg.jpg: se il
    file manca, `background-image` fallisce in silenzio e resta lo sfondo
    scuro di `.root`. Prefisso `/HB_2.0/` = `base` di vite.config.ts, scritto
-   a mano perché un .css non ha accesso a `import.meta.env.BASE_URL`. */
+   a mano perché un .css non ha accesso a `import.meta.env.BASE_URL`.
+
+   `inset: -6%` invece di 0: ingrandisce l'elemento del 12% circa per lato,
+   margine che serve solo a `bgDrift` qui sotto — lo zoom/pan non deve MAI
+   scoprire un bordo vuoto di `cover`. L'animazione va su questo elemento e
+   non su `.root` apposta: `.rootShake` (in fondo al file) anima già
+   `transform` su `.root` durante il taglio, e due `animation` diverse sullo
+   stesso elemento non si sommano — vince l'ultima dichiarata, l'altra
+   sparirebbe silenziosamente. */
 .bgImage {
   position: absolute;
-  inset: 0;
+  inset: -6%;
   background-image: url('/HB_2.0/images/birthday/residentevil-bg.jpg');
   background-size: cover;
   background-position: center;
   opacity: 0.35;
+  transform-origin: 55% 45%;
+}
+
+/* L'animazione vive su questa classe, applicata solo quando `active`
+   e' vero, non su `.bgImage` direttamente: i sei quadri sono montati
+   tutti insieme fin dal caricamento della pagina, quindi un'animazione
+   sempre accesa partirebbe al montaggio e non a quando il quadro
+   diventa quello a schermo — per i quadri più avanti nella sequenza
+   sarebbe già esaurita (fill: forwards, ferma sull'ultimo fotogramma)
+   prima ancora di vederli. Stesso principio già in uso in tutto il
+   progetto per le animazioni d'entrata (classi tipo `.numberActive`/
+   `.blockActive`, gia' presenti in questo file o negli altri quadri). */
+.bgImageActive {
+  animation: bgDrift 14s ease-out forwards;
+}
+
+/* Un'unica deriva lenta, non un loop avanti-indietro: su una foto intera un
+   pan che torna sui suoi passi si vede, e si legge come un errore invece che
+   come un movimento di macchina. `ease-out` la fa assestare invece di
+   fermarsi di colpo. 14s è una costante a sé, non legata a
+   `TIMINGS.residentEvil.hold` (10s) — stesso principio già usato per `roll`
+   delle scanline qui sopra: se un domani si ritocca `hold` in
+   birthdayConfig.ts, questa animazione non deve risentirne. Un po' più
+   lunga del tempo a schermo effettivo (~10,6s) così il pan è ancora
+   percepibile quando il quadro esce, non fermo da un pezzo. */
+@keyframes bgDrift {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.08) translate(-1.5%, 1%);
+  }
 }
 
 /* Simbolo universale di rischio biologico — non un'icona proprietaria del
@@ -457,6 +497,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .bgImageActive,
   .scanlines,
   .stampActive {
     animation: none;

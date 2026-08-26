@@ -299,7 +299,7 @@ export function GodOfWarTableau({ active, exiting }: Props) {
     <div className={`${styles.root} ${breaking ? styles.rootHit : ''}`} style={timing}>
       {/* Slot opzionale: resta trasparente se il file manca, la texture di
           pietra procedurale sotto fa comunque da base. */}
-      <div className={styles.bgImage} />
+      <div className={`${styles.bgImage} ${active ? styles.bgImageActive : ''}`} />
       {/* <div className={styles.stone} /> */}
 
       {/* Tinta fredda su TUTTO il quadro, non solo sul titolo: entra

@@ -85,7 +85,7 @@ export function HollowKnightTableau({ active }: Props) {
     <div className={styles.root}>
       {/* Slot opzionale: resta trasparente se il file manca, il gradiente
           radiale sotto fa comunque da base. */}
-      <div className={styles.bgImage} />
+      <div className={`${styles.bgImage} ${active ? styles.bgImageActive : ''}`} />
 
       {motes.map((mote) => (
         <span

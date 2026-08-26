@@ -199,7 +199,7 @@ export function ExpeditionTableau({ active, exiting }: Props) {
       {/* Slot opzionale: resta trasparente se il file manca, il gradiente
           di `.root` fa comunque da base. Sta SOTTO la texture pittorica
           (vedi il CSS) — l'artwork reale come base, la grana dipinta sopra. */}
-      <div className={styles.bgImage} />
+      <div className={`${styles.bgImage} ${active ? styles.bgImageActive : ''}`} />
       <div className={styles.paintTexture} style={{ backgroundImage: `url(${PAINT_TEXTURE})` }} />
 
       {petals.map((petal) => (

@@ -1,30 +1,86 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import gsap from 'gsap';
+import { useSfx } from '@/hooks/useSfx';
 import { TEXTS } from '../birthdayConfig';
 import styles from './GodOfWarTableau.module.css';
 
 /**
- * Tempi dell'uscita, in secondi. Come per Resident Evil sono l'unica fonte:
- * il CSS non li riscrive, li riceve come custom property sulla radice del
- * quadro e le sue @keyframes ci si agganciano.
+ * ────────────────────────────────────────────────────────────────────────
+ *  I TEMPI SONO TARATI SUI TRE FILE AUDIO, non a occhio (stesso principio
+ *  già seguito per Bloodborne) — e sul CONTENUTO di ciascun file, non solo
+ *  sulla sua durata: ascoltati uno per uno, sono tre cose diverse da quello
+ *  che sembravano al primo giro:
+ *
+ *    throw_axe.mp3     4.68s — la CARICA del lancio nel primo secondo, poi
+ *                             il lancio vero e proprio. Non contiene
+ *                             l'impatto: l'ascia non deve toccare niente
+ *                             finché questo file non è arrivato al lancio.
+ *    frost_axe.mp3     3.94s — IMPATTO e congelamento insieme, non solo il
+ *                             gelo: il suo picco (0.7s) è il colpo, quello
+ *                             che segue è il ghiaccio che si propaga.
+ *    retrieve_axe.mp3  1.46s — SOLO il ritorno dell'ascia in mano, non lo
+ *                             strappo che frantuma il titolo: è il suono
+ *                             del volo di ritorno, non della rottura.
+ *
+ *  Da qui scendono tutte le altre costanti. Le percentuali dei fotogrammi
+ *  in GodOfWarTableau.module.css sono calcolate a mano su questi numeri (una
+ *  custom property CSS non può comparire come offset di un @keyframes, solo
+ *  dentro `animation-delay`/`-duration`) — se cambi un valore qui, vanno
+ *  ricalcolate anche quelle, il conto è spiegato lì.
+ * ────────────────────────────────────────────────────────────────────────
  */
+
 /**
- * Quando l'ascia raggiunge il titolo, contato dal via. Quasi un secondo di
- * volo: a mezzo secondo l'ascia era un lampo e non si capiva cosa fosse
- * passato, figurarsi che stava girando su sé stessa.
+ * Quando finisce la carica e l'ascia lascia la mano — letteralmente "dopo il
+ * primo secondo parte il lancio". Fino a qui l'ascia non si muove: sta fuori
+ * campo, ferma, mentre si sente la carica.
  */
-const IMPACT_AT = 0.95;
-/** Quanto ci mette la brina a propagarsi dal punto d'impatto. */
-const FREEZE_SPREAD = 0.5;
+const RELEASE_AT = 1;
+/**
+ * Quanto dura il volo vero, da quando l'ascia parte a quando morde il
+ * titolo. Un lancio rapido apposta: più veloce del volo precedente (che
+ * copriva tutto il tempo da zero, carica compresa) e con più giri — vedi il
+ * commento sulla rotazione in GodOfWarTableau.module.css.
+ */
+const FLIGHT_DURATION = 0.9;
+/** Quando l'ascia raggiunge il titolo. */
+const IMPACT_AT = RELEASE_AT + FLIGHT_DURATION;
+
+/**
+ * `frost_axe.mp3` contiene l'impatto E il gelo nello stesso file, con
+ * l'impatto — il suo picco — a 0.7s dall'inizio. Per farlo cadere
+ * sull'impatto VERO (`IMPACT_AT`) il file va lanciato con questo anticipo,
+ * non nell'istante dell'impatto: altrimenti il colpo si sentirebbe con
+ * sette decimi di ritardo su quello che si vede.
+ */
+const FROST_LEAD = 0.7;
+const FROST_SOUND_AT = IMPACT_AT - FROST_LEAD;
+
+/**
+ * Quanto ci mette la brina a propagarsi dal punto d'impatto. Coincide con
+ * la sequenza di `frost_axe.mp3` DOPO il suo picco (impatto a 0.7s, gelo
+ * sostenuto fino a ~1.5s, cioè 0.8s di propagazione): il cerchio finisce di
+ * allargarsi mentre il suono del ghiaccio è ancora pieno.
+ */
+const FREEZE_SPREAD = 0.7;
 /**
  * Quanto resta FERMO e congelato dopo che la brina ha finito di allargarsi.
- * È il battito che separa il colpo che immobilizza da quello che frantuma:
- * senza una pausa vera i tre momenti si leggono come uno solo e confuso.
+ * È il battito che separa il colpo che immobilizza da quello che frantuma.
  */
-const FREEZE_STILL = 0.6;
+const FREEZE_STILL = 0.9;
 const FREEZE_HOLD = FREEZE_SPREAD + FREEZE_STILL;
-/** Quando il titolo va in schegge. */
+/** Quando il titolo va in schegge: è lo strappo a romperlo. */
 const SHATTER_AT = IMPACT_AT + FREEZE_HOLD;
 const SHATTER_DURATION = 0.9;
+
+/**
+ * `retrieve_axe.mp3` è SOLO il ritorno, non lo strappo — quindi parte
+ * insieme al ritorno stesso (`SHATTER_AT`, l'istante in cui l'ascia comincia
+ * ad arretrare), senza bisogno di anticipo: il suo picco (0.8s dopo) cade da
+ * solo verso la fine del volo di ritorno, vicino al momento in cui l'ascia
+ * esce di scena — cioè torna in mano.
+ */
+const RETRIEVE_SOUND_AT = SHATTER_AT;
 
 /**
  * Quanto dura tutta l'uscita. Esportata perché la LEGGE la timeline
@@ -33,6 +89,9 @@ const SHATTER_DURATION = 0.9;
  * nell'istante in cui comincia la dissolvenza.
  */
 export const EXIT_DURATION = SHATTER_AT + SHATTER_DURATION;
+
+/** Costante di modulo, non un array letterale: deve avere identità stabile. */
+const WARM_UP = ['throw_axe', 'frost_axe', 'retrieve_axe'] as const;
 
 /** Volo dell'ascia: andata, uscita a destra, e ritorno in mano. */
 const THROW_DURATION = EXIT_DURATION;
@@ -161,6 +220,7 @@ function Axe() {
  */
 export function GodOfWarTableau({ active, exiting }: Props) {
   const reducedMotion = prefersReducedMotion();
+  const playSfx = useSfx(WARM_UP);
 
   // Sondato al montaggio e non al momento del lancio: il quadro è in scena da
   // secondi quando serve, quindi l'immagine è già decodificata e non si vede
@@ -173,8 +233,23 @@ export function GodOfWarTableau({ active, exiting }: Props) {
     probe.onload = () => setAxeImage(src);
     probe.src = src;
   }, []);
-  // Nessuno stato locale e nessun timer: la timeline dice quando, il CSS come.
+  // Nessuno stato locale e nessun timer per l'animazione: la timeline dice
+  // quando, il CSS come. I tre suoni invece hanno bisogno di un ritardo
+  // proprio (vedi sopra) e vivono qui: `gsap.delayedCall` va bene perché
+  // questi ritardi sono interni all'effetto, condividono l'orologio con le
+  // @keyframes invece di essere un secondo temporizzatore, e se il quadro
+  // viene saltato a mano la pulizia li spegne — stessa tecnica di Bloodborne.
   const breaking = exiting && !reducedMotion;
+
+  useEffect(() => {
+    if (!breaking) return;
+    const timers = [
+      gsap.delayedCall(0, () => playSfx('throw_axe')),
+      gsap.delayedCall(FROST_SOUND_AT, () => playSfx('frost_axe')),
+      gsap.delayedCall(RETRIEVE_SOUND_AT, () => playSfx('retrieve_axe'))
+    ];
+    return () => timers.forEach((timer) => timer.kill());
+  }, [breaking, playSfx]);
 
   // Cristalli che si POSANO intorno al titolo, non che schizzano via: nella
   // fase di congelamento restano quasi fermi. Quelli che volano sono le

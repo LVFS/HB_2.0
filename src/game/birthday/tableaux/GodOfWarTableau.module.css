@@ -324,62 +324,72 @@
   object-fit: contain;
 }
 
-/* Quattro battute in un'unica animazione: arriva ruotando (due giri e mezzo),
-   COLPISCE — e lì per un fotogramma è ferma e dritta, senza quel fermo il
-   colpo non si legge — poi esce a destra, e infine torna indietro in mano,
-   più veloce dell'andata. Il richiamo dell'ascia è iconico quanto il lancio.
-   Le percentuali dei fotogrammi sono calcolate su --throw, che vale
-   EXIT_DURATION: 30% ≈ IMPACT_AT, 63% ≈ SHATTER_AT. */
-/* Quattro battute in un'unica animazione: arriva ruotando e rallentando, SI
-   CONFICCA (con un contraccolpo di un paio di gradi, come una lama che morde
-   e vibra), resta piantata lì per tutto il gelo, poi viene richiamata e si
-   strappa via a sinistra.
+/* Le percentuali qui sotto sono ricalcolate a mano sui tempi dettati
+   dall'audio (vedi il blocco di commenti in cima al .tsx): una custom
+   property CSS non può comparire come offset di un @keyframes, quindi ogni
+   volta che RELEASE_AT/IMPACT_AT/SHATTER_AT cambiano vanno riportati qui i
+   conti, non solo aggiornata la costante.
 
-   Le percentuali non sono a occhio: 32% è IMPACT_AT diviso THROW_DURATION,
-   68-70% è SHATTER_AT diviso THROW_DURATION — cioè l'istante in cui il
-   titolo va in schegge. È lo strappo a romperlo, quindi i due devono
-   coincidere.
+   Cinque battute in un'unica animazione: FERMA fuori campo per tutto il
+   primo secondo (22.7% = RELEASE_AT/EXIT_DURATION) — è la carica del
+   lancio, `throw_axe.mp3`, e finché non finisce l'ascia non si muove; poi
+   VOLA veloce e SI CONFICCA (43.2% = IMPACT_AT/EXIT_DURATION, dove parte
+   `frost_axe.mp3`) con un contraccolpo di un paio di gradi — una lama che
+   morde e vibra; resta piantata lì per tutto il gelo; poi viene richiamata
+   (80.6%, poco dopo SHATTER_AT) e si strappa via a sinistra, dove
+   `retrieve_axe.mp3` la accompagna nel volo di ritorno.
 
-   La rotazione si ferma a 515°, non a un multiplo di 360: netti 155°
-   lasciano la lama rivolta in avanti e appena inclinata verso il basso, che
-   è come si pianta una lama lanciata. Un multiplo tondo l'avrebbe lasciata
-   dritta come un soprammobile. */
-/* Lo scostamento verticale è -24% e non -50%: deve coincidere con la Y del
-   `transform-origin` qui sopra, così è il BARICENTRO dell'ascia a cadere
-   sulla mezzeria dello schermo — cioè sul titolo. Con -50% ci finiva il
-   centro geometrico dell'immagine, che in un'ascia sta a metà del manico: la
-   testa restava sospesa sopra la scritta invece di entrarci. */
+   La rotazione totale è più alta di un giro pieno (875° invece di 515°) e
+   il volo vero dura solo 0.9s invece che i 1.9s di prima: le due cose
+   insieme fanno un lancio che gira quasi quattro volte più in fretta
+   (972°/s contro 271°/s). Il giro in più (+360°, non uno scalamento) è
+   sommato a TUTTI i fotogrammi successivi allo stesso modo apposta: così il
+   piccolo tremolio dell'impatto (i 6-17° di oscillazione fra un fotogramma
+   e l'altro) resta della stessa ampiezza, non diventa anche lui più
+   violento — solo il lancio deve sentirsi più rapido, non il fremito dopo.
+
+   La rotazione finale si ferma a 515° (mod 360 = 155°), non a un multiplo
+   di 360: netti 155° lasciano la lama rivolta in avanti e appena inclinata
+   verso il basso, che è come si pianta una lama lanciata. Un multiplo tondo
+   l'avrebbe lasciata dritta come un soprammobile. */
+
 @keyframes axeThrow {
   0% {
     transform: translate(-95vw, -24%) rotate(0deg);
     opacity: 1;
   }
-  26% {
-    transform: translate(-66%, -24%) rotate(430deg);
+  /* fine della carica: ferma, stessa posizione di 0%. 22.7% = RELEASE_AT /
+     EXIT_DURATION — l'ascia non si è mossa di un pixel per un secondo
+     intero, e va bene così: sta fuori campo, non la vede nessuno. */
+  22.7% {
+    transform: translate(-95vw, -24%) rotate(0deg);
   }
-  /* il morso */
-  32% {
-    transform: translate(-50%, -24%) rotate(515deg);
+  39% {
+    transform: translate(-66%, -24%) rotate(731deg);
   }
-  34% {
-    transform: translate(-47%, -24%) rotate(505deg);
+  /* il morso: 43.2% = IMPACT_AT / EXIT_DURATION */
+  43.2% {
+    transform: translate(-50%, -24%) rotate(875deg);
   }
-  37% {
-    transform: translate(-52%, -24%) rotate(521deg);
+  44.4% {
+    transform: translate(-47%, -24%) rotate(865deg);
   }
-  40% {
-    transform: translate(-50%, -24%) rotate(515deg);
+  46.4% {
+    transform: translate(-52%, -24%) rotate(881deg);
   }
-  /* conficcata e immobile per tutta la durata del gelo */
-  68% {
-    transform: translate(-50%, -24%) rotate(515deg);
+  48.4% {
+    transform: translate(-50%, -24%) rotate(875deg);
+  }
+  /* conficcata e immobile per tutta la durata del gelo, fino a SHATTER_AT */
+  79.5% {
+    transform: translate(-50%, -24%) rotate(875deg);
   }
   /* lo strappo: arretra di scatto ed e' questo a spaccare il titolo */
-  71% {
-    transform: translate(-64%, -24%) rotate(498deg);
+  80.6% {
+    transform: translate(-64%, -24%) rotate(858deg);
   }
   100% {
-    transform: translate(-95vw, -24%) rotate(120deg);
+    transform: translate(-95vw, -24%) rotate(480deg);
     opacity: 1;
   }
 }
@@ -401,15 +411,15 @@
   0% {
     opacity: 0;
   }
-  /* sale mentre la brina si propaga... */
-  22% {
+  /* sale un po' prima dell'impatto e finisce di salire un po' dopo... */
+  36.3% {
     opacity: 0;
   }
-  46% {
+  52.4% {
     opacity: 1;
   }
   /* ...resta per tutta la pausa da congelato, e se ne va con le schegge */
-  70% {
+  79.9% {
     opacity: 1;
   }
   100% {

@@ -30,7 +30,13 @@ const SFX_SOURCES = {
   // muta e non succede nient'altro.
   gunshot: 'audio/sfx/gunshot.mp3',
   parry: 'audio/sfx/parry.mp3',
-  riposte: 'audio/sfx/riposte.mp3'
+  riposte: 'audio/sfx/riposte.mp3',
+  // I tre tempi dell'uscita di God of War: il lancio (che contiene anche
+  // l'impatto, non sono due file separati), il gelo che si propaga, e lo
+  // strappo finale.
+  throw_axe: 'audio/sfx/throw_axe.mp3',
+  frost_axe: 'audio/sfx/frost_axe.mp3',
+  retrieve_axe: 'audio/sfx/retrieve_axe.mp3'
 } as const;
 
 export type SfxName = keyof typeof SFX_SOURCES;

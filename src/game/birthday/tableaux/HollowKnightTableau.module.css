@@ -74,7 +74,7 @@
      grande. */
   font-family: 'EB Garamond', Georgia, serif;
   font-size: clamp(1.15rem, 2.6vw, 1.85rem);
-  --measure: min(22ch, 78vw);
+  --measure: min(33ch, 88vw);
 }
 
 /* Volutamente FERMO, senza animazioni né `--audio-pulse`: questo è il quadro
@@ -116,6 +116,16 @@
   transform: scaleY(-1);
 }
 
+/* Avvolge SOLO il paragrafo (non i fregi): i frantumi qui sotto sono
+   `position: absolute; inset: 0` e devono allinearsi esattamente alla
+   scatola del testo vero, non a quella dell'intero `.block` — stesso
+   principio di `.stampWrap` in ResidentEvilTableau. Funziona a qualunque
+   larghezza/proporzione perché è ancorato all'elemento vero, non a una
+   posizione calcolata a mano. */
+.textWrap {
+  position: relative;
+}
+
 .text {
   /* Distribuisce le parole sulle righe invece di riempirne una e lasciare
      l'ultima con una parola sola: senza, "te." restava orfano in fondo. */
@@ -133,6 +143,25 @@
   text-shadow:
     0 0 18px rgba(210, 230, 255, 0.3),
     0 0 46px rgba(150, 190, 240, 0.14);
+}
+
+/* Il testo vero sparisce di colpo (steps: nessuna dissolvenza, verrebbe
+   morbida) esattamente quando il Cavaliere arriva — al suo posto restano i
+   frantumi sotto. Stessa tecnica di `.stampCut` in ResidentEvilTableau: la
+   DURATA dell'animazione è essa stessa `--impact-at`, quindi il testo
+   sparisce appena il tempo trascorso la eguaglia, senza bisogno di un
+   ritardo separato. */
+.textCut {
+  animation: textVanish var(--impact-at) steps(1, end) forwards;
+}
+
+@keyframes textVanish {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
 }
 
 .mote {
@@ -217,4 +246,301 @@
   .bgImageActive {
     animation: none;
   }
+}
+
+/* ─── L'uscita: il dash del Cavaliere ───────────────────────────────────
+   Tutte le durate e i ritardi qui sotto sono le custom property dichiarate
+   in HollowKnightTableau.tsx (`--knight-total`, `--impact-at`, `--shatter`).
+   Il componente le usa solo per sapere QUANDO accendere l'interruttore
+   (`dashing`) e con che tempi; da lì in poi la coreografia è tutta qui —
+   stessa divisione già usata per la motosega di Resident Evil. */
+
+/* Contenitore dei frantumi + lampo + scintille: copre esattamente la
+   scatola del testo (vedi `.textWrap`). */
+.shatter {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Le sei schegge: copie del testo vero, ciascuna ritagliata a un pezzo
+   irregolare che va dal centro verso un tratto del perimetro (un ventaglio
+   che ricopre l'intero riquadro senza buchi né sovrapposizioni) — stile
+   scheggia/ceramica, non il taglio netto della motosega. Invisibili finché
+   il ritardo non trascorre (stesso principio di `.half` in
+   ResidentEvilTableau): `forwards`, non `both`, quindi il primo fotogramma
+   dell'animazione non retroagisce e fino a quel momento vale l'opacità 0
+   qui sotto. */
+.shard {
+  composes: text;
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  animation: shardFly var(--shatter) ease-out var(--impact-at) forwards;
+}
+
+.shard0 {
+  clip-path: polygon(50% 50%, 12% 0%, 60% 0%);
+  --dx: -24px;
+  --dy: -70px;
+  --rot: -18deg;
+}
+
+.shard1 {
+  clip-path: polygon(50% 50%, 60% 0%, 100% 30%);
+  --dx: 50px;
+  --dy: -55px;
+  --rot: 22deg;
+}
+
+.shard2 {
+  clip-path: polygon(50% 50%, 100% 30%, 100% 100%);
+  --dx: 70px;
+  --dy: 20px;
+  --rot: 14deg;
+}
+
+.shard3 {
+  clip-path: polygon(50% 50%, 100% 100%, 40% 100%);
+  --dx: 30px;
+  --dy: 65px;
+  --rot: -16deg;
+}
+
+.shard4 {
+  clip-path: polygon(50% 50%, 40% 100%, 0% 65%);
+  --dx: -45px;
+  --dy: 50px;
+  --rot: 20deg;
+}
+
+.shard5 {
+  clip-path: polygon(50% 50%, 0% 65%, 12% 0%);
+  --dx: -65px;
+  --dy: -25px;
+  --rot: -24deg;
+}
+
+/* Un istante ferme al loro posto prima di volare via: senza, sembrano pezzi
+   che erano già staccati (stesso principio del fermo a inizio di `halfUp`/
+   `halfDown` in ResidentEvilTableau). */
+@keyframes shardFly {
+  0%,
+  8% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--dx), var(--dy)) rotate(var(--rot));
+    opacity: 0;
+  }
+}
+
+/* Orbo magico dell'impatto: cresce, trattiene un istante, si dirada — la
+   sagoma (nucleo + bagliore + volute) è tutta nell'SVG (`MagicOrb` in TSX),
+   qui vive solo la crescita/dissolvenza dell'insieme. */
+.magicOrb {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 62%;
+  max-width: 320px;
+  opacity: 0;
+  pointer-events: none;
+  animation: orbBurst 0.32s ease-out var(--impact-at) forwards;
+}
+
+.orbSvg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.orbWisps {
+  filter: blur(0.5px);
+}
+
+.orbCore {
+  fill: #06070c;
+  filter: drop-shadow(0 0 14px rgba(120, 170, 255, 0.55));
+}
+
+.orbHighlight {
+  fill: rgba(238, 245, 255, 0.85);
+  filter: blur(2.5px);
+}
+
+@keyframes orbBurst {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.4);
+  }
+  35% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.05);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.25);
+  }
+}
+
+/* Scintille: stessa tecnica di `.spark`/`sparkFly` in
+   ResidentEvilTableau, ricolorate nella tinta fredda di questo quadro.
+   Nascono tutte dal centro dell'impatto (non lungo una linea come lì, che
+   taglia — qui il colpo è puntuale): direzione e tempismo arrivano da
+   `--dx`/`--dy`/`animationDelay`, impostati per istanza in TSX. */
+.spark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #eaf4ff;
+  box-shadow:
+    0 0 4px rgba(220, 236, 255, 1),
+    0 0 12px rgba(160, 200, 255, 0.7);
+  opacity: 0;
+  animation-name: sparkFly;
+  animation-timing-function: ease-out;
+  animation-fill-mode: forwards;
+}
+
+@keyframes sparkFly {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0.3);
+    opacity: 0;
+  }
+}
+
+/* Sfere di cura: stessa tecnica delle scintille (nascono dal centro
+   dell'impatto, `--dx`/`--dy` per istanza) ma più grandi/morbide e con un
+   tragitto molto più lungo — `--dx`/`--dy` qui arrivano in `vw`/`vh`, non
+   `px`, apposta: devono uscire davvero dall'inquadratura, non solo
+   allontanarsi dal punto d'impatto. */
+.healOrb {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #f2f8ff;
+  box-shadow:
+    0 0 6px rgba(230, 242, 255, 1),
+    0 0 18px rgba(170, 210, 255, 0.8);
+  opacity: 0;
+  animation-name: healFly;
+  animation-timing-function: ease-out;
+  animation-fill-mode: forwards;
+}
+
+@keyframes healFly {
+  0% {
+    transform: translate(-50%, -50%) scale(0.6);
+    opacity: 0;
+  }
+  15% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  75% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0.4);
+    opacity: 0;
+  }
+}
+
+/* Il Cavaliere attraversa tutto lo schermo, quindi sta appeso a `.root` e
+   non al testo — stesso principio di `.sawFlight` in
+   ResidentEvilTableau. La centratura (-50%, -50%) e lo spostamento del
+   dash sono nella STESSA animazione (`knightDash` sotto), non in un
+   trasform di base: separarli avrebbe richiesto sommare due trasform, che
+   CSS non fa da solo su proprietà diverse in animazioni diverse. */
+.knightFlight {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  --kw: min(20vw, 150px);
+  width: var(--kw);
+  aspect-ratio: 50 / 58;
+  pointer-events: none;
+  animation: knightDash var(--knight-total) linear forwards;
+}
+
+/* Arriva da destra (la falena qui sopra attraversa da sinistra: direzioni
+   opposte, così i due passaggi si leggono come due gesti distinti, non
+   una ripetizione), rallenta e si ferma di scatto sul testo (fermo
+   immagine fra il 43% e il 54% — la stessa posizione ripetuta due volte,
+   il "fotogramma congelato"), poi rimbalza indietro verso destra e sparisce.
+   Nessuna vibrazione: il dash è secco e preciso, non pesante come la
+   motosega. */
+@keyframes knightDash {
+  0% {
+    transform: translate(calc(-50% + 62vw), -50%) rotate(0deg);
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  35% {
+    transform: translate(calc(-50% + 12vw), -50%) rotate(-6deg);
+  }
+  43% {
+    transform: translate(-50%, -50%) rotate(-2deg);
+  }
+  54% {
+    transform: translate(-50%, -50%) rotate(-2deg);
+  }
+  100% {
+    transform: translate(calc(-50% + 5vw), -50%) rotate(4deg);
+    opacity: 0;
+  }
+}
+
+.knightSvg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.knightFill {
+  fill: #0a0a0c;
+}
+
+.knightEye {
+  fill: #f4f6fb;
+}
+
+.knightGhostFar,
+.knightGhostNear,
+.knightBlade {
+  position: absolute;
+  inset: 0;
+}
+
+/* Le due copie sfalsate restano indietro rispetto al verso di marcia
+   (destra → centro), quindi sono spostate verso DESTRA rispetto alla
+   copia principale — dietro nel senso di marcia, non davanti. */
+.knightGhostFar {
+  opacity: 0.14;
+  transform: translateX(16%);
+}
+
+.knightGhostNear {
+  opacity: 0.32;
+  transform: translateX(8%);
+}
+
+.knightBlade {
+  filter:
+    drop-shadow(0 0 10px rgba(190, 220, 255, 0.35)) drop-shadow(0 4px 10px rgba(0, 0, 0, 0.5));
 }

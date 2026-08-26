@@ -39,7 +39,12 @@ const SFX_SOURCES = {
   retrieve_axe: 'audio/sfx/retrieve_axe.mp3',
   // L'uscita di Expedition: un unico file che contiene sia la carica
   // dell'attacco sia il colpo che cancella — non due suoni separati.
-  simon_erase: 'audio/sfx/simon_erase.mp3'
+  simon_erase: 'audio/sfx/simon_erase.mp3',
+  // I due tempi dell'uscita di Hollow Knight, in DUE file distinti (non uno
+  // solo come `simon_erase`): l'incantesimo che si carica mentre il
+  // Cavaliere parte nel dash, poi l'impatto quando arriva sul testo.
+  heroSpell: 'audio/sfx/hero_spell.wav',
+  heroImpact: 'audio/sfx/hero_impact.wav'
 } as const;
 
 export type SfxName = keyof typeof SFX_SOURCES;

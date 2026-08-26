@@ -23,7 +23,14 @@ import { useSettingsStore } from '@/store/settingsStore';
 const SFX_SOURCES = {
   impact: 'audio/sfx/wall-impact.mp3',
   rubble: 'audio/sfx/rubble.mp3',
-  chainsaw: 'audio/sfx/chainsaw.wav'
+  chainsaw: 'audio/sfx/chainsaw.wav',
+  // I tre tempi dell'uscita di Bloodborne: il colpo che parte, il tonfo del
+  // colpo che va a segno, e il finale che arriva mezzo secondo dopo. Vanno
+  // aggiunti in `public/audio/sfx/`; finché non ci sono, la scena scorre
+  // muta e non succede nient'altro.
+  gunshot: 'audio/sfx/gunshot.mp3',
+  parry: 'audio/sfx/parry.mp3',
+  riposte: 'audio/sfx/riposte.mp3'
 } as const;
 
 export type SfxName = keyof typeof SFX_SOURCES;

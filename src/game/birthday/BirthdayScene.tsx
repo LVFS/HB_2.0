@@ -16,7 +16,7 @@ import { useBirthdayMusic } from '@/hooks/useBirthdayMusic';
 import { useGamepadNavigation } from '@/hooks/useGamepadNavigation';
 import { SEQUENCE, TIMINGS, type TableauId } from './birthdayConfig';
 import { BirthdayControls } from './BirthdayControls';
-import { BloodborneTableau } from './tableaux/BloodborneTableau';
+import { BloodborneTableau, EXIT_DURATION as BLOODBORNE_EXIT } from './tableaux/BloodborneTableau';
 import { GodOfWarTableau, EXIT_DURATION as GOD_OF_WAR_EXIT } from './tableaux/GodOfWarTableau';
 import { HollowKnightTableau } from './tableaux/HollowKnightTableau';
 import { ExpeditionTableau, EXIT_DURATION as EXPEDITION_EXIT } from './tableaux/ExpeditionTableau';
@@ -59,6 +59,7 @@ const OVERLAP = 0;
  * secondo posto.
  */
 const EXIT_DURATIONS: Partial<Record<TableauId, number>> = {
+  bloodborne: BLOODBORNE_EXIT,
   godOfWar: GOD_OF_WAR_EXIT,
   expedition: EXPEDITION_EXIT,
   residentEvil: RESIDENT_EVIL_EXIT
@@ -67,7 +68,7 @@ const EXIT_DURATIONS: Partial<Record<TableauId, number>> = {
 function renderTableau(id: TableauId, active: boolean, exiting: boolean) {
   switch (id) {
     case 'bloodborne':
-      return <BloodborneTableau />;
+      return <BloodborneTableau exiting={exiting} />;
     case 'godOfWar':
       return <GodOfWarTableau active={active} exiting={exiting} />;
     case 'hollowKnight':

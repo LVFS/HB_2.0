@@ -157,3 +157,253 @@
   color: #d8cdb6;
   text-shadow: 0 0 26px rgba(0, 0, 0, 0.9);
 }
+
+/* Il colpo si accende sulla vignettatura che c'e' gia', invece di
+   sovrapporle un lampo nuovo: un istante di rosso pieno e via. */
+/* Due accensioni, non una: sul colpo e sul finale. La seconda dura di piu' e
+   sale un po' di piu' — e' il momento piu' cruento dei due. */
+.vignetteHit {
+  animation:
+    bloodFlash 0.26s ease-out var(--impact-at) 1,
+    bloodFlash 0.5s ease-out var(--riposte-at) 1;
+}
+
+@keyframes bloodFlash {
+  0% {
+    filter: none;
+  }
+  /* Appena un'accensione, non un lavaggio: la vignettatura copre tutto lo
+     schermo, quindi anche un valore modesto qui si vede parecchio — a 3.4 il
+     quadro diventava una schermata rossa piatta. */
+  12% {
+    filter: brightness(1.9) saturate(1.35);
+  }
+  100% {
+    filter: none;
+  }
+}
+
+/* ─── Lo sparo ─────────────────────────────────────────────────────────
+   Vampata sul bordo sinistro e scia fino al centro della frase. Chi spara
+   resta fuori campo: cosi' non c'e' un'arma da disegnare bene, e quello che
+   si vede e' il colpo, che e' la cosa che conta. */
+.muzzle {
+  position: absolute;
+  top: 50%;
+  left: -4%;
+  width: min(26vw, 220px);
+  aspect-ratio: 1;
+  z-index: 5;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  background:
+    radial-gradient(circle at 50% 50%, rgba(255, 246, 214, 0.95), rgba(255, 156, 60, 0.55) 32%, transparent 62%);
+  opacity: 0;
+  animation: muzzleFlash 0.16s ease-out var(--muzzle-at) forwards;
+}
+
+@keyframes muzzleFlash {
+  0% {
+    transform: translate(-50%, -50%) scale(0.2);
+    opacity: 0;
+  }
+  18% {
+    transform: translate(-50%, -50%) scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(0.7);
+    opacity: 0;
+  }
+}
+
+/* La scia: una sbavatura orizzontale che si allunga dal bordo fino al
+   centro. `transform-origin` a sinistra perche' deve CRESCERE da li', non
+   scivolare. */
+.tracer {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 50%;
+  height: 3px;
+  z-index: 5;
+  pointer-events: none;
+  transform-origin: 0 50%;
+  background: linear-gradient(90deg, rgba(255, 226, 160, 0), rgba(255, 236, 190, 0.9) 70%, rgba(255, 255, 255, 0.95));
+  opacity: 0;
+  animation: tracerShot calc(var(--impact-at) - var(--muzzle-at)) linear var(--muzzle-at) forwards;
+}
+
+@keyframes tracerShot {
+  0% {
+    transform: translateY(-50%) scaleX(0);
+    opacity: 0.95;
+  }
+  70% {
+    transform: translateY(-50%) scaleX(1);
+    opacity: 0.95;
+  }
+  100% {
+    transform: translateY(-50%) scaleX(1);
+    opacity: 0;
+  }
+}
+
+/* ─── L'esplosione ─────────────────────────────────────────────────────
+   I getti partono TUTTI dal centro della frase e si allungano verso
+   l'esterno: `transform-origin` a sinistra, cosi' `scaleX` li fa uscire da
+   li' invece di gonfiarli nei due versi. Il gradiente li tiene pieni alla
+   base e trasparenti in punta — e' quello a farli leggere come schizzi e non
+   come raggi di una ruota. */
+.ray {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 3;
+  pointer-events: none;
+  transform-origin: 0 50%;
+  border-radius: 0 60% 60% 0 / 0 50% 50% 0;
+  background: linear-gradient(90deg, rgba(150, 12, 18, 0.95), rgba(120, 10, 15, 0.75) 55%, rgba(90, 6, 10, 0));
+  opacity: 0;
+  animation-name: rayShoot;
+  animation-timing-function: cubic-bezier(0.1, 0.85, 0.3, 1);
+  animation-fill-mode: forwards;
+}
+
+@keyframes rayShoot {
+  0% {
+    transform: rotate(var(--a)) translateX(4px) translateY(-50%) scaleX(0.04);
+    opacity: 1;
+  }
+  40% {
+    transform: rotate(var(--a)) translateX(10px) translateY(-50%) scaleX(1);
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(var(--a)) translateX(var(--reach)) translateY(-50%) scaleX(0.85);
+    opacity: 0;
+  }
+}
+
+/* Il segno che resta nel punto colpito. Piccolo apposta: deve leggersi come
+   il punto d'impatto, non coprire la frase — la scritta qui non si rompe e
+   non sparisce, resta sotto il sangue. */
+.splatter {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(24vw, 210px);
+  aspect-ratio: 1;
+  z-index: 4;
+  pointer-events: none;
+  /* Stato di partenza INVISIBILE e gia' centrato. Serve perche' le due
+     animazioni qui sotto sono `forwards` e non `both`: durante il ritardo
+     della prima non viene applicato nessun fotogramma, quindi vale questo. Con
+     l'opacita' piena e senza `translate`, lo schizzo restava a schermo per
+     mezzo secondo PRIMA che il colpo arrivasse, e per giunta spostato in basso
+     a destra di meta' della sua misura — il centraggio ce l'hanno solo i
+     fotogrammi. */
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.05);
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.7));
+  /* Due animazioni: si apre sul colpo e si ALLARGA di nuovo sulla seconda
+     ondata. Nessuna `backwards`, cosi' durante il ritardo della seconda vale
+     ancora il valore finale della prima e non c'e' scatto nel mezzo. */
+  animation:
+    splatterBloom 0.2s cubic-bezier(0.15, 0.9, 0.3, 1) var(--impact-at) forwards,
+    splatterSurge 0.28s cubic-bezier(0.2, 1.4, 0.4, 1) var(--surge-at) forwards;
+}
+
+.splatterSvg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+@keyframes splatterBloom {
+  0% {
+    transform: translate(-50%, -50%) scale(0.05) rotate(-14deg);
+    opacity: 0;
+  }
+  30% {
+    opacity: 0.92;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(0.62) rotate(0deg);
+    opacity: 0.92;
+  }
+}
+
+@keyframes splatterSurge {
+  from {
+    transform: translate(-50%, -50%) scale(0.62) rotate(0deg);
+    opacity: 0.92;
+  }
+  to {
+    transform: translate(-50%, -50%) scale(1) rotate(3deg);
+    opacity: 0.92;
+  }
+}
+
+/* ─── La pioggia ───────────────────────────────────────────────────────
+   Gocce allungate, cupe e senza riflesso: con una lucentezza chiara
+   diventavano identiche alle braci del quadro, che e' esattamente quello che
+   non devono sembrare. Cadono accelerando, e sono sfalsate su quasi mezzo
+   secondo (vedi RAIN_STAGGER): e' lo scaglionamento a fare la pioggia, se
+   partissero insieme sarebbe un altro schizzo. */
+.rainDrop {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 4;
+  border-radius: 52% 52% 46% 46% / 62% 62% 30% 30%;
+  background: linear-gradient(180deg, rgba(196, 26, 30, 0.98), rgba(96, 7, 11, 0.95));
+  /* Un alone appena accennato: la scena e' molto scura e una goccia rosso
+     cupo senza stacco ci sparisce dentro — la pioggia c'era ma non si
+     vedeva. Niente riflesso chiaro pero', o tornano a sembrare le braci. */
+  box-shadow: 0 0 5px rgba(180, 20, 24, 0.55);
+  opacity: 0;
+  pointer-events: none;
+  animation-name: rainFall;
+  animation-timing-function: cubic-bezier(0.45, 0, 0.9, 0.6);
+  animation-fill-mode: forwards;
+}
+
+@keyframes rainFall {
+  0% {
+    transform: translate(calc(-50% + var(--dx)), -50%) scale(0.5);
+    opacity: 0;
+  }
+  14% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(calc(-50% + var(--dx) + var(--spread)), calc(-50% + var(--fall-y))) scale(1);
+    opacity: 0;
+  }
+}
+
+/* Scossa secca del colpo, a passi netti come negli altri quadri. */
+.rootHit {
+  animation:
+    hitShake 0.22s steps(1, end) var(--impact-at) 1,
+    hitShake 0.3s steps(1, end) var(--riposte-at) 1;
+}
+
+@keyframes hitShake {
+  0% {
+    transform: translate(0, 0);
+  }
+  20% {
+    transform: translate(7px, -4px);
+  }
+  46% {
+    transform: translate(-6px, 3px);
+  }
+  72% {
+    transform: translate(3px, 2px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}

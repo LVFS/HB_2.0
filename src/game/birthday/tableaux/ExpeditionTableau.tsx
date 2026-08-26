@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, type CSSProperties } from 'react';
 import gsap from 'gsap';
 import { useSfx } from '@/hooks/useSfx';
+import { useAudioDuckStore } from '@/store/audioDuckStore';
 import { AGE, TEXTS } from '../birthdayConfig';
 import { useTextDissolve, type PetalTone } from './useTextDissolve';
 import styles from './ExpeditionTableau.module.css';
@@ -57,6 +58,17 @@ export const EXIT_DURATION = IMPACT_AT + SCATTER_TAIL;
 
 /** Costante di modulo, non un array letterale: deve avere identità stabile. */
 const WARM_UP = ['simon_erase'] as const;
+
+/** Durata vera del file (vedi il blocco di commenti sopra) — quanto deve
+ * restare abbassata la musica (sotto, `useAudioDuckStore`). */
+const SFX_FILE_DURATION = 6.09;
+/**
+ * Quanto scende la musica mentre suona `simon_erase`: il colpo è già al
+ * volume massimo possibile (sia lato Howler sia lato file, non c'è più
+ * margine per alzarlo — vedi `useSfx`), quindi l'unico modo per farlo
+ * sentire sopra lo stinger del quadro è abbassare lei, non lui.
+ */
+const MUSIC_DUCK_LEVEL = 0.35;
 
 const SMOKE_COUNT = 9;
 
@@ -135,13 +147,26 @@ export function ExpeditionTableau({ active, exiting }: Props) {
   // traccia, non due suoni separati da sincronizzare. Il bagliore e il fumo
   // seguono via CSS (rispettivamente durata e ritardo su --impact-at), non
   // servono altri gsap.delayedCall qui.
+  const setDuck = useAudioDuckStore((state) => state.setDuck);
+
   useEffect(() => {
     if (!striking) return;
-    const timer = gsap.delayedCall(0, () => playSfx('simon_erase'));
+    // Il colpo è già al volume massimo possibile (sia lato Howler sia lato
+    // file, vedi `useSfx` e `MUSIC_DUCK_LEVEL` sopra) — `{ volume: 2 }` non
+    // lo alza oltre quel tetto, si limita a garantire che lo raggiunga
+    // qualunque sia il volume globale impostato (il clamp in `useSfx` fa il
+    // resto). Il guadagno vero viene dall'abbassare la musica sotto,
+    // ripristinata alla fine del file (`SFX_FILE_DURATION`) o subito se il
+    // quadro viene saltato mentre l'sfx sta ancora suonando.
+    setDuck(MUSIC_DUCK_LEVEL);
+    const timer = gsap.delayedCall(SFX_FILE_DURATION, () => setDuck(1));
+    const playTimer = gsap.delayedCall(0, () => playSfx('simon_erase', { volume: 2 }));
     return () => {
       timer.kill();
+      playTimer.kill();
+      setDuck(1);
     };
-  }, [striking, playSfx]);
+  }, [striking, playSfx, setDuck]);
 
   const petals = useMemo(() => {
     if (reducedMotion) return [];

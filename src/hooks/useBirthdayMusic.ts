@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Howl } from 'howler';
 import { useSettingsStore } from '@/store/settingsStore';
+import { useAudioDuckStore } from '@/store/audioDuckStore';
 import { MUSIC_START_SECONDS, TIMINGS, type TableauId } from '@/game/birthday/birthdayConfig';
 
 /**
@@ -54,6 +55,10 @@ function getOrCreateSound(cache: Map<TableauId, Howl>, id: TableauId): Howl {
 export function useBirthdayMusic(activeTableauId: TableauId) {
   const musicEnabled = useSettingsStore((state) => state.musicEnabled);
   const volume = useSettingsStore((state) => state.volume);
+  // Moltiplicatore di "ducking" (vedi audioDuckStore): un quadro può
+  // chiederlo per far sentire un suo sfx sopra lo stinger — questo hook si
+  // limita ad applicarlo, non sa né gli importa chi lo ha richiesto.
+  const duck = useAudioDuckStore((state) => state.duck);
 
   const cache = useRef(new Map<TableauId, Howl>());
   const currentIdRef = useRef<TableauId | null>(null);
@@ -63,8 +68,8 @@ export function useBirthdayMusic(activeTableauId: TableauId) {
   // quadro, non quando l'utente tocca il volume) — leggerli da qui invece
   // che catturarli nella closure evita di doverli aggiungere alle
   // dipendenze.
-  const settings = useRef({ musicEnabled, volume });
-  settings.current = { musicEnabled, volume };
+  const settings = useRef({ musicEnabled, volume, duck });
+  settings.current = { musicEnabled, volume, duck };
 
   useEffect(() => {
     const sounds = cache.current;
@@ -95,7 +100,7 @@ export function useBirthdayMusic(activeTableauId: TableauId) {
     const fadeInMs = Math.max(TIMINGS[activeTableauId].fadeIn * 1000, 1);
     incoming.volume(0);
     incoming.play();
-    incoming.fade(0, settings.current.volume, fadeInMs);
+    incoming.fade(0, settings.current.volume * settings.current.duck, fadeInMs);
 
     const startAt = MUSIC_START_SECONDS[activeTableauId];
     if (startAt) {
@@ -107,12 +112,14 @@ export function useBirthdayMusic(activeTableauId: TableauId) {
 
   // Volume: applicato a ogni traccia ancora in riproduzione (inclusa una
   // eventualmente a metà dissolvenza in uscita), stesso principio di
-  // `useBackgroundMusic`.
+  // `useBackgroundMusic`. Il ducking passa da qui: quando `duck` cambia,
+  // questo effetto rigira e riapplica il volume corrente moltiplicato per
+  // il nuovo fattore, senza dover sapere QUALE quadro l'ha richiesto.
   useEffect(() => {
     cache.current.forEach((sound) => {
-      if (sound.playing()) sound.volume(volume);
+      if (sound.playing()) sound.volume(volume * duck);
     });
-  }, [volume]);
+  }, [volume, duck]);
 
   // Interruttore musica: ferma/riprende la traccia corrente senza
   // riavviare il crossfade, che dipende solo da `activeTableauId`.
@@ -127,7 +134,7 @@ export function useBirthdayMusic(activeTableauId: TableauId) {
       return;
     }
     if (!current.playing()) {
-      current.volume(volume);
+      current.volume(volume * settings.current.duck);
       current.play();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reagisce solo al toggle di musicEnabled, non a ogni cambio di volume (già gestito dall'effetto sopra)

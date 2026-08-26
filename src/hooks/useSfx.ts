@@ -113,7 +113,13 @@ export function useSfx(warmUp?: readonly SfxName[]) {
       cache.current.set(name, sound);
     }
 
-    sound.volume(settings.current.volume * (options?.volume ?? 1));
+    // Clampato a 1: Howler's `.volume()` non accetta valori fuori da [0,1] —
+    // non li riporta al limite, la chiamata intera diventa un no-op silenzioso
+    // (bug reale scovato con `simon_erase`: un `options.volume` che spingeva
+    // il prodotto oltre 1 lasciava il suono al volume di default di Howler,
+    // 1.0, invece che al volume "boostato" atteso — nessun errore, solo un
+    // volume diverso da quello richiesto).
+    sound.volume(Math.min(1, settings.current.volume * (options?.volume ?? 1)));
     sound.rate(options?.rate ?? 1);
     sound.play();
   }, []);

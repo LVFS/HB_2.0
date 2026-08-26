@@ -36,7 +36,10 @@ const SFX_SOURCES = {
   // strappo finale.
   throw_axe: 'audio/sfx/throw_axe.mp3',
   frost_axe: 'audio/sfx/frost_axe.mp3',
-  retrieve_axe: 'audio/sfx/retrieve_axe.mp3'
+  retrieve_axe: 'audio/sfx/retrieve_axe.mp3',
+  // L'uscita di Expedition: un unico file che contiene sia la carica
+  // dell'attacco sia il colpo che cancella — non due suoni separati.
+  simon_erase: 'audio/sfx/simon_erase.mp3'
 } as const;
 
 export type SfxName = keyof typeof SFX_SOURCES;

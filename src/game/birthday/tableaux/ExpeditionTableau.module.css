@@ -70,6 +70,15 @@
   animation: dissolve 3.4s ease-in-out both;
 }
 
+/* Il DIFETTO vero del quadro stava qui: il 100% portava il testo a
+   opacità 0.15 e sfocato — un secondo fondissolvenza cucito dentro
+   l'animazione D'ENTRATA, con una durata fissa (3.4s) scollegata da quanto
+   il quadro resta davvero in scena (`hold`, oggi 10s). Con un `hold` più
+   lungo di 3.4s il testo si spegneva da solo a metà quadro, restava quasi
+   invisibile per secondi, e poi l'uscita vera (i petali, vedi sotto)
+   scattava su un testo già sparito: due sparizioni separate invece di una.
+   Ora il 100% resta identico al 74%: il testo arriva e RESTA, punto — è
+   `.vanishing` più sotto, non questa, a farlo sparire quando è il momento. */
 @keyframes dissolve {
   0% {
     opacity: 0;
@@ -81,15 +90,10 @@
     filter: blur(0);
     transform: scale(1);
   }
-  74% {
+  100% {
     opacity: 1;
     filter: blur(0);
     transform: scale(1);
-  }
-  100% {
-    opacity: 0.15;
-    filter: blur(9px);
-    transform: scale(1.06);
   }
 }
 
@@ -121,8 +125,14 @@
    anche l'unico modo per partire da opacità piena a prescindere da dove
    `dissolve` fosse arrivata: `.caption` ha `opacity: 0` come base, e
    toglierle l'animazione la farebbe sparire di scatto. */
+/* Il ritardo è `--impact-at`, non zero: senza, il testo sbriciolerebbe
+   nell'istante in cui parte `simon_erase.mp3` (la carica), non quando la
+   cancella davvero (il colpo, secondi dopo). Durante l'attesa `both` tiene
+   il fotogramma "from" (opacità 1) di questa stessa animazione — che ha
+   GIÀ sostituito `dissolve` qui sopra per specificità/ordine — quindi il
+   testo resta fermo e visibile, non fa un salto quando l'attesa finisce. */
 .vanishing {
-  animation: textVanish 0.22s ease-out both;
+  animation: textVanish 0.22s ease-out var(--impact-at) both;
 }
 
 @keyframes textVanish {
@@ -133,6 +143,76 @@
   to {
     opacity: 0;
     filter: blur(3px);
+  }
+}
+
+/* ─── La cancellazione: bagliore, colpo, fumo ─────────────────────────────
+   Un unico file audio (`simon_erase.mp3`) copre due momenti — la carica
+   dell'attacco, poi il colpo che cancella — e i due elementi qui sotto
+   seguono lo stesso ritmo: il bagliore segna la carica, il fumo segna il
+   colpo (insieme ai petali, gestiti sopra). */
+
+/* Il bagliore si accende alla carica e dura ESATTAMENTE `--impact-at`: la
+   sua intera vita finisce quando arriva il colpo, quindi la sua durata è il
+   colpo stesso — non serve un `animation-delay` per farla combaciare col
+   resto, basta usare `--impact-at` come durata invece che come ritardo. */
+.eraseGlow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 55%, rgba(200, 40, 30, 0.4), rgba(120, 10, 10, 0.15) 55%, transparent 78%);
+  opacity: 0;
+  animation: eraseGlowPulse var(--impact-at) ease-in-out both;
+}
+
+@keyframes eraseGlowPulse {
+  0% {
+    opacity: 0;
+  }
+  /* Si accende in mezzo secondo e resta finché non arriva il colpo: la
+     percentuale è relativa, non un tempo fisso, perché --impact-at è la
+     durata dell'intera animazione. */
+  12% {
+    opacity: 1;
+  }
+  88% {
+    opacity: 1;
+  }
+  /* Si spegne appena prima del colpo: quando arrivano fumo e petali il
+     bagliore ha già lasciato la scena, i due momenti non si accavallano. */
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Fumo/polvere che si alza dal punto colpito, insieme ai petali. Stessa
+   tecnica degli sbuffi di vapore di God of War (cerchio sfocato che sale e
+   si allarga), qui in un grigio-bruno caldo — la polvere di una tela
+   cancellata, non il ghiaccio. */
+.smokePuff {
+  position: absolute;
+  top: 50%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(150, 120, 95, 0.55), transparent 70%);
+  filter: blur(9px);
+  opacity: 0;
+  pointer-events: none;
+  animation-name: smokeRise;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
+}
+
+@keyframes smokeRise {
+  0% {
+    transform: translate(-50%, -50%) scale(0.4);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translate(calc(-50% + var(--drift)), -220%) scale(1.8);
+    opacity: 0;
   }
 }
 

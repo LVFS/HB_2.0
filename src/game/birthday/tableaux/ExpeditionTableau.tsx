@@ -1,4 +1,6 @@
-import { useMemo, useRef, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, type CSSProperties } from 'react';
+import gsap from 'gsap';
+import { useSfx } from '@/hooks/useSfx';
 import { AGE, TEXTS } from '../birthdayConfig';
 import { useTextDissolve, type PetalTone } from './useTextDissolve';
 import styles from './ExpeditionTableau.module.css';
@@ -21,18 +23,42 @@ const PETAL_PALETTE: readonly PetalTone[] = [
 ];
 
 /**
- * Quanto dura lo sbriciolamento del testo, dal primo petalo all'ultimo che
- * svanisce. Deve combaciare con `scatter` + il ritardo massimo per particella
- * in ExpeditionTableau.module.css / useTextDissolve.
+ * ────────────────────────────────────────────────────────────────────────
+ *  I TEMPI SONO TARATI SU `simon_erase.mp3`, non a occhio (stesso principio
+ *  già seguito per Bloodborne/God of War). Un file solo, due momenti:
  *
- * Esportata perché la LEGGE la timeline (`EXIT_DURATIONS` in
- * BirthdayScene.tsx): è lei a dare il via all'effetto con questo anticipo
- * sulla fine del quadro, così finisce nell'istante in cui comincia la
- * dissolvenza. Prima il quadro se lo calcolava da sé con un
- * `gsap.delayedCall` sui `TIMINGS`, e restava indietro appena la timeline
- * si fermava a un checkpoint o ci si saltava sopra.
+ *    simon_erase.mp3   6.09s — la CARICA riempie i primi ~3s (un rullio
+ *                             continuo, non un colpo secco), poi tre secondi
+ *                             di silenzio quasi totale, poi il COLPO — il
+ *                             picco vero del file — a 4.30s.
+ *
+ *  Il bagliore rosso segna la carica (dura finché non arriva il colpo); il
+ *  testo si sbriciola e il fumo sale sul colpo, non prima.
+ * ────────────────────────────────────────────────────────────────────────
  */
-export const EXIT_DURATION = 1.5;
+
+/** Il picco di `simon_erase.mp3`: il colpo che cancella la scritta. */
+const IMPACT_AT = 4.3;
+/**
+ * Quanto ci mettono le ultime particelle (petali o fumo) a finire di
+ * sparire dopo il colpo — non il colpo stesso, la sua coda. Stesso valore
+ * di prima, quando era l'intera durata dell'effetto: rappresentava già
+ * "quanto dura il disperdersi", solo misurato dal momento sbagliato.
+ */
+const SCATTER_TAIL = 1.5;
+
+/**
+ * Quanto dura tutta l'uscita. Esportata perché la LEGGE la timeline
+ * (`EXIT_DURATIONS` in BirthdayScene.tsx): è lei a dare il via all'effetto
+ * con questo anticipo sulla fine del quadro, così l'ultimo petalo svanisce
+ * nell'istante in cui comincia la dissolvenza.
+ */
+export const EXIT_DURATION = IMPACT_AT + SCATTER_TAIL;
+
+/** Costante di modulo, non un array letterale: deve avere identità stabile. */
+const WARM_UP = ['simon_erase'] as const;
+
+const SMOKE_COUNT = 9;
 
 const prefersReducedMotion = () =>
   typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -89,8 +115,12 @@ interface Props {
  * lo stesso, non si rompe né lascia un buco. È voluto — l'età di qualcuno non
  * è un dato che si dà per scontato di poter mettere a schermo.
  *
- * Prima di uscire di scena il testo non sfuma: si sbriciola in petali (vedi
- * `useTextDissolve`), che è il momento più riconoscibile del gioco citato.
+ * L'USCITA cita il "Gommage" del gioco: Simon carica un colpo (bagliore
+ * rosso, `simon_erase.mp3` che rulla) e poi cancella la scritta dalla tela,
+ * che si sbriciola in petali — e un po' di fumo/polvere sale insieme a loro.
+ * Il testo non sfuma mai da solo: prima di questo effetto resta fermo a
+ * piena opacità (vedi il fix a `dissolve` più sotto nel CSS), poi si
+ * sbriciola tutto insieme quando arriva il colpo — non prima, non a pezzi.
  */
 export function ExpeditionTableau({ active, exiting }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -98,6 +128,20 @@ export function ExpeditionTableau({ active, exiting }: Props) {
   const captionRef = useRef<HTMLParagraphElement>(null);
 
   const reducedMotion = prefersReducedMotion();
+  const striking = exiting && !reducedMotion;
+  const playSfx = useSfx(WARM_UP);
+
+  // Un file solo, un solo lancio: la carica e il colpo sono la stessa
+  // traccia, non due suoni separati da sincronizzare. Il bagliore e il fumo
+  // seguono via CSS (rispettivamente durata e ritardo su --impact-at), non
+  // servono altri gsap.delayedCall qui.
+  useEffect(() => {
+    if (!striking) return;
+    const timer = gsap.delayedCall(0, () => playSfx('simon_erase'));
+    return () => {
+      timer.kill();
+    };
+  }, [striking, playSfx]);
 
   const petals = useMemo(() => {
     if (reducedMotion) return [];
@@ -125,11 +169,33 @@ export function ExpeditionTableau({ active, exiting }: Props) {
     ],
     armed: exiting,
     enabled: !reducedMotion,
-    palette: PETAL_PALETTE
+    palette: PETAL_PALETTE,
+    // I petali vanno campionati subito (il testo non si è ancora mosso) ma
+    // devono sbriciolarsi solo al colpo, non alla carica: è questo ritardo a
+    // farli aspettare, non il momento del campionamento.
+    startDelay: IMPACT_AT
   });
 
+  // Fumo che si alza col colpo, insieme ai petali — non prima: stessa idea
+  // degli sbuffi di vapore di God of War, qui più caldi (polvere di una tela
+  // cancellata, non ghiaccio).
+  const smoke = useMemo(() => {
+    if (reducedMotion) return [];
+    return Array.from({ length: SMOKE_COUNT }, (_, i) => ({
+      id: i,
+      left: `${30 + Math.random() * 40}%`,
+      size: `${70 + Math.random() * 90}px`,
+      drift: `${(Math.random() - 0.5) * 100}px`,
+      delay: `${IMPACT_AT + Math.random() * 0.4}s`,
+      duration: `${1 + Math.random() * 0.6}s`
+    }));
+  }, [reducedMotion]);
+
+  const timing = { '--impact-at': `${IMPACT_AT}s` } as CSSProperties;
+
   return (
-    <div className={styles.root} ref={rootRef}>
+    <div className={styles.root} ref={rootRef} style={timing}>
+      {striking && <span aria-hidden="true" className={styles.eraseGlow} />}
       {/* Slot opzionale: resta trasparente se il file manca, il gradiente
           di `.root` fa comunque da base. Sta SOTTO la texture pittorica
           (vedi il CSS) — l'artwork reale come base, la grana dipinta sopra. */}
@@ -175,6 +241,25 @@ export function ExpeditionTableau({ active, exiting }: Props) {
           {AGE !== null ? TEXTS.expedition : TEXTS.expeditionFallback}
         </p>
       </div>
+
+      {striking &&
+        smoke.map((puff) => (
+          <span
+            key={`s${puff.id}`}
+            aria-hidden="true"
+            className={styles.smokePuff}
+            style={
+              {
+                left: puff.left,
+                width: puff.size,
+                height: puff.size,
+                '--drift': puff.drift,
+                animationDelay: puff.delay,
+                animationDuration: puff.duration
+              } as CSSProperties
+            }
+          />
+        ))}
 
       {/* I petali del testo vivono in un livello a parte sopra `.stack`, con
           coordinate assolute rispetto a `.root`: così non toccano il layout

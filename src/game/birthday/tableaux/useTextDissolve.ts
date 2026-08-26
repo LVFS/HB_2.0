@@ -36,6 +36,15 @@ interface Options {
   /** Falso sotto prefers-reduced-motion: niente campionamento, niente particelle. */
   enabled: boolean;
   palette: readonly PetalTone[];
+  /**
+   * Secondi da sommare al ritardo di ogni particella, per far scattare lo
+   * sbriciolamento VISIBILE più tardi di quando `armed` diventa vero — senza
+   * toccare il momento in cui vengono campionate (che può restare immediato:
+   * il testo non si è mosso). Il caso d'uso è Expedition, dove il colpo che
+   * cancella la scritta arriva secondi dopo l'inizio del suono che lo
+   * accompagna. Default 0: tutti gli altri usi restano invariati.
+   */
+  startDelay?: number;
 }
 
 /** Sopra questa soglia di alpha il pixel fa parte di una lettera. */
@@ -147,7 +156,8 @@ function buildParticles(
   fontSize: number,
   palette: readonly PetalTone[],
   startId: number,
-  originWidth: number
+  originWidth: number,
+  startDelay: number
 ): DissolveParticle[] {
   // Particelle proporzionate al corpo del testo da cui nascono: quelle del
   // numero sono petali, quelle della didascalia briciole. Il minimo è alto
@@ -168,7 +178,7 @@ function buildParticles(
     dx: (point.x - centerX) * (0.12 + Math.random() * 0.3) + (Math.random() - 0.5) * 44,
     dy: -(40 + Math.random() * 130),
     rotate: (Math.random() - 0.5) * 260,
-    delay: Math.random() * 0.28,
+    delay: startDelay + Math.random() * 0.28,
     duration: 0.95 + Math.random() * 0.27
   }));
 }
@@ -198,7 +208,8 @@ export function useTextDissolve({
   targets,
   armed,
   enabled,
-  palette
+  palette,
+  startDelay = 0
 }: Options): { particles: DissolveParticle[]; dissolving: boolean } {
   const [particles, setParticles] = useState<DissolveParticle[]>([]);
 
@@ -225,7 +236,7 @@ export function useTextDissolve({
       const points = sampleText(element, origin, budget);
       const fontSize = parseFloat(getComputedStyle(element).fontSize) || 16;
       next.push(
-        ...buildParticles(points, fontSize, paletteRef.current, next.length, origin.width)
+        ...buildParticles(points, fontSize, paletteRef.current, next.length, origin.width, startDelay)
       );
     });
 
@@ -235,7 +246,7 @@ export function useTextDissolve({
     if (next.length > 0) setParticles(next);
 
     return () => setParticles([]);
-  }, [armed, enabled, containerRef]);
+  }, [armed, enabled, containerRef, startDelay]);
 
   return { particles, dissolving: particles.length > 0 };
 }

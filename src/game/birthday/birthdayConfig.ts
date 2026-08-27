@@ -41,7 +41,7 @@ export const GTA_STATS: { label: string; from: number; to: number; suffix?: stri
  */
 export const MUSIC_START_TIMES: Partial<Record<TableauId, string>> = {
   residentEvil: '1:16',
-  hollowKnight: '0:10',
+  hollowKnight: '1:56',
   godOfWar: '0:00',
   bloodborne: '0:00',
   expedition: '7:24',

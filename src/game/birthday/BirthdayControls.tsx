@@ -11,6 +11,11 @@ interface BirthdayControlsProps {
    * istante" (quello lo decide `advance()` da solo, checkpoint per
    * checkpoint), ma "deve continuare da sola dopo ogni checkpoint?". */
   autoplayEnabled: boolean;
+  /** "Ferma tutto" — diverso da un checkpoint normale (che ferma solo la
+   * dissolvenza fra quadri): fermo ovunque ci si trovi, musica compresa.
+   * Non va confuso con `autoplayEnabled`: sono due interruttori distinti,
+   * per questo hanno icone diverse (vedi `StopIcon`). */
+  stopped: boolean;
   activeIndex: number;
   total: number;
   /** La barra di avanzamento non è pilotata da stato React: `BirthdayScene`
@@ -27,6 +32,7 @@ interface BirthdayControlsProps {
    * principio di `skipIntroToken` nel menu principale. */
   controlsToggleSignal: number;
   onToggleAutoplay: () => void;
+  onToggleStopAll: () => void;
   onBack: () => void;
   onAdvance: () => void;
   onSkipToEnd: () => void;
@@ -66,6 +72,17 @@ function PauseIcon() {
   );
 }
 
+/** Un quadrato pieno, non play/pausa: "ferma tutto" è concettualmente
+ * diverso da AUTO (che decide solo cosa succede DOPO ogni checkpoint) — a
+ * colpo d'occhio le due icone non devono confondersi. */
+function StopIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={styles.icon}>
+      <rect x="6" y="6" width="12" height="12" rx="1.5" fill="currentColor" />
+    </svg>
+  );
+}
+
 /**
  * Barra di controllo della sequenza — stesso linguaggio visivo/pattern di
  * `SettingsBar.tsx` (stopPropagation sul contenitore, per non far scattare
@@ -82,12 +99,14 @@ function PauseIcon() {
  */
 export function BirthdayControls({
   autoplayEnabled,
+  stopped,
   activeIndex,
   total,
   progressFillRef,
   gamepadDetected,
   controlsToggleSignal,
   onToggleAutoplay,
+  onToggleStopAll,
   onBack,
   onAdvance,
   onSkipToEnd
@@ -146,6 +165,18 @@ export function BirthdayControls({
       </div>
 
       <div className={styles.row}>
+        {/* Il comando più "generale" di tutti — ferma insieme animazione e
+            musica, ovunque ci si trovi — per questo sta a parte, prima dei
+            tre che navigano la sequenza, non in mezzo a loro. */}
+        <button
+          type="button"
+          className={`${ui.secondary} ${styles.button} ${styles.stopButton}`}
+          onClick={onToggleStopAll}
+          aria-label={stopped ? 'Riprendi' : 'Ferma tutto'}
+          aria-pressed={stopped}
+        >
+          <StopIcon />
+        </button>
         <button
           type="button"
           className={`${ui.secondary} ${styles.button}`}

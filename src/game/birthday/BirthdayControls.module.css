@@ -54,6 +54,12 @@
   height: 18px;
 }
 
+/* Tinto d'accento mentre "ferma tutto" è attivo — l'unico riscontro sul
+   pulsante stesso oltre alla scena ferma, che è già il segnale principale. */
+.stopButton[aria-pressed='true'] {
+  color: var(--accent);
+}
+
 /* Etichetta del tasto controller (L1/R1/AUTO) sotto l'icona — la
    navigazione è pensata soprattutto da controller, i pulsanti restano
    comunque cliccabili/toccabili per chi non ne ha uno collegato. */

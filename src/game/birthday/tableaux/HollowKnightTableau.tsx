@@ -41,6 +41,18 @@ const EFFECT_TOTAL = Math.max(
 );
 
 /**
+ * Esportato con lo stesso nome usato dagli altri quattro quadri con
+ * un'uscita coreografata (`EXIT_DURATION` in Resident Evil/God of War/
+ * Bloodborne/Expedition) — serve a `BirthdayScene` per il salto in due
+ * tempi di "Salta tutto": deve sapere quanto dura l'uscita per poter
+ * saltare al SUO inizio invece che aspettare il resto di `hold`. Il
+ * meccanismo interno del quadro resta invariato (il proprio
+ * `gsap.delayedCall` su `DASH_AT`, agganciato alla prop `active`): questo
+ * numero è solo informativo per chi sta fuori.
+ */
+export const EXIT_DURATION = EFFECT_TOTAL;
+
+/**
  * Istante in cui parte il dash, contato da quando il quadro diventa quello
  * corrente. Calcolato sui tempi veri (non scritto a mano), così l'impatto
  * finisce sempre esatto quando il contenitore inizia a sfumare, anche se

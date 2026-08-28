@@ -101,7 +101,7 @@ const EXIT_DURATIONS: Partial<Record<TableauId, number>> = {
   residentEvil: RESIDENT_EVIL_EXIT
 };
 
-function renderTableau(id: TableauId, active: boolean, exiting: boolean) {
+function renderTableau(id: TableauId, active: boolean, exiting: boolean, onRewatch: () => void) {
   switch (id) {
     case 'bloodborne':
       return <BloodborneTableau active={active} exiting={exiting} />;
@@ -114,7 +114,7 @@ function renderTableau(id: TableauId, active: boolean, exiting: boolean) {
     case 'residentEvil':
       return <ResidentEvilTableau active={active} exiting={exiting} />;
     case 'gta':
-      return <GtaTableau active={active} />;
+      return <GtaTableau active={active} onRewatch={onRewatch} />;
   }
 }
 
@@ -558,6 +558,15 @@ export function BirthdayScene() {
   // momento coreografato.
   const back = useCallback(() => goToIndex(activeIndex - 1), [goToIndex, activeIndex]);
 
+  // "Rivedi" (solo sul quadro finale, vedi GtaTableau): torna al primo
+  // quadro esattamente come farebbe `back()` ripetuto fino in fondo — un
+  // `goToIndex(0)`, niente di più. Non tocca `autoplayEnabled` di proposito:
+  // la prima visione si ferma già ai checkpoint se l'automatico è spento
+  // (comportamento di default), quindi "rivedi" deve comportarsi allo
+  // stesso modo, non improvvisamente scorrere da sola — se l'utente vuole
+  // l'automatico lo riaccende lui dalla barra, come la prima volta.
+  const rewatch = useCallback(() => goToIndex(0), [goToIndex]);
+
   // "Salta tutto", in due tempi — non più un salto secco: la prima
   // pressione si assicura che si VEDA (e si SENTA) per davvero l'uscita del
   // quadro corrente (motosega/dash/ascia/esplosione/petali), poi atterra
@@ -724,7 +733,7 @@ export function BirthdayScene() {
             tableauRefs.current[index] = node;
           }}
         >
-          {renderTableau(id, activeIndex === index, exitingIndex === index)}
+          {renderTableau(id, activeIndex === index, exitingIndex === index, rewatch)}
         </div>
       ))}
 

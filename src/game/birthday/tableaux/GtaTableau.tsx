@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useRef, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import gsap from 'gsap';
+import { useGameStore } from '@/store/gameStore';
+import ui from '@/styles/ui.module.css';
 import { GTA_STATS, RECIPIENT_NAME, TEXTS } from '../birthdayConfig';
 import styles from './GtaTableau.module.css';
 
@@ -47,6 +49,11 @@ const COUNT_DELAY_AFTER_REVEAL = 0.1;
 const TITLE_AT = 10;
 /** Il picco assoluto di tutta l'apertura del brano: entra il nome. */
 const NAME_AT = 12.05;
+/** Quanto dopo la comparsa del nome, quando non c'è più nessun'altra
+ * animazione d'ingresso in corso, compaiono "Rivedi"/"Torna alla home" —
+ * un momento per godersi il finale (coriandoli compresi) prima che arrivi
+ * un controllo di navigazione sopra alla scena. */
+const ACTIONS_AT = NAME_AT + 3;
 
 const CONFETTI_COUNT = 70;
 const CONFETTI_COLORS = ['#ffd447', '#ff6b6b', '#4ecdc4', '#a78bfa', '#f8fafc', '#ff9f43'];
@@ -56,6 +63,9 @@ const prefersReducedMotion = () =>
 
 interface Props {
   active: boolean;
+  /** Torna al primo quadro — vive in `BirthdayScene` (solo lei possiede la
+   * timeline), qui arriva come callback per il pulsante "Rivedi" qui sotto. */
+  onRewatch: () => void;
 }
 
 /**
@@ -84,8 +94,32 @@ interface Props {
  * quello a schermo (stesso principio già in uso per `.bgImageActive` qui
  * sotto e per la falena di Hollow Knight altrove nel branch).
  */
-export function GtaTableau({ active }: Props) {
+export function GtaTableau({ active, onRewatch }: Props) {
   const valueRefs = useRef<(HTMLSpanElement | null)[]>([]);
+  const setScreen = useGameStore((state) => state.setScreen);
+
+  // "Rivedi"/"Torna alla home": compaiono da soli dopo ACTIONS_AT, quando
+  // non c'è già più nient'altro in ingresso — non subito insieme al resto,
+  // altrimenti competerebbero visivamente col nome che sta ancora arrivando.
+  // `gsap.delayedCall` e non `setTimeout`: vive sullo stesso orologio di
+  // `gsap.globalTimeline`, quindi "ferma tutto" (BirthdayScene) lo mette in
+  // pausa insieme al resto invece di continuare a contare in tempo reale
+  // mentre la scena è congelata.
+  const [showActions, setShowActions] = useState(false);
+  useEffect(() => {
+    if (!active) {
+      setShowActions(false);
+      return;
+    }
+    if (prefersReducedMotion()) {
+      setShowActions(true);
+      return;
+    }
+    const timer = gsap.delayedCall(ACTIONS_AT, () => setShowActions(true));
+    return () => {
+      timer.kill();
+    };
+  }, [active]);
 
   const confetti = useMemo(() => {
     if (prefersReducedMotion()) return [];
@@ -214,6 +248,20 @@ export function GtaTableau({ active }: Props) {
             <span className={`${styles.name} ${active ? styles.nameActive : ''}`}>{RECIPIENT_NAME}</span>
           </span>
         </h1>
+
+        {/* Montati solo a `showActions` vero, non nascosti via CSS: prima di
+            allora non devono nemmeno essere raggiungibili col focus da
+            tastiera/screen reader, non solo invisibili. */}
+        {showActions && (
+          <div className={styles.postActions}>
+            <button type="button" className={ui.primary} onClick={onRewatch}>
+              Rivedi
+            </button>
+            <button type="button" className={ui.secondary} onClick={() => setScreen('menu')}>
+              Torna alla home
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

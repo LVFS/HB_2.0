@@ -336,6 +336,31 @@
   }
 }
 
+/* "Rivedi"/"Torna alla home": montati solo quando `showActions` diventa
+   vero (GtaTableau.tsx, ACTIONS_AT dopo la comparsa del nome) — a
+   differenza di kicker/statistiche/titolo/nome, qui il ritardo lo decide
+   già il montaggio stesso, quindi non serve una classe base "nascosta" +
+   una `*Active` che la sovrascrive: basta una semplice dissolvenza
+   all'ingresso, un gradino più DIMESSO dei tagli/impatti del resto della
+   scaletta — sono controlli, non parte dello spettacolo. */
+.postActions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.4rem;
+  animation: postActionsIn 0.5s ease-out both;
+}
+
+@keyframes postActionsIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Bug reale scovato verificando dal vivo con `prefers-reduced-motion`
    attivo: messo più in alto nel file (dov'era prima, subito dopo `.flash`),
    questo blocco veniva scavalcato dalle regole base di `.kicker`/
@@ -376,5 +401,9 @@
   .nameFlashActive {
     animation: none;
     opacity: 0;
+  }
+
+  .postActions {
+    animation: none;
   }
 }

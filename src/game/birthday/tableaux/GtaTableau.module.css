@@ -32,13 +32,16 @@
    sarebbe già esaurita (fill: forwards, ferma sull'ultimo fotogramma)
    prima ancora di vederli. Stesso principio già in uso in tutto il
    progetto per le animazioni d'entrata (classi tipo `.numberActive`/
-   `.blockActive`, gia' presenti in questo file o negli altri quadri). */
+   `.blockActive`, gia' presenti in questo file o negli altri quadri) — e
+   dello stesso motivo per cui la scaletta qui sotto (kicker, statistiche,
+   titolo, nome) usa lo stesso trattamento: `*Active` applicata solo ad
+   `active`, mai un `animation-delay` contato dal mount. */
 .bgImageActive {
   animation: bgDrift 14s ease-out forwards;
 }
 
 /* Deriva lenta e in un'unica direzione, mai un loop avanti-indietro. 14s è
-   una costante a sé, non legata a `TIMINGS.gta.hold` (10s). Questo è
+   una costante a sé, non legata a `TIMINGS.gta.hold` (16s). Questo è
    l'ultimo quadro e resta a schermo fisso (fadeOut: 0), quindi qui la deriva
    è l'unica cosa che continua a muoversi finché la sequenza non finisce. */
 @keyframes bgDrift {
@@ -51,7 +54,9 @@
 }
 
 /* Vampata bianca a schermo intero: z-index esplicito perché deve stare
-   SOPRA skyline/coriandoli/contenuto anche se questi vengono dopo nel DOM. */
+   SOPRA coriandoli/contenuto anche se questi vengono dopo nel DOM. Resta
+   all'istante zero anche con la scaletta qui sotto — è il "sipario che si
+   apre", sta bene anche prima che compaia il primo testo. */
 .flash {
   position: absolute;
   inset: 0;
@@ -71,46 +76,6 @@
   }
 }
 
-/* Skyline stilizzata in fondo allo schermo, sotto le statistiche — una
-   citazione, non un'immagine del gioco: palazzi/palme/sole disegnati come
-   forme geometriche piatte. */
-.skyline {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  width: 100%;
-  height: 24vh;
-  pointer-events: none;
-}
-
-.sun {
-  fill: #ffb347;
-  opacity: 0.45;
-}
-
-.buildings rect {
-  fill: rgba(8, 6, 12, 0.85);
-}
-
-.palms path {
-  fill: none;
-  stroke: rgba(8, 6, 12, 0.85);
-  stroke-width: 3;
-  stroke-linecap: round;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .bgImageActive {
-    animation: none;
-  }
-
-  .flash {
-    animation: none;
-    opacity: 0;
-  }
-}
-
 .content {
   position: relative;
   display: grid;
@@ -120,6 +85,15 @@
   text-align: center;
 }
 
+/* Il kicker e le righe delle statistiche condividono lo stesso linguaggio
+   d'ingresso: un taglio netto, non una dissolvenza morbida — un `clip-path`
+   orizzontale che si apre da sinistra, come una sciabolata, coerente con la
+   grafica "a schermata di stato" di una missione completata. `--kicker-at`
+   arriva da GtaTableau.tsx (KICKER_AT, 0.53s — il primo colpo misurato su
+   `gta.mp3`, vedi il blocco di commenti in cima al .tsx); le statistiche
+   invece ricevono il proprio ritardo via `style` inline per riga (STAT_AT),
+   stessa tecnica già in uso per i coriandoli/il vapore negli altri quadri:
+   un valore diverso per elemento non può stare in una regola CSS condivisa. */
 .kicker {
   font-family: 'Anton', Impact, sans-serif;
   font-size: clamp(0.85rem, 1.8vw, 1.1rem);
@@ -128,6 +102,25 @@
   text-transform: uppercase;
   color: #ffd447;
   opacity: 0.9;
+  clip-path: inset(0 100% 0 0);
+}
+
+.kickerActive {
+  animation: sabreReveal 0.4s ease-out var(--kicker-at) both;
+}
+
+/* Durata (0.4s) allineata a mano a `REVEAL_DURATION` nel .tsx: quella
+   costante decide quando può cominciare il conteggio del numero (deve
+   partire a riga già scoperta), questa decide quanto dura la scopertura
+   vera — se cambi una, aggiorna anche l'altra o il numero partirebbe a metà
+   sciabolata. */
+@keyframes sabreReveal {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
 }
 
 .stats {
@@ -147,6 +140,14 @@
   padding: 0.45rem 0.7rem;
   border-left: 2px solid rgba(255, 212, 71, 0.5);
   background: rgba(255, 255, 255, 0.035);
+  clip-path: inset(0 100% 0 0);
+}
+
+.statRowActive {
+  animation-name: sabreReveal;
+  animation-duration: 0.4s;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
 }
 
 .statLabel {
@@ -188,11 +189,125 @@
     0 0 calc(60px + var(--audio-pulse, 0) * 40px) rgba(255, 200, 80, 0.25);
 }
 
+/* "Buon compleanno" e il nome erano lo stesso <h1> di testo: separati in due
+   `<span>` indipendenti (vedi GtaTableau.tsx) perché ora compaiono in due
+   momenti diversi, ciascuno con un peso diverso — un gradino più energico
+   del taglio delle statistiche, perché il titolo conta più di un dato. */
+.titleLine {
+  display: inline-block;
+  opacity: 0;
+}
+
+.titleLineActive {
+  animation: titleImpact 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) var(--title-at) both;
+}
+
+@keyframes titleImpact {
+  0% {
+    transform: scale(1.18) rotate(-2deg);
+    opacity: 0;
+  }
+  55% {
+    transform: scale(0.97) rotate(0.6deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+/* Il nome: il colpo più forte di tutta la coreografia, sul picco di energia
+   più alto del brano (NAME_AT, 13.05s). Un lampo centrato dietro il testo
+   (`.nameFlash`, sotto) più un breve sdoppiamento cromatico rosso/ciano che
+   si ricompone in una manciata di fotogrammi — un "glitch di trasmissione"
+   da trailer, tecnica mai usata altrove in questo branch: è l'unico
+   epilogo della sequenza, ha senso che parli una lingua un po' sua. */
+.nameWrap {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+}
+
+.nameFlash {
+  position: absolute;
+  inset: -30% -15%;
+  z-index: -1;
+  background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.9), transparent 65%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.nameFlashActive {
+  animation: nameFlashBurst 0.45s ease-out var(--name-at) forwards;
+}
+
+@keyframes nameFlashBurst {
+  0% {
+    opacity: 0;
+    scale: 0.4;
+  }
+  30% {
+    opacity: 1;
+    scale: 1;
+  }
+  100% {
+    opacity: 0;
+    scale: 1.4;
+  }
+}
+
 .name {
+  display: inline-block;
+  opacity: 0;
   color: #ffd447;
   text-shadow:
     0 3px 0 rgba(0, 0, 0, 0.6),
     0 0 calc(70px + var(--audio-pulse, 0) * 40px) rgba(255, 200, 80, 0.5);
+}
+
+.nameActive {
+  animation: nameImpact 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) var(--name-at) both;
+}
+
+/* Il testo resta identico a sé stesso da 38% in poi: lo sdoppiamento
+   cromatico dei primi fotogrammi si ricompone su un `text-shadow` che, da lì
+   in avanti, è lo STESSO valore di riposo di `.name` sopra — compreso
+   `var(--audio-pulse, 0)`, che continua a leggersi anche a animazione
+   ferma su `forwards`/`both` (l'ultimo fotogramma resta "attivo", non è un
+   valore congelato una tantum). */
+@keyframes nameImpact {
+  0% {
+    transform: scale(1.3) rotate(-3deg);
+    opacity: 0;
+    text-shadow:
+      -5px 0 0 rgba(255, 60, 60, 0.9),
+      5px 0 0 rgba(70, 220, 255, 0.9);
+  }
+  12% {
+    opacity: 1;
+    text-shadow:
+      4px 0 0 rgba(255, 60, 60, 0.75),
+      -4px 0 0 rgba(70, 220, 255, 0.75);
+  }
+  24% {
+    text-shadow:
+      -2px 0 0 rgba(255, 60, 60, 0.45),
+      2px 0 0 rgba(70, 220, 255, 0.45);
+  }
+  38% {
+    transform: scale(0.97) rotate(0.4deg);
+    text-shadow:
+      0 3px 0 rgba(0, 0, 0, 0.6),
+      0 0 calc(70px + var(--audio-pulse, 0) * 40px) rgba(255, 200, 80, 0.5);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+    text-shadow:
+      0 3px 0 rgba(0, 0, 0, 0.6),
+      0 0 calc(70px + var(--audio-pulse, 0) * 40px) rgba(255, 200, 80, 0.5);
+  }
 }
 
 .confetto {
@@ -217,6 +332,49 @@
   }
   100% {
     transform: translate3d(60px, 112vh, 0) rotateZ(540deg);
+    opacity: 0;
+  }
+}
+
+/* Bug reale scovato verificando dal vivo con `prefers-reduced-motion`
+   attivo: messo più in alto nel file (dov'era prima, subito dopo `.flash`),
+   questo blocco veniva scavalcato dalle regole base di `.kicker`/
+   `.statRow`/`.titleLine`/`.name` più sotto — stessa specificità (una sola
+   classe ciascuna), quindi vinceva l'ULTIMA dichiarata nel foglio, non
+   questa. A schermo il quadro restava completamente vuoto: `.kickerActive`
+   veniva sì azzerato qui, ma la `.kicker` di base (dichiarata dopo)
+   rimetteva subito il `clip-path` che nasconde tutto. Il blocco va DOPO
+   tutto ciò che deve sovrascrivere, non prima. */
+@media (prefers-reduced-motion: reduce) {
+  .bgImageActive {
+    animation: none;
+  }
+
+  .flash {
+    animation: none;
+    opacity: 0;
+  }
+
+  .kickerActive,
+  .statRowActive {
+    animation: none;
+    clip-path: inset(0 0 0 0);
+  }
+
+  .titleLineActive {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .nameActive {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .nameFlashActive {
+    animation: none;
     opacity: 0;
   }
 }

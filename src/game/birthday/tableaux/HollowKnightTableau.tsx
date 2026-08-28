@@ -219,7 +219,7 @@ export function HollowKnightTableau({ active }: Props) {
     }));
   }, [reducedMotion]);
 
-  const showMoth = active && !reducedMotion;
+  const showMoth = active && !reducedMotion && false; // disattivata per ora: distrae troppo dalla lettura del messaggio
 
   const [dashing, setDashing] = useState(false);
   const playSfx = useSfx(WARM_UP);

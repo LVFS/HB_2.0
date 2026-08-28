@@ -5,22 +5,22 @@
  */
 
 /** Il nome che compare nel quadro finale. */
-export const RECIPIENT_NAME = 'NOME';
+export const RECIPIENT_NAME = 'Sig. D.';
 
 /**
  * L'età, per il quadro di Expedition 33.
  * Metti `null` se preferisci non mostrarla: al suo posto compare la frase
  * simbolica qui sotto, e il quadro funziona lo stesso.
  */
-export const AGE: number | null = null;
+export const AGE: number | null = 25;
 
 /** Testi dei sei quadri. Sono una proposta: riscrivili senza pensarci. */
 export const TEXTS = {
-  residentEvil: 'Obiettivo: sopravvivere a un altro anno — completato',
-  godOfWar: 'Tanti auguri',
+  residentEvil: 'Obiettivo: sopravvivere a un altro anno Completato',
+  godOfWar: 'Che il tessuto del Suo destino, ordito con la sapienza delle Norne, Le riservi un cammino radioso, degno delle più epiche gesta.',
   /** Il messaggio vero, quello personale. È il beat più lento della sequenza. */
-  hollowKnight: 'Vent’anni e cinque primavere. Un quarto di secolo attraversato nell’oscurità, tra sogni, cadute e battaglie. Ma sei ancora qui.',
-  bloodborne: 'Un’ombra è passata... un altro anno.',
+  hollowKnight: 'Vent’anni e cinque primavere. Un quarto di secolo attraversato nell’oscurità, tra sogni, cadute e battaglie.',
+  bloodborne: 'Un’ombra è passata... un’altra lanterna accesa nel buoio. Un altro sogno, un’altra caccia.',
   /** Mostrata sotto il numero, o al suo posto se AGE è null. */
   expedition: 'e ogni anno un colore in più.',
   expeditionFallback: 'Un altro giro attorno al sole.',
@@ -29,9 +29,10 @@ export const TEXTS = {
 
 /** Le statistiche che scorrono nel finale in stile "mission passed". */
 export const GTA_STATS: { label: string; from: number; to: number; suffix?: string }[] = [
-  { label: 'Regali ricevuti', from: 0, to: 47 },
-  { label: 'Torte mangiate', from: 0, to: 12 },
-  { label: 'Livello amicizia', from: 0, to: 100, suffix: '%' }
+  { label: 'Merluzzi fotografati', from: 0, to: 1 },
+  { label: 'Autografi del signore del deserto aquisiti', from: 0, to: 1 },
+  { label: 'Colpi mancati a badminton', from: 0, to: 999 },
+  { label: 'Livello sanità mentale', from: 0, to: 9999999999, suffix: ' slm' },
 ];
 
 /**
@@ -103,8 +104,12 @@ const BASE_TIMINGS: Record<TableauId, TableauTiming> = {
   // tagliato in due da una motosega (vedi ResidentEvilTableau), e a 0.2s il
   // taglio si intuiva soltanto. Resta comunque il quadro più rapido di tutti.
   residentEvil: { fadeIn: 0.05, hold: 10, fadeOut: 0.55 },
-  // Il climax: resta a schermo, non svanisce.
-  gta: { fadeIn: 0.7, hold: 10, fadeOut: 0 }
+  // Il climax: resta a schermo, non svanisce. `hold` più lungo degli altri
+  // (16s, non 10) apposta: la scaletta interna del quadro (vedi
+  // GtaTableau.tsx) arriva fino al nome a 13.05s, agganciato ai colpi reali
+  // di `gta.mp3` — nessuna controindicazione ad allungarlo, essendo
+  // l'ultimo quadro e l'unico senza `fadeOut` da dover rispettare in tempo.
+  gta: { fadeIn: 0.7, hold: 16, fadeOut: 0 }
 };
 
 export const TIMINGS: Record<TableauId, TableauTiming> = Object.fromEntries(

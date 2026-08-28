@@ -1,14 +1,15 @@
 /* In basso al centro: lontano dal nome/titolo che compare a metà schermo
    in quasi tutti i quadri. `pointer-events: none` a riposo, così quando è
-   nascosta non intercetta comunque i movimenti del mouse sotto di lei. */
+   nascosta non intercetta comunque i movimenti del mouse sotto di lei.
+   Solo posizione/visibilità qui — l'aspetto vero (sfondo, sagoma, filo
+   d'accento) sta su `.panel` sotto, che riusa `ui.panelCompact` invece di
+   reinventare un terzo "vetro scuro" nel progetto. */
 .container {
   position: absolute;
   left: 50%;
   bottom: var(--space-5);
   z-index: 30;
   width: min(560px, 92vw);
-  display: grid;
-  gap: var(--space-2);
   opacity: 0;
   pointer-events: none;
   transform: translate(-50%, 10px);
@@ -21,6 +22,12 @@
   opacity: 1;
   pointer-events: auto;
   transform: translate(-50%, 0);
+}
+
+.panel {
+  composes: panelCompact from '../../styles/ui.module.css';
+  display: grid;
+  gap: var(--space-2);
 }
 
 .track {
@@ -43,15 +50,25 @@
 }
 
 .button {
-  display: grid;
-  place-items: center;
-  gap: 2px;
-  padding: var(--space-2);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: var(--space-2) var(--space-3);
 }
 
 .icon {
   width: 18px;
   height: 18px;
+}
+
+/* Icona del METODO D'INPUT corrente (vedi controlIcons.tsx), accanto
+   all'icona funzionale — assente con mouse/touch (i componenti in
+   controlIcons.tsx restituiscono `null` per `'pointer'`), quindi questo
+   contenitore semplicemente non occupa spazio in quel caso. */
+.hintIcon {
+  display: flex;
+  align-items: center;
+  color: var(--text-dim);
 }
 
 /* Tinto d'accento mentre "ferma tutto" è attivo — l'unico riscontro sul
@@ -60,22 +77,99 @@
   color: var(--accent);
 }
 
-/* Etichetta del tasto controller (L1/R1/AUTO) sotto l'icona — la
-   navigazione è pensata soprattutto da controller, i pulsanti restano
-   comunque cliccabili/toccabili per chi non ne ha uno collegato. */
-.buttonLabel {
-  font-family: var(--font-display);
-  font-size: 0.6rem;
-  letter-spacing: var(--tracking-label);
-  color: var(--text-dim);
+.counterGroup {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
 }
 
 .counter {
-  flex: 1;
   text-align: center;
   font-family: var(--font-display);
   font-size: 0.78rem;
   letter-spacing: var(--tracking-label);
   text-transform: uppercase;
   color: var(--text-dim);
+}
+
+/* Fila di puntini, uno per quadro — arricchimento puramente visivo, il
+   testo del contatore accanto porta già la stessa informazione in modo
+   accessibile (vedi `SceneDots` in BirthdayControls.tsx). */
+.dots {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--line-strong);
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.dotActive {
+  background: var(--accent);
+}
+
+.skipButton {
+  gap: var(--space-2);
+}
+
+.skipLabel {
+  font-size: 0.85rem;
+}
+
+/* ---------- Tooltip ----------
+ * Riusa `.pill` di ui.module.css per l'aspetto (bordo sottile, sfondo
+ * incassato) — qui solo il posizionamento flottante e la dissolvenza.
+ *
+ * Un solo elemento condiviso, non uno per pulsante: `.panel` (vedi
+ * ui.module.css) porta sia `clip-path` sia `filter`, ed entrambi ritagliano
+ * tutto ciò che viene disegnato al suo interno alla sagoma del pannello —
+ * un tooltip annidato lì dentro e fatto galleggiare sopra il pulsante
+ * restava tagliato al bordo, qualunque posizionamento CSS gli si desse.
+ * Questo invece è un fratello di `.panel`, dentro `.container` (che non ha
+ * né clip-path né filter): `left` arriva da JS (`getBoundingClientRect()`,
+ * vedi BirthdayControls.tsx), `.container` stesso fa da containing block
+ * essendo già `position: absolute`. */
+.tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 0.78rem;
+  pointer-events: none;
+  /* Compare/sparisce col montaggio/smontaggio di React (vedi `tooltip` in
+     BirthdayControls.tsx), non più con `:hover`/`:focus-within` — una
+     `transition` non basterebbe più da sola a dare la dissolvenza in
+     entrata (l'elemento nasce già nel suo stato finale, non c'è un "prima"
+     da cui transire nello stesso montaggio). */
+  animation: tooltipFadeIn var(--dur-fast) var(--ease-out);
+}
+
+@keyframes tooltipFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* Promemoria per chi ha nascosto la barra da joystick (Options non lascia
+   altro modo di farla ricomparire) — stessa posizione della barra stessa,
+   ma senza il pannello pieno: un semplice richiamo, non un secondo HUD. */
+.hiddenHint {
+  position: absolute;
+  left: 50%;
+  bottom: var(--space-5);
+  transform: translateX(-50%);
+  z-index: 30;
+  opacity: 0.75;
 }

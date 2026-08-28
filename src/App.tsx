@@ -73,7 +73,7 @@ function App() {
         {screen === 'menu' && <MenuScene onWhiteout={setWhiteout} />}
 
         {/* Schermata di selezione dei livelli dopo aver aperto il portone */}
-        {screen === 'levelSelect' && <LevelSelectScene gamepadDetected={gamepadDetected} />}
+        {screen === 'levelSelect' && <LevelSelectScene />}
 
         {/* Mostra la scena di gioco 3D quando è il momento di giocare */}
         {screen === 'game' && <SceneManager />}

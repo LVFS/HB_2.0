@@ -56,28 +56,73 @@
   pointer-events: none;
 }
 
-.pauseHintText {
+/* Stesso "vetro" HUD della barra comandi (`ui.panelCompact`), non più un
+   riquadro scuro scritto a mano — coerenza fra i due elementi, e risolve
+   anche un colore letterale (`#120e3f`) che non seguiva la convenzione dei
+   token di questo progetto. */
+.pauseHintPanel {
+  composes: panelCompact from '../../styles/ui.module.css';
+  display: grid;
+  gap: var(--space-2);
+  justify-items: center;
+  text-align: center;
+}
+
+/* `ui.panel` abilita `pointer-events: auto` di suo (i pannelli che lo usano
+   di norma contengono controlli veri) — qui va spento di nuovo: questo non
+   è un pulsante, vedi il commento su `.pauseHint`. Selettore discendente
+   apposta (due classi, specificità più alta di `.panel` da solo): così
+   l'override vince sempre, a prescindere dall'ordine in cui i due moduli
+   CSS finiscono nel bundle. */
+.pauseHint .pauseHintPanel {
+  pointer-events: none;
+}
+
+/* Etichetta di stato sopra la riga di istruzioni — "cosa sta succedendo"
+   separato da "cosa puoi fare". Stesso font/spaziatura di `ui.label`, ma in
+   accento: qui è un indicatore di stato, non un nome di campo qualunque, e
+   deve leggersi subito anche a un'occhiata veloce. Dichiarato per intero
+   invece di comporre `ui.label` e poi ridefinire il colore: due regole con
+   la stessa specificità che si contendono la stessa proprietà dipenderebbero
+   dall'ordine di bundling dei moduli CSS. */
+.pauseHintLabel {
   font-family: var(--font-display);
   font-weight: 600;
-  font-size: clamp(1rem, 2.4vw, 1.5rem);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-label);
+  color: var(--accent);
+}
+
+.pauseHintText {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(1rem, 2.4vw, 1.4rem);
   letter-spacing: var(--tracking-label);
   text-transform: uppercase;
   color: var(--text);
-  text-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.95),
-    0 0 20px rgba(0, 0, 0, 0.8);
-  animation: pauseHintPulse 1.8s ease-in-out infinite;
-  background-color: #120e3f;
-  padding: 1rem;
-  border-radius: 30px 30px 30px 30px;
 }
 
-@keyframes pauseHintPulse {
+/* L'animazione vive SOLO sull'icona del tasto, non più sull'intero blocco:
+   un intero riquadro che pulsa piano si legge come "sta caricando", un
+   piccolo rimbalzo sull'icona come "premi questo" — il testo resta fermo e
+   leggibile, l'invito è più diretto. */
+.pauseHintIcon {
+  display: inline-flex;
+  color: var(--accent);
+  animation: pauseHintBounce 1.4s ease-in-out infinite;
+}
+
+@keyframes pauseHintBounce {
   0%,
   100% {
-    opacity: 0.5;
+    transform: translateY(0);
   }
   50% {
-    opacity: 1;
+    transform: translateY(-4px);
   }
 }

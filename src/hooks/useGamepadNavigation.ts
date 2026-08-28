@@ -13,6 +13,10 @@ interface UseGamepadNavigationHandlers {
   onAdvance: () => void;
   onInteract: () => void;
   onToggleControls: () => void;
+  /** Chiamato a OGNI pressione rilevata, oltre alla callback specifica
+   * dell'azione — usato da `useInputMethod` per sapere "è appena successo
+   * qualcosa da joystick" senza un secondo sondaggio dedicato. */
+  onAnyInput?: () => void;
 }
 
 interface UseGamepadNavigationOptions {
@@ -36,11 +40,11 @@ interface UseGamepadNavigationOptions {
  * mancanti.
  */
 export function useGamepadNavigation(
-  { onBack, onAdvance, onInteract, onToggleControls }: UseGamepadNavigationHandlers,
+  { onBack, onAdvance, onInteract, onToggleControls, onAnyInput }: UseGamepadNavigationHandlers,
   { enabled }: UseGamepadNavigationOptions
 ) {
-  const handlers = useRef({ onBack, onAdvance, onInteract, onToggleControls });
-  handlers.current = { onBack, onAdvance, onInteract, onToggleControls };
+  const handlers = useRef({ onBack, onAdvance, onInteract, onToggleControls, onAnyInput });
+  handlers.current = { onBack, onAdvance, onInteract, onToggleControls, onAnyInput };
 
   useEffect(() => {
     if (!enabled) return;
@@ -59,6 +63,7 @@ export function useGamepadNavigation(
           const key = `${pad.index}:${buttonIndex}`;
           nextPressed.add(key);
           if (!prevPressed.has(key)) {
+            handlers.current.onAnyInput?.();
             if (action === 'back') handlers.current.onBack();
             else if (action === 'advance') handlers.current.onAdvance();
             else if (action === 'interact') handlers.current.onInteract();

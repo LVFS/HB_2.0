@@ -14,8 +14,10 @@ import '@fontsource/anton/latin-400.css';
 import { useAudioPulse } from '@/hooks/useAudioPulse';
 import { useBirthdayMusic } from '@/hooks/useBirthdayMusic';
 import { useGamepadNavigation } from '@/hooks/useGamepadNavigation';
+import { useInputMethod } from '@/hooks/useInputMethod';
 import { SEQUENCE, TIMINGS, type TableauId } from './birthdayConfig';
 import { BirthdayControls } from './BirthdayControls';
+import { GamepadCrossIcon, GamepadShoulderIcon, KeyArrowIcon, KeySpaceIcon } from './controlIcons';
 import { BloodborneTableau, EXIT_DURATION as BLOODBORNE_EXIT } from './tableaux/BloodborneTableau';
 import { GodOfWarTableau, EXIT_DURATION as GOD_OF_WAR_EXIT } from './tableaux/GodOfWarTableau';
 import { HollowKnightTableau, EXIT_DURATION as HOLLOW_KNIGHT_EXIT } from './tableaux/HollowKnightTableau';
@@ -50,12 +52,36 @@ const OVERLAP = 0;
 
 /**
  * Di quanto si accelera il tempo GLOBALE di gsap (`gsap.globalTimeline`, non
- * solo la timeline della scena) mentre "Salta tutto" attraversa la parte
- * "calma" di un quadro, prima che cominci la sua uscita — vedi `skipToEnd`.
- * Un numero moderato: abbastanza da sentirsi come "si salta avanti", non
- * così alto da rendere impercettibile la transizione.
+ * solo la timeline della scena) mentre si attraversa la parte "calma" di un
+ * quadro, prima che cominci la sua uscita — usato sia da `skipToEnd` sia dal
+ * primo clic di `advance()` (vedi `checkpointOverrideRef` sotto: stesso
+ * identico bisogno, stessa tecnica). Un numero moderato: abbastanza da
+ * sentirsi come "si salta avanti", non così alto da rendere impercettibile
+ * la transizione.
  */
 const SKIP_TIME_SCALE = 6;
+
+/**
+ * Cosa deve succedere quando la timeline raggiunge il PROSSIMO checkpoint di
+ * fine quadro, oltre al comportamento di sempre (pausa se l'automatico è
+ * spento) — letto e consumato dal `.call()` di checkpoint già presente sulla
+ * timeline (vedi l'effetto di costruzione sotto), scritto da `advance()` e
+ * da `skipToEnd()` quando scelgono di "far vedere" la coreografia d'uscita
+ * invece di saltarla di netto:
+ *  - `'continue'`  (primo clic di `advance()`) — non pausare: si prosegue
+ *    dritti nel quadro successivo, come se l'automatico fosse acceso per un
+ *    solo checkpoint.
+ *  - `'skipToEnd'` (primo clic di "Salta tutto") — salta direttamente
+ *    all'ultimo quadro (GTA), invece del comportamento di default.
+ *  - `null` — nessuna richiesta pendente, comportamento di sempre.
+ *
+ * Un solo interruttore condiviso fra i due pulsanti (non uno a testa): se
+ * l'utente preme l'ALTRO pulsante mentre uno dei due ha già una richiesta in
+ * sospeso, chi arriva dopo la trova già impostata e decide lui cosa farne
+ * (vedi `advance()`/`skipToEnd()` sotto) — comportamento prevedibile invece
+ * di due cronometri paralleli che potrebbero disallinearsi fra loro.
+ */
+type CheckpointOverride = 'continue' | 'skipToEnd' | null;
 
 /**
  * Quanto dura l'effetto di USCITA di ogni quadro che ne ha uno, in secondi.
@@ -111,15 +137,13 @@ function renderTableau(id: TableauId, active: boolean, exiting: boolean) {
  * supporta nativamente `.play()`/`.pause()`/`.seek()` su una timeline già
  * costruita) — non una seconda macchina a stati in parallelo.
  */
-interface BirthdaySceneProps {
-  /** Sollevato fino ad `App.tsx` (un solo sondaggio dell'API Gamepad
-   * condiviso, vedi `useGamepadDetected`) — usato qui solo per decidere se
-   * mostrare le etichette L1/R1/AUTO e il testo del suggerimento "in
-   * pausa", non per la rilevazione in sé. */
-  gamepadDetected: boolean;
-}
-
-export function BirthdayScene({ gamepadDetected }: BirthdaySceneProps) {
+// Nessuna prop: `gamepadDetected` (sollevato da `App.tsx`) non serve più
+// qui — sostituito ovunque da `useInputMethod`, che a differenza sua sa
+// anche tornare indietro (mouse dopo il joystick, non solo joystick rilevato
+// una volta per tutte). `App.tsx` continua a usare `useGamepadDetected` per
+// conto suo, per `useAudioUnlockHint`, che invece ha bisogno di quella
+// semantica "permanente".
+export function BirthdayScene() {
   const rootRef = useRef<HTMLDivElement>(null);
   const tableauRefs = useRef<(HTMLDivElement | null)[]>([]);
   const timelineRef = useRef<gsap.core.Timeline | null>(null);
@@ -146,6 +170,13 @@ export function BirthdayScene({ gamepadDetected }: BirthdaySceneProps) {
   // scattare di nuovo l'effetto in BirthdayControls anche se capitano due
   // pressioni ravvicinate, non solo quando il valore "logico" cambia.
   const [controlsToggleSignal, setControlsToggleSignal] = useState(0);
+  // L'ULTIMO metodo d'input usato (vedi `useInputMethod`) — guida quale
+  // icona di scorciatoia mostrare nella barra comandi e nel suggerimento
+  // "in pausa" sotto. Aggiornato dai tre punti in cui ciascun metodo viene
+  // già rilevato per altri scopi: il polling di `useGamepadNavigation`
+  // (`onAnyInput`), l'handler di `keydown` per le scorciatoie, e il click/
+  // tocco su `BirthdayControls` stessa (`onPointerActivity`).
+  const [inputMethod, setInputMethod] = useInputMethod();
   // "Ferma tutto": diverso da un checkpoint (che ferma solo la dissolvenza
   // fra quadri) — questo ferma la timeline OVUNQUE ci si trovi, coreografia
   // d'uscita compresa, e lo stinger musicale insieme a lei (vedi il
@@ -191,10 +222,25 @@ export function BirthdayScene({ gamepadDetected }: BirthdaySceneProps) {
   // sapere dove finisce il quadro corrente.
   const checkpointsRef = useRef<{ index: number; at: number }[]>([]);
 
-  // Il cronometro parallelo del nuovo "Salta tutto" in due tempi (vedi
-  // `skipToEnd`): non è sulla timeline principale, quindi va fermato/
-  // ripreso a mano insieme a lei da `toggleStopAll`, e cancellato da
-  // qualunque altra azione che rimette in moto le cose per conto suo
+  // Vedi `CheckpointOverride` sopra — letto/azzerato dal `.call()` di
+  // checkpoint sulla timeline, scritto da `advance()`/`skipToEnd()`.
+  const checkpointOverrideRef = useRef<CheckpointOverride>(null);
+
+  // `goToIndex` è definito più sotto (dipende da `resetManualOverrides`), ma
+  // il `.call()` di checkpoint dentro l'effetto `[]` che costruisce la
+  // timeline (anche più sotto) ha bisogno di chiamarlo per il ramo
+  // `'skipToEnd'` — un riferimento diretto lì dentro farebbe scattare
+  // `react-hooks/exhaustive-deps` (l'effetto ha dipendenze vuote apposta,
+  // la timeline si costruisce una volta sola), anche se `goToIndex` è di
+  // fatto stabile. Stessa tecnica già in uso per `activeIndexRef`/
+  // `autoplayRef`: una ref aggiornata a ogni render, mai letta prima che il
+  // primo checkpoint scatti.
+  const goToIndexRef = useRef<(index: number) => void>(() => {});
+
+  // Il cronometro del tratto accelerato (vedi `SKIP_TIME_SCALE`), condiviso
+  // da `advance()` e `skipToEnd()`: non è sulla timeline principale, quindi
+  // va fermato/ripreso a mano insieme a lei da `toggleStopAll`, e cancellato
+  // da qualunque altra azione che rimette in moto le cose per conto suo
   // (`resetManualOverrides`).
   const skipTimerRef = useRef<gsap.core.Tween | null>(null);
   // Se la timeline stava scorrendo nell'istante esatto in cui si è premuto
@@ -300,6 +346,24 @@ export function BirthdayScene({ gamepadDetected }: BirthdaySceneProps) {
       checkpoints.push({ index, at: outAt });
       timeline.call(
         () => {
+          // Consumato subito, non dopo il branch: qualunque ramo si prenda,
+          // la richiesta valeva per questo SOLO checkpoint.
+          const override = checkpointOverrideRef.current;
+          checkpointOverrideRef.current = null;
+
+          if (override === 'skipToEnd') {
+            // Stesso identico salto secco di sempre, solo innescato da qui
+            // invece che da un cronometro separato — vedi `skipToEnd()`.
+            goToIndexRef.current(SEQUENCE.length - 1);
+            return;
+          }
+          if (override === 'continue') {
+            // Primo clic di `advance()`: si è accelerato apposta il tempo
+            // per arrivare fin qui vedendo la coreografia d'uscita a ritmo
+            // naturale — non pausare, si prosegue dritti nel fadeOut/fadeIn
+            // già programmati, esattamente come farebbe l'automatico.
+            return;
+          }
           if (!autoplayRef.current) {
             timeline.pause();
             setIsTicking(false);
@@ -336,17 +400,19 @@ export function BirthdayScene({ gamepadDetected }: BirthdaySceneProps) {
     };
   }, []);
 
-  // Punto unico da cui si esce dallo stato "fermo tutto" e si annulla un
-  // eventuale cronometro di "Salta tutto" pendente — chiamato in testa a
-  // ogni azione che rimette in moto le cose per conto suo (`goToIndex`,
-  // `advance`, l'accensione dell'automatico, il nuovo `skipToEnd`), così
-  // non ci sono due leve che possono disallinearsi: o si passa da qui, o
-  // lo stato "fermo" resta acceso mentre la timeline è già ripartita.
-  // Riporta anche a 1 il `timeScale` globale (vedi `skipToEnd`): se si
-  // interrompe uno skip mentre l'attesa è ancora accelerata, il tempo di
-  // TUTTO ciò che gira su gsap (timer interni dei quadri compresi) deve
-  // tornare normale, non restare accelerato per sbaglio.
+  // Punto unico da cui si esce dallo stato "fermo tutto" e si annullano
+  // un eventuale cronometro accelerato pendente e una richiesta di
+  // checkpoint non ancora consumata — chiamato in testa a ogni azione che
+  // rimette in moto le cose per conto suo (`goToIndex`, l'accensione
+  // dell'automatico, e da `advance()`/`skipToEnd()` nei rami che NON stanno
+  // gestendo proprio loro un secondo clic — vedi sotto), così non ci sono
+  // più leve che possono disallinearsi fra loro. Riporta anche a 1 il
+  // `timeScale` globale (vedi `SKIP_TIME_SCALE`): se si interrompe
+  // un'attesa accelerata a metà, il tempo di TUTTO ciò che gira su gsap
+  // (timer interni dei quadri compresi) deve tornare normale, non restare
+  // accelerato per sbaglio.
   const resetManualOverrides = useCallback(() => {
+    checkpointOverrideRef.current = null;
     skipTimerRef.current?.kill();
     skipTimerRef.current = null;
     gsap.globalTimeline.timeScale(1);
@@ -370,6 +436,11 @@ export function BirthdayScene({ gamepadDetected }: BirthdaySceneProps) {
     },
     [resetManualOverrides]
   );
+  // Aggiornata a ogni render (vedi il commento su `goToIndexRef` più sopra):
+  // `goToIndex` è di fatto stabile (la sua unica dipendenza, `resetManualOverrides`,
+  // non cambia mai), ma la ref evita di doverla aggiungere alle dipendenze
+  // vuote dell'effetto che costruisce la timeline.
+  goToIndexRef.current = goToIndex;
 
   // Riprende la timeline da un checkpoint di fine quadro (o dal mount) —
   // usata sia da `advance()` sotto sia dall'effetto che segue
@@ -383,25 +454,14 @@ export function BirthdayScene({ gamepadDetected }: BirthdaySceneProps) {
     setIsTicking(true);
   }, []);
 
-  // Avanti "vero" (R1): se la timeline è ferma su un checkpoint (il caso
-  // normale in modalità manuale), la riprende — scorre attraverso il
-  // fadeOut/fadeIn già programmati lì, con la dissolvenza incrociata vera.
-  // Se invece sta GIÀ scorrendo (un quadro può restare a schermo diversi
-  // secondi prima del proprio checkpoint), un secondo `.play()` verrebbe
-  // ignorato da GSAP e il pulsante sembrerebbe non rispondere — qui invece
-  // salta dritto al prossimo checkpoint (stesso comportamento a cui
-  // sarebbe arrivata da sola), così ogni pressione dà sempre un riscontro
-  // visibile.
-  const advance = useCallback(() => {
+  // Salto secco al prossimo checkpoint, istantaneo: comportamento di
+  // `advance()` da sempre quando la timeline sta già scorrendo, estratto qui
+  // perché ora serve anche al SECONDO clic di `advance()` (annulla l'attesa
+  // armata dal primo) e a `skipToEnd()` quando trova già una richiesta
+  // pendente (di uno qualunque dei due pulsanti — vedi `CheckpointOverride`).
+  const jumpToNextCheckpointNow = useCallback(() => {
     const timeline = timelineRef.current;
     if (!timeline) return;
-    resetManualOverrides();
-
-    if (timeline.paused()) {
-      resume();
-      return;
-    }
-
     const currentTime = timeline.time();
     const next = checkpointsRef.current.find((checkpoint) => checkpoint.at > currentTime + 0.001);
     if (!next) return;
@@ -417,15 +477,79 @@ export function BirthdayScene({ gamepadDetected }: BirthdaySceneProps) {
     // Saltando al checkpoint si è scavalcato il momento in cui sarebbe
     // partito l'effetto di uscita: GSAP non esegue i `.call()` con `.seek()`,
     // quindi l'effetto semplicemente non c'è stato. È il comportamento
-    // voluto — chi preme avanti vuole andare avanti, non aspettare una
-    // coreografia — ma il segnale va comunque azzerato, nel caso fosse già
-    // acceso.
+    // voluto — chi arriva qui vuole saltare, non aspettare una coreografia —
+    // ma il segnale va comunque azzerato, nel caso fosse già acceso.
     setExitingIndex(null);
     if (!autoplayRef.current) {
       timeline.pause();
       setIsTicking(false);
     }
-  }, [resume, resetManualOverrides]);
+  }, []);
+
+  // Avanti "vero" (R1), in due tempi come "Salta tutto" (vedi sotto):
+  //  - ferma su un checkpoint (caso normale in modalità manuale) → riprende;
+  //  - già in corso e NESSUNA richiesta ancora armata (primo clic mentre un
+  //    quadro è a metà del proprio `hold`) → non salta più di netto:
+  //    accelera fino all'inizio della coreografia d'uscita del quadro
+  //    corrente (se ne ha una), arma `'continue'` sul prossimo checkpoint e
+  //    lascia proseguire — la si VEDE e si SENTE per intero, poi si passa
+  //    da sola al quadro successivo, senza bisogno di un secondo clic;
+  //  - già in corso e una richiesta È già armata (secondo clic, durante
+  //    l'attesa/coreografia innescata dal primo) → annulla e salta subito,
+  //    esattamente il vecchio comportamento a un solo clic.
+  //
+  // Stessa tecnica (e stessa insidia) di `skipToEnd`: la coreografia
+  // d'uscita di un quadro NON è agganciata alla posizione della timeline,
+  // ogni quadro la programma da sé con un proprio `gsap.delayedCall` contato
+  // in TEMPO REALE da quando `active` è diventato vero — un `.seek()` che
+  // salta avanti la posizione della timeline non farebbe avanzare quel
+  // conto alla rovescia indipendente, lasciando la coreografia (sfx
+  // compresi) silenziosa. Per questo, come in `skipToEnd`, il tratto
+  // "calmo" da saltare si comprime accelerando `gsap.globalTimeline`
+  // (l'orologio condiviso da cui dipende anche il timer interno del
+  // quadro), non con un `.seek()`.
+  const advance = useCallback(() => {
+    const timeline = timelineRef.current;
+    if (!timeline) return;
+
+    if (checkpointOverrideRef.current) {
+      checkpointOverrideRef.current = null;
+      resetManualOverrides();
+      jumpToNextCheckpointNow();
+      return;
+    }
+
+    resetManualOverrides();
+
+    if (timeline.paused()) {
+      resume();
+      return;
+    }
+
+    const currentTime = timeline.time();
+    const next = checkpointsRef.current.find((checkpoint) => checkpoint.at > currentTime + 0.001);
+    if (!next) return;
+
+    const id = SEQUENCE[activeIndexRef.current];
+    const exitDuration = EXIT_DURATIONS[id] ?? 0;
+    const exitStartAt = Math.max(currentTime, next.at - exitDuration);
+
+    checkpointOverrideRef.current = 'continue';
+
+    if (currentTime < exitStartAt) {
+      // Stesso numero "vero", non pre-diviso per `SKIP_TIME_SCALE` — vedi il
+      // commento gemello in `skipToEnd`: è l'accelerazione ambiente a farlo
+      // scattare più presto da sola, dividerlo qui comprimerebbe due volte.
+      gsap.globalTimeline.timeScale(SKIP_TIME_SCALE);
+      skipTimerRef.current = gsap.delayedCall(exitStartAt - currentTime, () => {
+        gsap.globalTimeline.timeScale(1);
+        skipTimerRef.current = null;
+      });
+    }
+    // Se la coreografia è già in corso (o il quadro non ne ha una), niente
+    // da accelerare: si lascia proseguire a ritmo naturale, il checkpoint
+    // armato sopra farà il resto quando la timeline lo raggiunge da sola.
+  }, [resume, resetManualOverrides, jumpToNextCheckpointNow]);
 
   // Indietro (L1): resta un salto secco (`.seek()` istantaneo), a
   // differenza di `advance()` — rifare la coreografia di dissolvenza anche
@@ -440,31 +564,24 @@ export function BirthdayScene({ gamepadDetected }: BirthdaySceneProps) {
   // dritta su GTA; una seconda pressione mentre la prima è ancora in corso
   // annulla e salta subito, per chi non vuole aspettare nemmeno quella.
   //
-  // Punto delicato scoperto verificando dal vivo: la coreografia di ogni
-  // quadro (motosega/dash/ascia/...) NON è agganciata alla posizione della
-  // timeline — ogni quadro la programma da sé con un proprio
-  // `gsap.delayedCall` contato in TEMPO REALE da quando `active` è
-  // diventato vero (vedi p.es. `SAW_AT` in ResidentEvilTableau, `DASH_AT`
-  // in HollowKnightTableau). Un `.seek()` che salta la posizione della
-  // timeline avanti nel tempo NON fa avanzare quel conto alla rovescia
-  // indipendente: la coreografia (sfx compresi) resterebbe silenziosa,
-  // scavalcata dal salto invece di scattare. Per questo qui non si usa
-  // `.seek()`: si accelera invece il tempo GLOBALE di gsap
-  // (`gsap.globalTimeline.timeScale`, non solo la nostra timeline) SOLO
-  // per il tratto "calmo" da saltare — il timer interno del quadro vive
-  // sullo stesso orologio globale, quindi il suo conto alla rovescia
-  // avanza ALLA STESSA velocità della nostra attesa, restando in sincrono
-  // — e torna a velocità normale esattamente quando comincia la parte
-  // spettacolare, che si vede/sente quindi al ritmo pensato, non accelerata.
+  // Stesso identico meccanismo di `advance()` sopra (`checkpointOverrideRef`
+  // + compressione di `gsap.globalTimeline`, per la stessa ragione: il
+  // timer interno di ogni quadro conta tempo reale, non posizione della
+  // timeline) — qui la richiesta armata è `'skipToEnd'` invece di
+  // `'continue'`, e il checkpoint che la consuma (vedi l'effetto di
+  // costruzione sopra) salta all'ultimo quadro invece di lasciar proseguire.
+  // Non c'è più un secondo `gsap.delayedCall` per l'attesa a ritmo naturale
+  // dopo la compressione: quel tratto lo copre già il resto della timeline
+  // principale, che nel frattempo scorre da sola verso il suo checkpoint.
   const skipToEnd = useCallback(() => {
     const timeline = timelineRef.current;
     if (!timeline) return;
 
-    // Seconda pressione: il cronometro della prima è ancora attivo (non è
-    // stato ancora azzerato da `resetManualOverrides`, quindi non è null) —
-    // annullalo (e riporta il tempo alla velocità normale) e salta subito,
-    // come faceva "Salta tutto" prima di questo piano.
-    if (skipTimerRef.current) {
+    // Seconda pressione (di QUESTO pulsante o di "Avanti": un solo
+    // interruttore condiviso, vedi `CheckpointOverride`) — annulla la
+    // richiesta pendente e salta subito.
+    if (checkpointOverrideRef.current) {
+      checkpointOverrideRef.current = null;
       resetManualOverrides();
       goToIndex(SEQUENCE.length - 1);
       return;
@@ -491,6 +608,8 @@ export function BirthdayScene({ gamepadDetected }: BirthdaySceneProps) {
     const exitAt = Math.max(0, checkpoint.at - exitDuration);
     const currentTime = timeline.time();
 
+    checkpointOverrideRef.current = 'skipToEnd';
+
     if (currentTime < exitAt) {
       // `gsap.delayedCall(N, fn)` conta N secondi di tempo della TIMELINE a
       // cui appartiene (qui `gsap.globalTimeline`, appena accelerata) — a
@@ -505,23 +624,13 @@ export function BirthdayScene({ gamepadDetected }: BirthdaySceneProps) {
       gsap.globalTimeline.timeScale(SKIP_TIME_SCALE);
       skipTimerRef.current = gsap.delayedCall(exitAt - currentTime, () => {
         gsap.globalTimeline.timeScale(1);
-        // Da qui in poi a ritmo naturale: `exitDuration` è esattamente
-        // quanto manca da `exitAt` al checkpoint.
-        skipTimerRef.current = gsap.delayedCall(exitDuration, () => {
-          skipTimerRef.current = null;
-          goToIndex(SEQUENCE.length - 1);
-        });
+        skipTimerRef.current = null;
       });
-      return;
     }
-
-    // La coreografia è già in corso (o già finita): nessuna accelerazione,
-    // si lascia proseguire/finire a ritmo naturale.
-    const remaining = Math.max(0, checkpoint.at - currentTime);
-    skipTimerRef.current = gsap.delayedCall(remaining, () => {
-      skipTimerRef.current = null;
-      goToIndex(SEQUENCE.length - 1);
-    });
+    // La coreografia (già in corso, già finita, o appena raggiunta dal
+    // cronometro sopra) prosegue/finisce a ritmo naturale: il checkpoint
+    // già presente sulla timeline la aspetterà e, trovando `'skipToEnd'`
+    // armato, salterà da solo a GTA.
   }, [goToIndex, resetManualOverrides]);
 
   // Interruttore di riproduzione automatica (tasto d'interazione/spazio):
@@ -574,7 +683,13 @@ export function BirthdayScene({ gamepadDetected }: BirthdaySceneProps) {
   }, [autoplayEnabled, resume, resetManualOverrides]);
 
   useGamepadNavigation(
-    { onBack: back, onAdvance: advance, onInteract: toggleAutoplay, onToggleControls: toggleControls },
+    {
+      onBack: back,
+      onAdvance: advance,
+      onInteract: toggleAutoplay,
+      onToggleControls: toggleControls,
+      onAnyInput: () => setInputMethod('gamepad')
+    },
     { enabled: true }
   );
 
@@ -582,6 +697,7 @@ export function BirthdayScene({ gamepadDetected }: BirthdaySceneProps) {
   // avanti/indietro, spazio per l'automatico, Fine per saltare tutto.
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      setInputMethod('keyboard');
       if (event.key === 'ArrowRight') {
         advance();
       } else if (event.key === 'ArrowLeft') {
@@ -596,7 +712,7 @@ export function BirthdayScene({ gamepadDetected }: BirthdaySceneProps) {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [advance, back, toggleAutoplay, skipToEnd]);
+  }, [advance, back, toggleAutoplay, skipToEnd, setInputMethod]);
 
   return (
     <div className={`${styles.root} ${isTicking ? '' : styles.paused}`} ref={rootRef}>
@@ -614,16 +730,24 @@ export function BirthdayScene({ gamepadDetected }: BirthdaySceneProps) {
 
       {/* Compare ogni volta che la timeline si ferma a un checkpoint di
           fine quadro (mai sull'ultimo: GTA non ne registra uno, vedi il
-          `forEach` sopra) — testo che si adatta a cosa è stato rilevato,
-          stesso principio delle etichette L1/R1/AUTO in BirthdayControls:
-          non promette un controller a chi non ne ha uno collegato. */}
+          `forEach` sopra) — icona del tasto vero al posto della parola,
+          stessa sagoma joystick/tastiera di `controlIcons.tsx`: qui
+          collassata sulle due sole varianti che il testo distingueva già
+          (joystick oppure tutto il resto), non le tre di `inputMethod`. */}
       {!isTicking && (
         <div className={styles.pauseHint}>
-          <span className={styles.pauseHintText}>
-            {gamepadDetected
-              ? 'In pausa — premi R1 per continuare, o attiva l’automatico con X'
-              : 'In pausa — premi → per continuare, o attiva l’automatico'}
-          </span>
+          <div className={styles.pauseHintPanel}>
+            <span className={styles.pauseHintLabel}>Pausa</span>
+            <p className={styles.pauseHintText}>
+              <span className={styles.pauseHintIcon}>
+                {inputMethod === 'gamepad' ? <GamepadShoulderIcon label="R1" /> : <KeyArrowIcon direction="right" />}
+              </span>
+              per continuare, o attiva l’automatico con
+              <span className={styles.pauseHintIcon}>
+                {inputMethod === 'gamepad' ? <GamepadCrossIcon /> : <KeySpaceIcon />}
+              </span>
+            </p>
+          </div>
         </div>
       )}
 
@@ -633,7 +757,8 @@ export function BirthdayScene({ gamepadDetected }: BirthdaySceneProps) {
         activeIndex={activeIndex}
         total={SEQUENCE.length}
         progressFillRef={progressFillRef}
-        gamepadDetected={gamepadDetected}
+        inputMethod={inputMethod}
+        onPointerActivity={() => setInputMethod('pointer')}
         controlsToggleSignal={controlsToggleSignal}
         onToggleAutoplay={toggleAutoplay}
         onToggleStopAll={toggleStopAll}

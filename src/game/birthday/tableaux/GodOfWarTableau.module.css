@@ -76,7 +76,7 @@
   display: grid;
   justify-items: center;
   gap: 1.4rem;
-  width: min(1100px, 110vw);
+  width: min(1300px, 140vw);
 }
 
 .blockActive .title,
@@ -84,14 +84,24 @@
   animation: carve 1.6s cubic-bezier(0.16, 0.9, 0.28, 1) both;
 }
 
+/* Bug reale: animare `letter-spacing` qui (versione precedente: da 0.44em a
+   quello di riposo) cambia la larghezza di OGNI riga durante l'animazione —
+   su un titolo corto, di una riga sola, non si vedeva; appena il testo si è
+   allungato ed è finito su più righe, il browser ricalcolava l'a-capo
+   fotogramma per fotogramma e le parole saltavano visibilmente da una riga
+   all'altra mentre l'animazione girava. `filter: blur()` dà un effetto
+   d'ingresso altrettanto marcato (mette a fuoco, non "incide", ma la stessa
+   idea di rivelazione) senza toccare la larghezza di nessuna riga: un
+   filtro non è mai causa di un nuovo a-capo. */
 @keyframes carve {
   from {
     transform: scale(0.94);
-    letter-spacing: 0.44em;
+    filter: blur(6px);
     opacity: 0;
   }
   to {
     transform: scale(1);
+    filter: blur(0);
     opacity: 1;
   }
 }
@@ -176,7 +186,7 @@
      coprendo/frantumando. */
   font-family: 'Cinzel', Georgia, serif;
   font-weight: 700;
-  font-size: clamp(2.2rem, 7vw, 5.2rem);
+  font-size: clamp(1.2rem, 5vw, 3.2rem);
   line-height: 1;
   letter-spacing: 0.18em;
   /* Il maiuscoletto spaziato lascia uno spazio vuoto in coda all'ultima

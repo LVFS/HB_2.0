@@ -6,6 +6,41 @@
   gap: var(--space-4);
 }
 
+/* Fila dei pulsanti mondo, sopra l'elenco livelli vero e proprio. */
+.worldRow {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.worldButton {
+  flex: 1;
+  padding: var(--space-2) var(--space-3);
+  font-size: 0.78rem;
+}
+
+/* Mondo oggi mostrato sulla mappa 3D — solo il testo cambia colore: NON
+   toccare `--fill` qui. Tutti i valori di `--fill` nel sistema (vedi
+   ui.module.css) sono quasi opachi apposta, per coprire per intero
+   l'interno del pulsante sopra il colore "anello" esterno (usato da
+   `:focus-visible` e da `.worldButtonFocused` sotto) — un `--fill`
+   semi-trasparente come `--accent-soft` lascerebbe trasparire l'anello
+   pieno sottostante quando i due stati coincidono (il caso comune
+   all'apertura, mondo attivo = fuoco iniziale del controller), fondendo
+   testo e sfondo nello stesso arancione pieno (bug reale visto a schermo). */
+.worldButton[aria-pressed='true'] {
+  color: var(--accent);
+}
+
+/* Fuoco da controller (L1/R1 lo spostano): stesso trucco di
+   `.button:focus-visible` in ui.module.css (l'anello vero — un `outline`
+   verrebbe tagliato dal clip-path), ma innescato da uno stato logico
+   (indice a fuoco) invece che dal focus reale del DOM: nessun Tab ha
+   spostato la selezione qui. */
+.worldButtonFocused {
+  --rim: 2px;
+  background: var(--focus-ring);
+}
+
 .grid {
   display: grid;
   gap: var(--space-2);
@@ -91,4 +126,12 @@
   composes: label from '../../../styles/ui.module.css';
   font-size: 0.72rem;
   color: var(--text-faint);
+}
+
+/* Etichetta "mondo" sopra il nome del livello — colore di default di
+   `label` (--text-dim), diverso apposta da `--steel`/`--text-faint` usati
+   sopra per non confondersi con quelli: quello è STATO, questo è identità. */
+.worldLabel {
+  composes: label from '../../../styles/ui.module.css';
+  font-size: 0.68rem;
 }

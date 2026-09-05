@@ -134,7 +134,11 @@ export function MenuScene({ onWhiteout }: MenuSceneProps) {
 
       <MainMenuOverlay phase={phase} />
 
-      {!isCommitted && <SettingsBar />}
+      {!isCommitted && (
+        <div className={styles.settingsAnchor}>
+          <SettingsBar />
+        </div>
+      )}
 
       {/* Se il file non esiste ancora (vedi `LEAP_VIDEO_URL`), l'errore di
           caricamento è silenzioso e l'overlay resta semplicemente invisibile

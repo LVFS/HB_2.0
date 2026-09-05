@@ -4,6 +4,10 @@
 
 export interface LevelInfo {
   id: string;
+  /** Id del mondo (città) a cui appartiene — vedi `data/worlds.ts`. Oggi
+   * ogni mondo ha un solo livello, ma il campo esiste già per reggere un
+   * mondo con più livelli in futuro senza bisogno di ristrutturare. */
+  worldId: string;
   name: string;
   description: string;
   /**
@@ -52,6 +56,7 @@ export function getLevelMapImageUrl(level: LevelInfo): string {
 export const levels: LevelInfo[] = [
   {
     id: 'oristano-ariston',
+    worldId: 'oristano',
     name: 'Cinema Ariston',
     description: 'Viale Armando Diaz, Oristano — dove tutto è cominciato.',
     order: 1,
@@ -62,6 +67,7 @@ export const levels: LevelInfo[] = [
   },
   {
     id: 'sili',
+    worldId: 'sili',
     name: 'Silì',
     description: 'La frazione sul Tirso, a due passi da Oristano.',
     order: 2,
@@ -76,6 +82,7 @@ export const levels: LevelInfo[] = [
     // (ricerche inconcludenti), meglio un placeholder onesto che un nome
     // sbagliato per un posto che probabilmente ha un significato preciso.
     id: 'cagliari-bastione',
+    worldId: 'cagliari',
     name: 'Cagliari',
     description: 'Un luogo speciale a Cagliari — nome da confermare.',
     order: 3,
@@ -99,4 +106,15 @@ export function isLevelUnlocked(level: LevelInfo, completedLevelIds: string[]): 
   if (level.order === 1) return true;
   const previous = levels.find((candidate) => candidate.order === level.order - 1);
   return previous ? completedLevelIds.includes(previous.id) : true;
+}
+
+/**
+ * Livello "rappresentativo" di un mondo — oggi l'unico che ha quel
+ * `worldId` (un mondo = un livello, per ora). Il giorno in cui un mondo
+ * avrà più livelli, qui si deciderà quale mostrare per primo (es. il primo
+ * per `order`, o il primo non completato) senza che chi la chiama debba
+ * cambiare.
+ */
+export function getWorldLevel(worldId: string): LevelInfo | undefined {
+  return levels.find((level) => level.worldId === worldId);
 }

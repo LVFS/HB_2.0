@@ -1,0 +1,22 @@
+/* Pulsante icona-sola, alto quanto ".toggle" di SettingsBar (misurato:
+   ~50px, dati padding + line-height del testo "IMPOSTAZIONI" a 0.8rem) ma
+   quadrato invece che a etichetta testuale — altrimenti i due pulsanti
+   fianco a fianco non si allineano in altezza.
+   Il selettore attributo `[type='button']` non è decorativo: senza, questa
+   regola e `.button` di `ui.module.css` (composta da `ui.secondary`, stessa
+   specificità di classe) si contendono `padding`/dimensioni a parità di
+   specificità — chi vince dipende dall'ordine in cui Vite inietta i due
+   moduli CSS nel documento, che in dev NON è l'ordine degli import nel file
+   ma quello di importazione nel grafo dei moduli: un altro file che importa
+   `ui.module.css` DOPO questo componente lo re-inietta più in basso nel
+   documento e ribalta il risultato (bug reale visto a schermo: icona
+   decentrata, pulsante tornato alle dimensioni di default). L'attributo
+   aggiunge un selettore in più (0,2,0 contro 0,1,0 di `.button` da solo),
+   che vince SEMPRE, indipendentemente dall'ordine di iniezione. */
+.button[type='button'] {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  width: 3.125rem;
+  height: 3.125rem;
+}

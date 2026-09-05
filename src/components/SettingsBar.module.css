@@ -1,10 +1,9 @@
-/* Angolo in alto a destra: lontano dal centro (dove compare il prompt "premi
-   un tasto") e da "Seleziona livello" (in basso a sinistra nel menu). */
+/* Nessun posizionamento assoluto qui: lo decide chi monta `SettingsBar`
+   (vedi `.settingsAnchor` in `MenuScene.module.css`, `.topRightBar` in
+   `LevelSelectScene.module.css`) — così può stare da sola in un angolo o
+   accanto a un altro pulsante (`HomeButton`) senza che questo componente
+   debba sapere nulla di schermate o vicini di casa. */
 .container {
-  position: absolute;
-  top: var(--space-4);
-  right: var(--space-4);
-  z-index: 25;
   pointer-events: auto;
   display: grid;
   justify-items: end;

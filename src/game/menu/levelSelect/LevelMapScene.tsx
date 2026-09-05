@@ -589,6 +589,9 @@ function CameraRig({ level, focused }: CameraRigProps) {
 interface LevelMapSceneProps {
   level: LevelInfo;
   focused: boolean;
+  /** Click/conferma sul marker (pin) mentre non si è ancora zoomati —
+   * stesso effetto di scegliere questo livello dall'elenco 2D. */
+  onActivateMarker: () => void;
 }
 
 /**
@@ -599,7 +602,7 @@ interface LevelMapSceneProps {
  * la vecchia coppia `LevelMap`/`LevelCloseupScene` — un solo spazio 3D
  * invece di un widget DOM e un Canvas separati da tenere sincronizzati.
  */
-export function LevelMapScene({ level, focused }: LevelMapSceneProps) {
+export function LevelMapScene({ level, focused, onActivateMarker }: LevelMapSceneProps) {
   const geometry = useMemo(() => getMapGeometry(level), [level]);
   const island = useMemo(() => buildIslandGeometry(level, geometry.planeSize), [level, geometry.planeSize]);
 
@@ -660,7 +663,7 @@ export function LevelMapScene({ level, focused }: LevelMapSceneProps) {
         <IslandBelly geometry={island.bellyGeometry} planeSize={geometry.planeSize} />
       </group>
 
-      <LevelMarker level={level} position={markerPosition} />
+      <LevelMarker level={level} position={markerPosition} focused={focused} onSelect={onActivateMarker} />
 
       <CameraRig level={level} focused={focused} />
     </Canvas>

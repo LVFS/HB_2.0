@@ -8,3 +8,17 @@
   gap: var(--space-2);
   pointer-events: auto;
 }
+
+/* Angolo in alto a destra: `HomeButton` e `SettingsBar` nella stessa riga,
+   stesso angolo — il posizionamento vive qui (non in `SettingsBar`, vedi il
+   commento in `SettingsBar.module.css`) proprio per poter affiancare un
+   pulsante che quel componente non deve conoscere. */
+.topRightBar {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+  z-index: 25;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}

@@ -37,7 +37,23 @@
   }
 }
 
-.levelSelectLink {
+/* Il selettore attributo `[type='button']` non è decorativo: senza, questa
+   regola e `.button` di `ui.module.css` (composta da `ui.secondary`, sempre
+   applicata insieme a questa classe) hanno la STESSA specificità di classe
+   e si contendono `position` — `.button` lo vuole `relative` (serve al
+   trucco del bordo su clip-path, vedi ui.module.css), qui invece serve
+   `absolute` per ancorare il pulsante in basso a sinistra. Chi vince
+   dipende da quale delle due regole Vite inietta per ULTIMA nel documento,
+   e in sviluppo NON è l'ordine degli import in questo file: ogni file che
+   importa `ui.module.css` la re-inietta nel proprio punto del grafo dei
+   moduli — visitare per la prima volta una schermata che la importa DOPO
+   questa (es. la selezione livelli) sposta la sua copia più in basso nel
+   documento e ribalta il risultato (bug reale: il pulsante torna in
+   `position: relative`, esce dall'ancoraggio e "cade" nel flusso normale
+   dopo essere stati sulla selezione livelli e tornati al menu). L'attributo
+   aggiunge un selettore in più (0,2,0 contro 0,1,0 di `.button` da solo) e
+   vince SEMPRE, indipendentemente dall'ordine di iniezione. */
+.levelSelectLink[type='button'] {
   position: absolute;
   bottom: var(--space-4);
   left: var(--space-4);

@@ -1,6 +1,16 @@
-import { Component, Suspense, useEffect, useMemo, useRef, type ComponentRef, type ReactNode } from 'react';
+import {
+  Component,
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  type ComponentRef,
+  type MutableRefObject,
+  type ReactNode
+} from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Environment, Lightformer, MapControls, Stars, useTexture } from '@react-three/drei';
+import { Physics } from '@react-three/rapier';
 import { BufferAttribute, CanvasTexture, DoubleSide, ExtrudeGeometry, RepeatWrapping, Shape, ShapeGeometry, type BufferGeometry } from 'three';
 import gsap from 'gsap';
 import { getLevelMapImageUrl, type LevelInfo } from '@/data/levels';
@@ -484,6 +494,12 @@ interface CameraRigProps {
   /** `true` quando la camera deve essere vicina al marker (livello scelto
    * dall'elenco), `false` per l'inquadratura d'insieme. */
   focused: boolean;
+  /** `true` mentre `CapsuleSequence` possiede la camera per il push-in
+   * finale — vedi il commento su `cameraLockedRef` lì. Guard esplicito
+   * sul lato opposto, stesso principio di `CameraDirector`/`CharacterIntro`
+   * nel menu: appena `true`, questo `useFrame` smette del tutto di
+   * leggere/scrivere `controls`/`camera.position`. */
+  cameraLockedRef: MutableRefObject<boolean>;
 }
 
 /**
@@ -501,7 +517,7 @@ interface CameraRigProps {
  * motivo — resta innocuo con `focused` attivo, dato che a controlli
  * disabilitati `controls.target` non si muove comunque.
  */
-function CameraRig({ level, focused }: CameraRigProps) {
+function CameraRig({ level, focused, cameraLockedRef }: CameraRigProps) {
   const { camera } = useThree();
   const controlsRef = useRef<ComponentRef<typeof MapControls>>(null);
   const isAnimating = useRef(false);
@@ -542,6 +558,8 @@ function CameraRig({ level, focused }: CameraRigProps) {
   }, [focused, geometry]);
 
   useFrame(() => {
+    if (cameraLockedRef.current) return;
+
     const controls = controlsRef.current;
     if (!controls) return;
 
@@ -602,6 +620,9 @@ interface LevelMapSceneProps {
    * vedi `CapsuleSequence.tsx`. */
   launchTrigger: number;
   onImpactFlash: () => void;
+  /** Accende il blur CSS locale per il push-in finale — vedi
+   * `CapsuleSequence.tsx` (`onOutroBlur`) e `LevelSelectScene.tsx`. */
+  onOutroBlur: () => void;
   onSequenceComplete: () => void;
 }
 
@@ -619,10 +640,15 @@ export function LevelMapScene({
   onActivateMarker,
   launchTrigger,
   onImpactFlash,
+  onOutroBlur,
   onSequenceComplete
 }: LevelMapSceneProps) {
   const geometry = useMemo(() => getMapGeometry(level), [level]);
   const island = useMemo(() => buildIslandGeometry(level, geometry.planeSize), [level, geometry.planeSize]);
+  // Condiviso tra `CameraRig` e `CapsuleSequence`, non sollevato a stato:
+  // cambia dentro un `useFrame`/timer, mai per un render — vedi i commenti
+  // su `cameraLockedRef` in entrambi.
+  const cameraLockedRef = useRef(false);
 
   // Indipendente dalla texture: il marker deve comparire anche se
   // l'immagine della mappa non è ancora stata generata.
@@ -683,7 +709,23 @@ export function LevelMapScene({
 
       <LevelMarker level={level} position={markerPosition} focused={focused} onSelect={onActivateMarker} />
 
-      <CameraRig level={level} focused={focused} />
+      <CameraRig level={level} focused={focused} cameraLockedRef={cameraLockedRef} />
+
+      {/* `<Physics>` VUOTO, mai popolato: serve solo a far partire da qui
+          l'`import()` interno di `@react-three/rapier` per il motore WASM
+          (~2MB), così arriva già caricato quando `SceneManager` (livello di
+          gioco) monta il SUO `<Physics>` vero — stesso identico punto
+          d'importazione (`suspend-react` condivide la cache per riferimento
+          di funzione, non per bytes scaricati), quindi nessun doppione nel
+          bundle. Provato prima un `import('@dimforge/rapier3d-compat')`
+          diretto da `LevelSelectScene.tsx`: scartato, produceva un secondo
+          chunk da 2.2MB invece di condividere quello di `SceneManager` (vedi
+          il commento lì). Suspense proprio perché `<Physics>` sospende
+          (throw di una promise) finché il WASM non è pronto — innocuo qui,
+          non c'è nulla sotto ad aspettare. */}
+      <Suspense fallback={null}>
+        <Physics>{null}</Physics>
+      </Suspense>
 
       {/* Fuori dal Suspense dell'isola apposta: se il .glb della capsula
           tarda, non deve bloccare il resto della scena — Suspense qui è
@@ -692,7 +734,9 @@ export function LevelMapScene({
         <CapsuleSequence
           trigger={launchTrigger}
           onImpactFlash={onImpactFlash}
+          onOutroBlur={onOutroBlur}
           onSequenceComplete={onSequenceComplete}
+          cameraLockedRef={cameraLockedRef}
         />
       </Suspense>
     </Canvas>

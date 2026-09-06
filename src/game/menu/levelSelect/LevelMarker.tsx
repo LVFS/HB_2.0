@@ -1,5 +1,5 @@
 import { Suspense, useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react';
-import { useFrame, type ThreeEvent } from '@react-three/fiber';
+import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
 import { Text, useAnimations } from '@react-three/drei';
 import {
   Color,
@@ -124,9 +124,26 @@ interface CinemaAristonModelProps {
 function CinemaAristonModel({ onCloseupEnterRef }: CinemaAristonModelProps) {
   const { scene, animations } = useCinemaAristonGltf();
   const { actions, mixer } = useAnimations(animations, scene);
+  const { gl, camera, scene: rootScene } = useThree();
   const elapsed = useRef(0);
   const hoverAmount = useRef(0);
   const [hovered, setHovered] = useState(false);
+
+  // Compila ombreggiatori/materiali SUBITO al caricamento, non al primo
+  // fotogramma in cui il gruppo diventa visibile (quando la camera entra
+  // in `CLOSEUP_DISTANCE`, sotto): il file è già scaricato (`.preload()` in
+  // `cinemaAristonModel.ts`, più il prefetch da `MenuScene.tsx`), ma finché
+  // nessuna mesh viene disegnata almeno una volta, GPU e shader restano da
+  // preparare — è quello scatto residuo. `compileAsync` prepara i materiali
+  // a prescindere da `visible` sul gruppo che lo contiene (guarda solo le
+  // mesh sotto l'oggetto passato, vedi il sorgente di `WebGLRenderer.compile`),
+  // quindi funziona anche mentre `modelRef` è ancora nascosto in
+  // `LevelMarker`. `rootScene` come terzo argomento serve solo per il
+  // contesto luci (coerente con quelle vere della scena), non fa parte di
+  // ciò che viene compilato.
+  useEffect(() => {
+    gl.compileAsync(scene, camera, rootScene).catch(() => {});
+  }, [gl, camera, rootScene, scene]);
 
   const letterMeshes = useMemo(() => {
     const found: Mesh[] = [];

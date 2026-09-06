@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTexture } from '@react-three/drei';
 import { SettingsBar } from '@/components/SettingsBar';
 import { useAnyInput } from '@/hooks/useAnyInput';
 import { useGameStore } from '@/store/gameStore';
+import { getLevelMapImageUrl, levels } from '@/data/levels';
 import { MainMenuOverlay } from './MainMenuOverlay';
 import { MainMenuSceneAnimation } from './MainMenuSceneAnimation';
 import styles from './MenuScene.module.css';
@@ -54,6 +56,27 @@ export function MenuScene({ onWhiteout }: MenuSceneProps) {
   const handleIntroComplete = useCallback(() => {
     setPhase((current) => (current === 'intro' ? 'ready' : current));
   }, []);
+
+  // Precarica gli asset della schermata successiva NON appena l'utente può
+  // vederli arrivare — non prima (in `'intro'` competerebbe per banda con
+  // gli asset critici di QUESTA schermata, ingresso-oristano.glb in testa,
+  // rallentando il primo caricamento vero) — e comunque con largo anticipo:
+  // da qui a `screen: 'levelSelect'` restano le fasi `punching`/`breaking`
+  // (diversi secondi di coreografia), tempo "gratis" per il download. Stesso
+  // principio dell'analogo effetto in `LevelSelectScene.tsx` per la schermata
+  // di gioco. Il modello Cinema Ariston (`cinemaAristonModel.ts`) e quello
+  // della capsula (`capsulaStellarModel.ts`) si autoregistrano già con
+  // `useGLTF.preload` al solo IMPORT del modulo — importare qui il modulo
+  // di `LevelSelectScene` (mai renderizzato finché `screen` non cambia
+  // davvero) basta a farli partire; la mappa statica del primo livello va
+  // invece precaricata esplicitamente, l'URL dipende dal livello e non è
+  // noto a livello di modulo.
+  useEffect(() => {
+    if (phase !== 'ready') return;
+    import('@/game/menu/levelSelect/LevelSelectScene').catch(() => {});
+    const firstLevel = levels.find((level) => level.order === 1) ?? levels[0];
+    useTexture.preload(getLevelMapImageUrl(firstLevel));
+  }, [phase]);
 
   // Non più legato al click di un bottone "Gioca": parte la sequenza
   // cinematica del personaggio, che a sua volta innesca `breaking`

@@ -16,9 +16,13 @@ export const CAPSULE_TIMING = {
   /** Durata dello schiacciamento/rimbalzo dopo l'impatto, prima che la
    * capsula sia del tutto assestata (fotogramma 30). */
   settle: 0.45,
-  /** Pausa dopo l'assestamento prima di accendere il whiteout e tagliare
-   * alla schermata di gioco — lascia respirare onda d'urto/polvere. */
-  holdAfterSettle: 0.9,
+  /** Pausa dopo l'assestamento, prima dello zoom finale — lascia respirare
+   * onda d'urto/polvere/detriti. Allungata (era 0.9) perché l'impatto
+   * passava troppo in fretta. */
+  holdAfterSettle: 1.3,
+  /** Durata del push-in di camera + blur finale su modello appena atterrato,
+   * subito prima del whiteout — vedi `CapsuleSequence.tsx`. */
+  outroZoom: 1.0,
   /** Durata dello scatto di camera-shake all'impatto. */
   shakeDuration: 0.35,
   /** Durata del flash bianco all'impatto. */
@@ -26,4 +30,4 @@ export const CAPSULE_TIMING = {
 } as const;
 
 export const CAPSULE_TOTAL_DURATION =
-  CAPSULE_TIMING.impact + CAPSULE_TIMING.settle + CAPSULE_TIMING.holdAfterSettle;
+  CAPSULE_TIMING.impact + CAPSULE_TIMING.settle + CAPSULE_TIMING.holdAfterSettle + CAPSULE_TIMING.outroZoom;

@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { HomeButton } from '@/components/HomeButton';
 import { SettingsBar } from '@/components/SettingsBar';
 import { getWorldLevel, levels } from '@/data/levels';
@@ -36,6 +36,27 @@ export function LevelSelectScene({ onWhiteout }: LevelSelectSceneProps) {
   const setSelectedLevel = useGameStore((state) => state.setSelectedLevel);
   const resetProgress = useGameStore((state) => state.resetProgress);
   const completedLevelIds = useProgressStore((state) => state.completedLevelIds);
+
+  // Precarica il CODICE della schermata di gioco NON appena si entra qui,
+  // non solo al click su "Avvia livello": da qui in poi l'utente può restare
+  // a guardare l'elenco/la mappa per un tempo qualunque, tutto tempo "gratis"
+  // per scaricare in background — stesso principio dell'analogo effetto in
+  // `MenuScene.tsx`. Il motore fisico Rapier vero e proprio (~2MB di WASM)
+  // NON si precarica da qui con un secondo `import('@dimforge/rapier3d-compat')`
+  // diretto: provato, e scartato — `@react-three/rapier` lo importa a sua
+  // volta con un `import()` interno tutto suo (dentro `<Physics>`), e con
+  // `entriesAware` (vedi `vite.config.ts`) i due punti di importazione
+  // finiscono in DUE chunk fisicamente separati invece di condividerne uno
+  // solo: il bundle di build l'ha confermato, un secondo chunk da 2.2MB
+  // identico al primo, scaricato per niente (la cache di `suspend-react` che
+  // evita il doppio lavoro è tenuta per riferimento di funzione, e le due
+  // copie duplicate del modulo non sono la STESSA funzione). Il pre-warming
+  // di Rapier vero vive invece in `LevelMapScene.tsx`, con un `<Physics>`
+  // vuoto nello stesso Canvas — stesso identico punto di importazione di
+  // `SceneManager`, quindi stesso chunk, nessun doppione.
+  useEffect(() => {
+    import('@/game/levels/Level1/SceneManager').catch(() => {});
+  }, []);
 
   const [displayedLevelId, setDisplayedLevelId] = useState(FIRST_LEVEL_ID);
   // `false`: inquadratura d'insieme, elenco livelli sopra. `true`: camera
@@ -138,6 +159,10 @@ export function LevelSelectScene({ onWhiteout }: LevelSelectSceneProps) {
   const [launching, setLaunching] = useState(false);
   const [launchTrigger, setLaunchTrigger] = useState(0);
   const [flashActive, setFlashActive] = useState(false);
+  // Blur CSS sul canvas per il push-in finale — non si spegne da sola
+  // (a differenza di `flashActive`): la scena si smonta poco dopo per il
+  // cambio schermata, non serve un timeout di ritorno.
+  const [outroBlurActive, setOutroBlurActive] = useState(false);
 
   /** Fa partire la sequenza — non cambia schermata subito: quello lo fa
    * `handleSequenceComplete`, a sequenza (capsula + impatto + pausa)
@@ -156,6 +181,10 @@ export function LevelSelectScene({ onWhiteout }: LevelSelectSceneProps) {
     window.setTimeout(() => setFlashActive(false), CAPSULE_TIMING.flashDuration * 1000);
   }, []);
 
+  const handleOutroBlur = useCallback(() => {
+    setOutroBlurActive(true);
+  }, []);
+
   /** Sequenza conclusa: accende il whiteout globale (`App.tsx`) e cambia
    * davvero schermata un istante dopo, quando il bianco ha già coperto lo
    * schermo (la sua transizione CSS dura 0.5s, vedi `App.module.css`). */
@@ -170,14 +199,17 @@ export function LevelSelectScene({ onWhiteout }: LevelSelectSceneProps) {
 
   return (
     <div className="scene-shell">
-      <LevelMapScene
-        level={displayedLevel}
-        focused={focused}
-        onActivateMarker={() => handleSelectLevel(displayedLevel.id)}
-        launchTrigger={launchTrigger}
-        onImpactFlash={handleImpactFlash}
-        onSequenceComplete={handleSequenceComplete}
-      />
+      <div className={`${styles.canvasWrapper} ${outroBlurActive ? styles.canvasWrapperBlurred : ''}`}>
+        <LevelMapScene
+          level={displayedLevel}
+          focused={focused}
+          onActivateMarker={() => handleSelectLevel(displayedLevel.id)}
+          launchTrigger={launchTrigger}
+          onImpactFlash={handleImpactFlash}
+          onOutroBlur={handleOutroBlur}
+          onSequenceComplete={handleSequenceComplete}
+        />
+      </div>
 
       <div className={`${styles.impactFlash} ${flashActive ? styles.impactFlashActive : ''}`} />
 

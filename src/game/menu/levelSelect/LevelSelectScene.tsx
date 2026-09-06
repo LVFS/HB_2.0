@@ -5,6 +5,7 @@ import { getWorldLevel, levels } from '@/data/levels';
 import { useGameStore } from '@/store/gameStore';
 import { useProgressStore } from '@/store/progressStore';
 import ui from '@/styles/ui.module.css';
+import { CAPSULE_TIMING } from './capsuleConfig';
 import { CloudTransition } from './CloudTransition';
 import { LevelListOverlay } from './LevelListOverlay';
 import { LevelMapScene } from './LevelMapScene';
@@ -15,6 +16,14 @@ import styles from './LevelSelectScene.module.css';
  * serve leggere lo store per calcolarlo. */
 const FIRST_LEVEL_ID = levels.find((level) => level.order === 1)?.id ?? levels[0].id;
 
+interface LevelSelectSceneProps {
+  /** Fade to white di chiusura sequenza — vive in `App`, vedi lì il
+   * perché (stesso meccanismo già usato da `MenuScene`, esteso qui per
+   * coprire il taglio verso `SceneManager` alla fine della sequenza
+   * capsula). */
+  onWhiteout: (active: boolean) => void;
+}
+
 /**
  * Orchestratore della selezione livelli: un'unica scena 3D sempre visibile
  * (`LevelMapScene`) con l'elenco livelli sovrapposto all'inizio, non al
@@ -22,7 +31,7 @@ const FIRST_LEVEL_ID = levels.find((level) => level.order === 1)?.id ?? levels[0
  * "vedere la mappa". Possiede solo la fase e le transizioni di stato,
  * stessa filosofia di `MenuScene.tsx`.
  */
-export function LevelSelectScene() {
+export function LevelSelectScene({ onWhiteout }: LevelSelectSceneProps) {
   const setScreen = useGameStore((state) => state.setScreen);
   const setSelectedLevel = useGameStore((state) => state.setSelectedLevel);
   const resetProgress = useGameStore((state) => state.resetProgress);
@@ -123,11 +132,41 @@ export function LevelSelectScene() {
     });
   }, [startCloudTransitionTo]);
 
+  // `true` dal click su "Avvia livello" fino al taglio vero e proprio:
+  // nasconde elenco/controlli/angolo in alto per lasciare la scena pulita
+  // durante la sequenza capsula-impatto-zoom (Parte E, "Stellar Blade").
+  const [launching, setLaunching] = useState(false);
+  const [launchTrigger, setLaunchTrigger] = useState(0);
+  const [flashActive, setFlashActive] = useState(false);
+
+  /** Fa partire la sequenza — non cambia schermata subito: quello lo fa
+   * `handleSequenceComplete`, a sequenza (capsula + impatto + pausa)
+   * conclusa. Un contatore, non un booleano: un secondo "Avvia livello"
+   * nella stessa sessione (improbabile ma non impossibile con `launching`
+   * come guard) deve poter far ripartire l'effetto in `CapsuleSequence`
+   * anche se il valore logico "sto lanciando" non cambierebbe da solo. */
   const handleStartLevel = useCallback(() => {
-    setSelectedLevel(displayedLevel.id);
-    resetProgress();
-    setScreen('game');
-  }, [displayedLevel, setSelectedLevel, resetProgress, setScreen]);
+    if (launching) return;
+    setLaunching(true);
+    setLaunchTrigger((n) => n + 1);
+  }, [launching]);
+
+  const handleImpactFlash = useCallback(() => {
+    setFlashActive(true);
+    window.setTimeout(() => setFlashActive(false), CAPSULE_TIMING.flashDuration * 1000);
+  }, []);
+
+  /** Sequenza conclusa: accende il whiteout globale (`App.tsx`) e cambia
+   * davvero schermata un istante dopo, quando il bianco ha già coperto lo
+   * schermo (la sua transizione CSS dura 0.5s, vedi `App.module.css`). */
+  const handleSequenceComplete = useCallback(() => {
+    onWhiteout(true);
+    window.setTimeout(() => {
+      setSelectedLevel(displayedLevel.id);
+      resetProgress();
+      setScreen('game');
+    }, 550);
+  }, [displayedLevel, setSelectedLevel, resetProgress, setScreen, onWhiteout]);
 
   return (
     <div className="scene-shell">
@@ -135,30 +174,38 @@ export function LevelSelectScene() {
         level={displayedLevel}
         focused={focused}
         onActivateMarker={() => handleSelectLevel(displayedLevel.id)}
+        launchTrigger={launchTrigger}
+        onImpactFlash={handleImpactFlash}
+        onSequenceComplete={handleSequenceComplete}
       />
 
-      {focused ? (
-        <div className={styles.controls}>
-          <button className={ui.secondary} onClick={() => setFocused(false)}>
-            Elenco livelli
-          </button>
-          <button className={ui.primary} onClick={handleStartLevel}>
-            Avvia livello
-          </button>
-        </div>
-      ) : (
-        <LevelListOverlay
-          completedLevelIds={completedLevelIds}
-          activeWorldId={displayedLevel.worldId}
-          onSelect={handleSelectLevel}
-          onSelectWorld={handleSelectWorld}
-        />
-      )}
+      <div className={`${styles.impactFlash} ${flashActive ? styles.impactFlashActive : ''}`} />
 
-      <div className={styles.topRightBar}>
-        <HomeButton onClick={() => setScreen('menu')} />
-        <SettingsBar />
-      </div>
+      {!launching &&
+        (focused ? (
+          <div className={styles.controls}>
+            <button className={ui.secondary} onClick={() => setFocused(false)}>
+              Elenco livelli
+            </button>
+            <button className={ui.primary} onClick={handleStartLevel}>
+              Avvia livello
+            </button>
+          </div>
+        ) : (
+          <LevelListOverlay
+            completedLevelIds={completedLevelIds}
+            activeWorldId={displayedLevel.worldId}
+            onSelect={handleSelectLevel}
+            onSelectWorld={handleSelectWorld}
+          />
+        ))}
+
+      {!launching && (
+        <div className={styles.topRightBar}>
+          <HomeButton onClick={() => setScreen('menu')} />
+          <SettingsBar />
+        </div>
+      )}
 
       <CloudTransition trigger={cloudTrigger} onCovered={handleCloudCovered} onCleared={handleCloudCleared} />
     </div>

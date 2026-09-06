@@ -4,6 +4,7 @@ import { Environment, Lightformer, MapControls, Stars, useTexture } from '@react
 import { BufferAttribute, CanvasTexture, DoubleSide, ExtrudeGeometry, RepeatWrapping, Shape, ShapeGeometry, type BufferGeometry } from 'three';
 import gsap from 'gsap';
 import { getLevelMapImageUrl, type LevelInfo } from '@/data/levels';
+import { CapsuleSequence } from './CapsuleSequence';
 import { LevelMarker } from './LevelMarker';
 import { imageOffsetToPlanePosition, projectToImageOffset } from './mapProjection';
 
@@ -490,11 +491,15 @@ interface CameraRigProps {
  * di `CameraDirector`/`CharacterIntro` nel menu: GSAP possiede la camera
  * SOLO durante il dolly (in scrittura ogni fotogramma finché l'animazione
  * dura), `MapControls` la possiede il resto del tempo (pan/zoom liberi
- * dell'utente). L'handoff è esplicito: `isAnimating` decide chi scrive, e
- * `controls.enabled` segue la stessa bandiera per non lasciare che un
- * drag dell'utente inizi a metà dolly. Il clamp del pan (sotto, fuori
- * dall'`if`) gira SOLO quando `isAnimating` è `false`, per lo stesso
- * motivo: non deve mai contendere la camera al dolly GSAP.
+ * dell'utente) — ma SOLO quando non si è zoomati su un livello scelto:
+ * `focused` disabilita il pan/zoom libero anche a dolly concluso, così una
+ * volta scelto un livello la mappa non si sposta più sotto ai piedi
+ * dell'utente. L'handoff è esplicito: `isAnimating` decide chi scrive alla
+ * camera, `controls.enabled` segue sia `isAnimating` (non deve mai
+ * contendere la camera al dolly GSAP) sia `focused` (vedi sopra). Il clamp
+ * del pan gira SOLO quando `isAnimating` è `false` per lo stesso primo
+ * motivo — resta innocuo con `focused` attivo, dato che a controlli
+ * disabilitati `controls.target` non si muove comunque.
  */
 function CameraRig({ level, focused }: CameraRigProps) {
   const { camera } = useThree();
@@ -540,7 +545,7 @@ function CameraRig({ level, focused }: CameraRigProps) {
     const controls = controlsRef.current;
     if (!controls) return;
 
-    controls.enabled = !isAnimating.current;
+    controls.enabled = !isAnimating.current && !focused;
     if (isAnimating.current) {
       camera.position.set(anim.current.x, anim.current.y, anim.current.z);
       controls.target.set(anim.current.tx, anim.current.ty, anim.current.tz);
@@ -592,6 +597,12 @@ interface LevelMapSceneProps {
   /** Click/conferma sul marker (pin) mentre non si è ancora zoomati —
    * stesso effetto di scegliere questo livello dall'elenco 2D. */
   onActivateMarker: () => void;
+  /** Contatore: incrementato da "Avvia livello" per far partire la
+   * sequenza capsula-impatto-zoom (Parte E del piano "Stellar Blade") —
+   * vedi `CapsuleSequence.tsx`. */
+  launchTrigger: number;
+  onImpactFlash: () => void;
+  onSequenceComplete: () => void;
 }
 
 /**
@@ -602,7 +613,14 @@ interface LevelMapSceneProps {
  * la vecchia coppia `LevelMap`/`LevelCloseupScene` — un solo spazio 3D
  * invece di un widget DOM e un Canvas separati da tenere sincronizzati.
  */
-export function LevelMapScene({ level, focused, onActivateMarker }: LevelMapSceneProps) {
+export function LevelMapScene({
+  level,
+  focused,
+  onActivateMarker,
+  launchTrigger,
+  onImpactFlash,
+  onSequenceComplete
+}: LevelMapSceneProps) {
   const geometry = useMemo(() => getMapGeometry(level), [level]);
   const island = useMemo(() => buildIslandGeometry(level, geometry.planeSize), [level, geometry.planeSize]);
 
@@ -666,6 +684,17 @@ export function LevelMapScene({ level, focused, onActivateMarker }: LevelMapScen
       <LevelMarker level={level} position={markerPosition} focused={focused} onSelect={onActivateMarker} />
 
       <CameraRig level={level} focused={focused} />
+
+      {/* Fuori dal Suspense dell'isola apposta: se il .glb della capsula
+          tarda, non deve bloccare il resto della scena — Suspense qui è
+          scoped solo a lei. */}
+      <Suspense fallback={null}>
+        <CapsuleSequence
+          trigger={launchTrigger}
+          onImpactFlash={onImpactFlash}
+          onSequenceComplete={onSequenceComplete}
+        />
+      </Suspense>
     </Canvas>
   );
 }

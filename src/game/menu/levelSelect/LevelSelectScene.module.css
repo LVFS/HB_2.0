@@ -22,3 +22,23 @@
   align-items: flex-start;
   gap: var(--space-2);
 }
+
+/* Flash locale all'impatto della capsula (Parte E, sequenza "Stellar
+   Blade") — DIVERSO dal whiteout globale di `App.tsx`: quello copre il
+   taglio verso la schermata di gioco, questo è solo il colpo di luce
+   dell'impatto, breve e dentro questa scena. Transizione via classe (non
+   keyframes): `LevelSelectScene` la accende e la spegne da sola dopo
+   `CAPSULE_TIMING.flashDuration`. */
+.impactFlash {
+  position: absolute;
+  inset: 0;
+  z-index: 22;
+  background: #f4faff;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 90ms ease-out;
+}
+
+.impactFlashActive {
+  opacity: 0.9;
+}

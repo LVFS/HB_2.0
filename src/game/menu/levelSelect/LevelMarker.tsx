@@ -1,8 +1,32 @@
-import { useMemo, useRef, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react';
 import { useFrame, type ThreeEvent } from '@react-three/fiber';
-import { Text } from '@react-three/drei';
-import { Color, DoubleSide, Group, Mesh, MeshBasicMaterial, MeshStandardMaterial, Vector3 } from 'three';
+import { Text, useAnimations } from '@react-three/drei';
+import {
+  Color,
+  DoubleSide,
+  Group,
+  Mesh,
+  MeshBasicMaterial,
+  MeshStandardMaterial,
+  Vector3,
+  type Material
+} from 'three';
+import gsap from 'gsap';
 import type { LevelInfo } from '@/data/levels';
+import { useCinemaAristonGltf } from './cinemaAristonModel';
+import { primeAtStart, playOnce } from './playOnce';
+
+const DUST_PUFF_COUNT = 5;
+/** Nomi degli oggetti onda d'urto/polvere nel file del Cinema Ariston —
+ * NON vengono più fatti partire (vedi sotto il perché) ma restano comunque
+ * presenti nella scena esportata: nascosti esplicitamente invece di
+ * lasciarli alla loro posa di riposo (che dipende dal fotogramma su cui
+ * si trovava Blender al momento dell'export, fragile — stessa lezione
+ * imparata con la capsula in `CapsuleSequence.tsx`). */
+const CINEMA_GROUND_EFFECT_NAMES = [
+  'Impact_Shockwave',
+  ...Array.from({ length: DUST_PUFF_COUNT }, (_, i) => `Dust_Puff_${i}`)
+];
 
 interface LevelMarkerProps {
   level: LevelInfo;
@@ -24,15 +48,184 @@ interface LevelMarkerProps {
  * `CAMERA_FAR` — quest'ultima ora è proporzionale a `PLANE_SIZE` (quindi
  * diversa per livello, vedi `getMapGeometry`), ma la PIÙ PICCOLA tra tutti
  * i livelli è quella con `mapGrid` minimo (oggi Silì, invariato, ~34) —
- * finché resta la più piccola, questa soglia va bene per tutti. Non scalata
- * insieme al piano apposta: il modello resta a dimensione reale fissa, non
- * cresce con l'area di mappa visibile. */
-const CLOSEUP_DISTANCE = 6.5;
+ * finché resta la più piccola, questa soglia va bene per tutti. Alzata da
+ * 6.5 a 12 su richiesta esplicita (si vuole vedere il modello da un po'
+ * più lontano, non solo a ridosso della camera ravvicinata) — resta
+ * comunque ben sotto 34, quindi non rischia di far sparire il pin durante
+ * il pan libero sulla mappa. Non scalata insieme al piano apposta: il
+ * modello resta a dimensione reale fissa, non cresce con l'area di mappa
+ * visibile. */
+const CLOSEUP_DISTANCE = 12;
 
 /** Durata del piccolo "scatto" di conferma prima di avviare davvero
  * `onSelect` — dà peso alla scelta invece di passare dritti alla camera che
  * si muove, invece di un salto secco allo zoom. */
 const CONFIRM_DELAY = 0.18;
+
+/** Il modello del Cinema Ariston è modellato a scala reale (~16m di
+ * larghezza) in `assets/blender/cinema_ariston.blend` — l'inquadratura
+ * ravvicinata (`CAMERA_NEAR` in `LevelMapScene.tsx`) è invece tarata sul
+ * vecchio cilindro placeholder (alto 2.4 unità). Questo fattore lo riporta
+ * a una taglia comparabile senza ritoccare la camera; è il primo numero da
+ * rivedere se in futuro si rifinisce l'inquadratura a vista. */
+const CINEMA_MODEL_SCALE = 0.28;
+
+function isEmissiveMaterial(material: Material | null): material is MeshStandardMaterial {
+  return !!material && 'emissiveIntensity' in material;
+}
+
+/** Il cilindro placeholder di sempre — INVARIATO, usato per ogni livello
+ * che non ha ancora un modello vero (oggi Silì e Cagliari). */
+function PlaceholderModel({ level }: { level: LevelInfo }) {
+  return (
+    <>
+      <mesh position={[0, 1.1, 0]} castShadow>
+        <cylinderGeometry args={[1.2, 1.2, 2.4, 32]} />
+        <meshStandardMaterial color={level.color} emissive={level.color} emissiveIntensity={0.25} />
+      </mesh>
+      <Text position={[0, 2.8, 0]} fontSize={0.4} color="#f8fafc" anchorX="center" anchorY="middle">
+        {level.name}
+      </Text>
+    </>
+  );
+}
+
+/**
+ * Il modello vero del Cinema Ariston: fa partire `Grow_Landing` (crescita
+ * dal suolo con rimbalzo) non appena il gruppo diventa il modello
+ * ravvicinato attivo (`closeupRef`, che segue la stessa distanza
+ * camera↔marker letta dal genitore — un solo punto di verità, non una
+ * seconda misura indipendente). L'edificio NON ha una propria onda d'urto/
+ * polvere: quel linguaggio visivo resta un segnale esclusivo
+ * dell'atterraggio della capsula (`CapsuleSequence.tsx`), per non
+ * confonderlo con la crescita dell'edificio — i due oggetti esistono
+ * ancora nel file esportato ma restano nascosti (vedi sotto). Un neon che
+ * "respira" sull'insegna ARISTON è sempre attivo (idle); al passaggio del
+ * mouse le lettere si accendono in sequenza (stagger) invece della
+ * modulazione morbida, insieme alla striscia/sigillo ciano — un'animazione
+ * diversa dall'idle, come da piano.
+ */
+interface CinemaAristonModelProps {
+  /** Il genitore (`LevelMarker`) scrive qui la funzione da richiamare
+   * quando il marker entra in modalità ravvicinata — chiamata in modo
+   * SINCRONO dentro il `useFrame` del genitore, prima di rendere visibile
+   * il gruppo. Un ref-verso-funzione, non un booleano controllato in un
+   * secondo `useFrame` qui dentro: React Three Fiber non garantisce in che
+   * ordine vengano eseguiti gli `useFrame` di genitore e figlio nello
+   * stesso fotogramma, e affidarsi a quell'ordine causava davvero un lampo
+   * dell'edificio già cresciuto per un fotogramma (visto a schermo)
+   * uscendo e rientrando nello stesso livello: il gruppo diventava
+   * visibile PRIMA che il riavvio dell'animazione avesse effetto. Qui il
+   * genitore chiama direttamente questa funzione, quindi l'ordine è
+   * garantito dalla lettura del codice, non da un'assunzione su R3F. */
+  onCloseupEnterRef: MutableRefObject<(() => void) | null>;
+}
+
+function CinemaAristonModel({ onCloseupEnterRef }: CinemaAristonModelProps) {
+  const { scene, animations } = useCinemaAristonGltf();
+  const { actions, mixer } = useAnimations(animations, scene);
+  const elapsed = useRef(0);
+  const hoverAmount = useRef(0);
+  const [hovered, setHovered] = useState(false);
+
+  const letterMeshes = useMemo(() => {
+    const found: Mesh[] = [];
+    scene.traverse((object) => {
+      if (object instanceof Mesh && object.name.startsWith('Letter_')) found.push(object);
+    });
+    return found;
+  }, [scene]);
+
+  const cyanMeshes = useMemo(() => {
+    const found: Mesh[] = [];
+    scene.traverse((object) => {
+      if (object instanceof Mesh && (object.name === 'Cyan_Strip' || object.name.startsWith('Rune_'))) {
+        found.push(object);
+      }
+    });
+    return found;
+  }, [scene]);
+
+  // Innesca `Grow_Landing` al proprio fotogramma di partenza, in pausa,
+  // prima di qualunque crescita vera — senza, Three.js mostrerebbe la posa
+  // "di riposo" del file esportato (l'ultimo fotogramma renderizzato in
+  // Blender prima dell'export, non necessariamente il primo) invece
+  // dell'edificio non ancora cresciuto. L'onda d'urto/polvere dell'edificio
+  // NON partono più (restano un segnale esclusivo dell'atterraggio della
+  // capsula, vedi `CapsuleSequence.tsx`) — i loro oggetti si nascondono
+  // esplicitamente qui sotto invece di essere innescati.
+  useEffect(() => {
+    primeAtStart(actions['Grow_Landing']);
+    scene.traverse((object) => {
+      if (CINEMA_GROUND_EFFECT_NAMES.includes(object.name)) object.visible = false;
+    });
+  }, [actions, scene]);
+
+  // Registra la funzione che il genitore richiama in modo sincrono
+  // all'ingresso in modalità ravvicinata — vedi il commento sul tipo
+  // `CinemaAristonModelProps.onCloseupEnterRef` sopra per il perché non
+  // basta più un semplice controllo di un ref booleano in un `useFrame`
+  // qui dentro. `playOnce` riavvia l'action da capo (senza, Three.js la
+  // ripeterebbe all'infinito per default); `mixer.update(0)` subito dopo
+  // forza l'applicazione della posa di partenza PRIMA che il genitore
+  // renda visibile il gruppo, nello stesso fotogramma.
+  useEffect(() => {
+    onCloseupEnterRef.current = () => {
+      playOnce(actions['Grow_Landing']);
+      mixer.update(0);
+    };
+    return () => {
+      onCloseupEnterRef.current = null;
+    };
+  }, [actions, mixer, onCloseupEnterRef]);
+
+  useFrame((_, delta) => {
+
+    elapsed.current += delta;
+    const hoverTarget = hovered ? 1 : 0;
+    hoverAmount.current += (hoverTarget - hoverAmount.current) * Math.min(1, delta * 6);
+
+    const idlePulse = 0.5 + Math.sin(elapsed.current * 1.6) * 0.35;
+    const letterIntensity = idlePulse + hoverAmount.current * 2.2;
+    for (const mesh of letterMeshes) {
+      const material = mesh.material as Material;
+      if (isEmissiveMaterial(material)) material.emissiveIntensity = letterIntensity;
+    }
+    for (const mesh of cyanMeshes) {
+      const material = mesh.material as Material;
+      if (!isEmissiveMaterial(material)) continue;
+      const base = mesh.name === 'Cyan_Strip' ? 2.5 : 0.35;
+      material.emissiveIntensity = base + hoverAmount.current * 3;
+    }
+  });
+
+  const handlePointerOver = (event: ThreeEvent<PointerEvent>) => {
+    event.stopPropagation();
+    setHovered(true);
+    // Stagger: le lettere si accendono in sequenza invece della sola
+    // modulazione morbida dell'idle — un'animazione diversa, non solo più
+    // intensa, come chiesto dal piano.
+    letterMeshes.forEach((mesh, index) => {
+      const material = mesh.material as Material;
+      if (!isEmissiveMaterial(material)) return;
+      gsap.fromTo(material, { emissiveIntensity: 3.2 }, { emissiveIntensity: 1, duration: 0.35, delay: index * 0.04 });
+    });
+  };
+
+  const handlePointerOut = (event: ThreeEvent<PointerEvent>) => {
+    event.stopPropagation();
+    setHovered(false);
+  };
+
+  return (
+    <primitive
+      object={scene}
+      scale={CINEMA_MODEL_SCALE}
+      onPointerOver={handlePointerOver}
+      onPointerOut={handlePointerOut}
+    />
+  );
+}
 
 /**
  * Il marker di un livello sul piano-mappa: da lontano un beacon/cristallo
@@ -66,15 +259,36 @@ export function LevelMarker({ level, position, focused, onSelect }: LevelMarkerP
   const hoverAmount = useRef(0);
   // `null` = nessuna conferma in corso; altrimenti tempo trascorso dal click.
   const confirmElapsed = useRef<number | null>(null);
+  // `closeup` del fotogramma precedente, per rilevare il fronte di salita
+  // (appena entrato in modalità ravvicinata) invece di ricontrollarlo ogni
+  // frame in `CinemaAristonModel`.
+  const wasCloseupRef = useRef(false);
+  // Scritto da `CinemaAristonModel` (unico consumatore oggi): la funzione
+  // da richiamare esattamente al fronte di salita, PRIMA di rendere
+  // visibile il gruppo — vedi il commento sul tipo in `CinemaAristonModelProps`.
+  const onCloseupEnterRef = useRef<(() => void) | null>(null);
 
   const [hovered, setHovered] = useState(false);
 
   const emissiveColor = useMemo(() => new Color(level.color), [level.color]);
+  const isCinemaAriston = level.id === 'oristano-ariston';
 
   useFrame(({ camera }, delta) => {
     if (!groupRef.current) return;
     groupRef.current.getWorldPosition(worldPos.current);
     const closeup = camera.position.distanceTo(worldPos.current) < CLOSEUP_DISTANCE;
+
+    // Fronte di salita: richiama SUBITO (sincrono, in questo stesso
+    // `useFrame`) l'eventuale animazione di crescita registrata dal figlio
+    // — PRIMA di rendere visibile il gruppo qui sotto, cosi' la posa è già
+    // quella giusta quando questo fotogramma viene disegnato. Vedi il
+    // commento su `onCloseupEnterRef`/`CinemaAristonModelProps` per il bug
+    // reale che questo ordine esplicito risolve.
+    if (closeup && !wasCloseupRef.current) {
+      onCloseupEnterRef.current?.();
+    }
+    wasCloseupRef.current = closeup;
+
     if (pinRef.current) pinRef.current.visible = !closeup;
     if (modelRef.current) modelRef.current.visible = closeup;
 
@@ -177,13 +391,17 @@ export function LevelMarker({ level, position, focused, onSelect }: LevelMarkerP
       </group>
 
       <group ref={modelRef} visible={false}>
-        <mesh position={[0, 1.1, 0]} castShadow>
-          <cylinderGeometry args={[1.2, 1.2, 2.4, 32]} />
-          <meshStandardMaterial color={level.color} emissive={level.color} emissiveIntensity={0.25} />
-        </mesh>
-        <Text position={[0, 2.8, 0]} fontSize={0.4} color="#f8fafc" anchorX="center" anchorY="middle">
-          {level.name}
-        </Text>
+        {isCinemaAriston ? (
+          // Suspense con fallback il placeholder stesso: se il .glb non è
+          // ancora arrivato (o fallisce), si vede comunque qualcosa invece
+          // di un buco — stesso spirito tollerante già in uso nel progetto
+          // per mappa/audio/video mancanti.
+          <Suspense fallback={<PlaceholderModel level={level} />}>
+            <CinemaAristonModel onCloseupEnterRef={onCloseupEnterRef} />
+          </Suspense>
+        ) : (
+          <PlaceholderModel level={level} />
+        )}
       </group>
     </group>
   );

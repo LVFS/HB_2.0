@@ -63,8 +63,10 @@ src/
                                      spazio (coperchio texturizzato con l'immagine statica +
                                      pancia rocciosa, stesso contorno, vedi sotto) + stelle +
                                      marker + camera GSAP/MapControls
-      LevelMarker.tsx                pin quando la camera è lontana, modello (cilindro) da
-                                     vicino — scambio automatico per distanza, non un bottone
+      LevelMarker.tsx                pin quando la camera è lontana, modello da vicino
+                                     (Cinema Ariston per Oristano, placeholder nello stesso
+                                     linguaggio del pin — ottaedro/anello — per Silì/Cagliari)
+                                     — scambio automatico per distanza, non un bottone
       mapProjection.ts               proiezione Web Mercator: lat/lng → posizione sul piano
       CloudTransition.tsx           nuvole che coprono lo schermo al cambio città (GSAP,
                                      stesso pattern di skipIntroToken per il trigger)
@@ -378,9 +380,12 @@ ricorrente, copertura incerta su Silì, vietano cache/uso offline: valutate e sc
 widget Google Maps JS live (avrebbe richiesto una chiave esposta e attiva per sempre nel
 gioco pubblicato, oltre a due livelli di rendering — DOM + Canvas — da tenere sincronizzati).
 Il marker di ogni livello (`LevelMarker.tsx`) è un pin quando la camera è lontana, il modello
-3D (oggi il cilindro placeholder, in futuro un modello Blender per luogo) quando ci si
-avvicina — scambio automatico legato alla DISTANZA camera↔marker (letta ogni fotogramma), non
-a un bottone: uno zoom continuo, non un taglio tra "mappa" e "vicino". La camera ha due
+3D quando ci si avvicina — il Cinema Ariston per Oristano, per Silì/Cagliari un placeholder
+"ponte" nello stesso linguaggio del pin (ottaedro sfaccettato, bagliore, anello a terra,
+idle continuo) invece del vecchio cilindro pieno generico, in attesa di un modello Blender
+vero per luogo — scambio automatico legato alla DISTANZA camera↔marker (letta ogni
+fotogramma), non a un bottone: uno zoom continuo, non un taglio tra "mappa" e "vicino". La
+camera ha due
 padroni che si alternano come ovunque nel progetto (mai insieme): GSAP durante il dolly
 avanti/indietro (click su un livello / "Elenco livelli"), `MapControls` di drei il resto del
 tempo (pan/zoom liberi dell'utente, rotazione bloccata) — l'handoff è esplicito via un flag
@@ -533,7 +538,7 @@ ma va sistemato prima che il livello sia "finito".
 **Da fare**: eventuale vera animazione
 scheletrica per il personaggio principale se in futuro si deciderà di riaprire il problema
 dell'export con skin (oggi tutto il movimento è camera/GSAP su mesh statiche, nessun mixer),
-modelli Blender per i tre luoghi della selezione livelli al posto del cilindro placeholder,
+modelli Blender per i tre luoghi della selezione livelli al posto del placeholder "ponte",
 terreno e scenografia oltre il Level1, puzzle, sistema achievement, finale celebrativo,
 esecuzione effettiva del deploy su GitHub Pages (script `npm run deploy` già pronto — occhio
 al PATH di `git` su Windows se `gh-pages` fallisce con `spawn git ENOENT`, vedi

@@ -74,16 +74,52 @@ function isEmissiveMaterial(material: Material | null): material is MeshStandard
   return !!material && 'emissiveIntensity' in material;
 }
 
-/** Il cilindro placeholder di sempre — INVARIATO, usato per ogni livello
- * che non ha ancora un modello vero (oggi Silì e Cagliari). */
+/** Raggio dell'ottaedro sfaccettato — molto più grande di quello del pin
+ * (`0.32`, vedi sotto): quello si vede da lontano come un punto luminoso,
+ * questo deve leggersi da vicino (`CLOSEUP_DISTANCE`) come un "fratello
+ * maggiore" dello stesso linguaggio, non un punto ingrandito a caso. */
+const PLACEHOLDER_CRYSTAL_RADIUS = 0.95;
+
+/** Placeholder "ponte" per Silì e Cagliari, in attesa di un modello vero
+ * per luogo (soluzione definitiva, fuori da questo giro — vedi
+ * `docs/PIANO_ESECUZIONE_SELEZIONE_LIVELLO.md`): non più un cilindro pieno
+ * generico, ma lo stesso linguaggio visivo del pin (`LevelMarker` sotto) —
+ * ottaedro sfaccettato, bagliore, anello a terra — solo scalato per
+ * leggersi da vicino invece che da lontano. Idle continuo (rotazione +
+ * fluttuazione verticale), stessa tecnica del cristallo del pin, per non
+ * sembrare scenografia statica proprio accanto a un pin che invece "vive". */
 function PlaceholderModel({ level }: { level: LevelInfo }) {
+  const crystalRef = useRef<Mesh>(null);
+  const elapsed = useRef(0);
+
+  useFrame((_, delta) => {
+    elapsed.current += delta;
+    if (crystalRef.current) {
+      crystalRef.current.rotation.y += delta * 0.4;
+      crystalRef.current.position.y = 1.7 + Math.sin(elapsed.current * 1.2) * 0.12;
+    }
+  });
+
   return (
     <>
-      <mesh position={[0, 1.1, 0]} castShadow>
-        <cylinderGeometry args={[1.2, 1.2, 2.4, 32]} />
-        <meshStandardMaterial color={level.color} emissive={level.color} emissiveIntensity={0.25} />
+      <mesh ref={crystalRef} position={[0, 1.7, 0]}>
+        <octahedronGeometry args={[PLACEHOLDER_CRYSTAL_RADIUS, 0]} />
+        <meshStandardMaterial
+          color={level.color}
+          emissive={level.color}
+          emissiveIntensity={0.4}
+          roughness={0.25}
+          metalness={0.15}
+        />
       </mesh>
-      <Text position={[0, 2.8, 0]} fontSize={0.4} color="#f8fafc" anchorX="center" anchorY="middle">
+      {/* Anello a terra, stesso ruolo di "base di selezione" del pin —
+          niente fluttuazione qui, resta l'ancora visiva ferma sotto al
+          cristallo che invece si muove. */}
+      <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[1.05, 1.3, 32]} />
+        <meshBasicMaterial color={level.color} transparent opacity={0.28} side={DoubleSide} depthWrite={false} />
+      </mesh>
+      <Text position={[0, 3, 0]} fontSize={0.4} color="#f8fafc" anchorX="center" anchorY="middle">
         {level.name}
       </Text>
     </>
@@ -246,10 +282,12 @@ function CinemaAristonModel({ onCloseupEnterRef }: CinemaAristonModelProps) {
 
 /**
  * Il marker di un livello sul piano-mappa: da lontano un beacon/cristallo
- * (`pinRef`, sotto), da vicino il modello 3D (oggi il cilindro placeholder,
- * `modelRef` — INVARIATO, non toccato in questo giro) — scambio automatico
- * legato alla distanza camera↔marker (letta ogni fotogramma), non a un
- * bottone o a una fase separata.
+ * (`pinRef`, sotto), da vicino il modello 3D (`modelRef` — il Cinema
+ * Ariston per Oristano, un placeholder nello stesso linguaggio del pin per
+ * Silì/Cagliari in attesa di un modello vero per luogo, vedi
+ * `PlaceholderModel` sopra) — scambio automatico legato alla distanza
+ * camera↔marker (letta ogni fotogramma), non a un bottone o a una fase
+ * separata.
  *
  * Il pin è interattivo (mouse: hover + click) con tre momenti distinti:
  * riposo (rotazione+fluttuazione continue, sempre attive), hover (si

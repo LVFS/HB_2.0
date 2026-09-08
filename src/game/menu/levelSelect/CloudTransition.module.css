@@ -77,3 +77,37 @@
   left: 52%;
   top: 4%;
 }
+
+/* Campo di stelle/particelle che sfrecciano verso il centro, DIETRO il velo
+   di nuvole (prima nel DOM = sotto nello stacking, stesso principio del
+   `.veil`) — serve a leggere la transizione come "volare da un luogo
+   all'altro" invece di un semplice dissolvi. */
+.starField {
+  position: absolute;
+  inset: 0;
+}
+
+/* Wrapper a dimensione zero: `left`/`top` (in percentuale, calcolati in
+   CloudTransition.tsx) posizionano un PUNTO esatto, non un riquadro — la
+   striscia dentro (`.starStreak`) si estende da quel punto verso l'alto
+   (di default) e il `rotate` inline (statico, mai toccato da GSAP) la
+   punta verso il centro. GSAP anima solo `.starStreak` (scaleY/opacity/y):
+   tenerlo su un nodo separato dal `rotate` evita che le due trasformazioni
+   si sovrascrivano a vicenda. */
+.starStreakWrap {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+.starStreak {
+  position: absolute;
+  left: -1px;
+  bottom: 0;
+  width: 2px;
+  height: 90px;
+  background: linear-gradient(to top, rgba(238, 241, 251, 0) 0%, #f4f6fd 55%, rgba(238, 241, 251, 0) 100%);
+  filter: blur(0.5px);
+  transform-origin: 50% 100%;
+  opacity: 0;
+}

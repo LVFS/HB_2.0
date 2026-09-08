@@ -94,6 +94,52 @@ const CLOUD_VARIANTS: CloudVariant[] = Array.from({ length: CLOUD_COUNT }, (_, i
   };
 });
 
+const STAR_STREAK_COUNT = 40;
+
+interface StarStreakVariant {
+  /** Posizione di partenza, in percentuale — sparsa su TUTTO il riquadro
+   * (raggio fino a ~75), non solo vicino al centro come il riposo delle
+   * nuvole: deve leggersi come "arrivano da ogni parte dello schermo",
+   * non da un anello stretto. */
+  startLeft: number;
+  startTop: number;
+  /** Angolo (gradi) della striscia: punta dal proprio punto di partenza
+   * verso il centro, così l'animazione (una traslazione lungo il proprio
+   * asse locale, vedi il JSX) si legge davvero come "vola verso il
+   * centro" invece che come una barra qualunque che si allunga. */
+  angleDeg: number;
+  /** Leggero sfalsamento di partenza — non tutte scattano nello stesso
+   * istante, stesso principio dello `stagger` delle nuvole ma calcolato a
+   * mano (qui non serve lo stagger di GSAP: la partenza è comune a tutte,
+   * ANCHE se le nuvole partono insieme, un ritardo diverso per stella dà
+   * comunque l'impressione di un campo che arriva "a raffica" invece che
+   * in blocco). */
+  delay: number;
+}
+
+/** Sfalsate di fase (`+0.5`) rispetto a `CLOUD_VARIANTS`: se condividessero
+ * lo stesso angolo, ogni stella nascerebbe esattamente sotto una nuvola,
+ * invece di leggersi come un campo indipendente. Stesso principio
+ * deterministico (seno/coseno, non `Math.random()`) del resto del
+ * progetto. */
+const STAR_STREAK_VARIANTS: StarStreakVariant[] = Array.from({ length: STAR_STREAK_COUNT }, (_, index) => {
+  const angle = (index / STAR_STREAK_COUNT) * Math.PI * 2 + 0.5;
+  const radius = 40 + 35 * Math.sin(index * 2.3 + 1.1); // ~5–75: sparse su tutto il riquadro
+  const startLeft = 50 + Math.cos(angle) * radius;
+  const startTop = 50 + Math.sin(angle) * radius * VERTICAL_SPREAD;
+  // Il CSS `.starStreak` punta "in su" (verso -Y) di default; l'angolo qui
+  // sotto è quello di rotazione (in gradi, verso orario, coerente con
+  // `transform: rotate()`) che porta quella direzione a puntare dal punto
+  // di partenza verso il centro (50, 50) — derivato invertendo la matrice
+  // di rotazione standard per il vettore (0, -1).
+  const dx = 50 - startLeft;
+  const dy = 50 - startTop;
+  const angleDeg = (Math.atan2(dx, -dy) * 180) / Math.PI;
+  return { startLeft, startTop, angleDeg, delay: (index % 10) * 0.015 };
+});
+
+const STAR_STREAK_DURATION = 0.34;
+
 /**
  * Transizione tra una città e l'altra: nuvole che coprono tutto lo schermo,
  * si aprono sulla città nuova. Riusa la stessa idea del whiteout di fine
@@ -105,12 +151,14 @@ const CLOUD_VARIANTS: CloudVariant[] = Array.from({ length: CLOUD_COUNT }, (_, i
 export function CloudTransition({ trigger, onCovered, onCleared }: CloudTransitionProps) {
   const cloudRefs = useRef<(HTMLDivElement | null)[]>([]);
   const veilRef = useRef<HTMLDivElement | null>(null);
+  const starRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
     if (trigger === 0) return;
 
     const clouds = cloudRefs.current.filter((el): el is HTMLDivElement => el !== null);
     const veil = veilRef.current;
+    const stars = starRefs.current.filter((el): el is HTMLDivElement => el !== null);
     const timeline = gsap.timeline();
     timeline
       .set(clouds, {
@@ -119,13 +167,53 @@ export function CloudTransition({ trigger, onCovered, onCleared }: CloudTransiti
         opacity: 1
       })
       .set(veil, { opacity: 0 })
-      .to(clouds, {
-        left: (index) => `${CLOUD_VARIANTS[index].restLeft}%`,
-        top: (index) => `${CLOUD_VARIANTS[index].restTop}%`,
-        duration: (index) => COVER_DURATION / CLOUD_VARIANTS[index].speed,
-        ease: 'power2.in',
-        stagger: { each: 0.014, from: 'random' }
-      })
+      .set(stars, { scaleY: 0.3, y: 0, opacity: 0 })
+      // Etichetta esplicita invece di affidarsi al chaining implicito: le
+      // stelle sono un layer AGGIUNTIVO inserito tra i `.set()` iniziali e
+      // il movimento delle nuvole già esistente — senza un punto di
+      // riferimento assoluto, il movimento delle nuvole (sotto) finirebbe
+      // per partire in coda alle stelle invece che insieme a loro,
+      // allungando la copertura totale (che il piano vieta esplicitamente
+      // di cambiare).
+      .addLabel('coverStart')
+      // Le stelle sfrecciano verso il centro DIETRO le nuvole (nel DOM
+      // prima di loro) e finiscono ben prima di `onCovered()` — nascono
+      // insieme alle nuvole (stessa etichetta `coverStart`) ma durano meno
+      // (`STAR_STREAK_DURATION` < tempo che intercorre fino a
+      // `onCovered`), quindi sono già sparite quando la città cambia
+      // sotto il velo.
+      .to(
+        stars,
+        {
+          scaleY: 1,
+          y: (index) => -90 * (0.6 + STAR_STREAK_VARIANTS[index].delay * 4),
+          opacity: 1,
+          duration: STAR_STREAK_DURATION,
+          ease: 'power1.in',
+          stagger: { each: 0.01, from: 'random' }
+        },
+        'coverStart'
+      )
+      .to(
+        stars,
+        {
+          opacity: 0,
+          duration: STAR_STREAK_DURATION * 0.5,
+          ease: 'power1.out'
+        },
+        `>-${STAR_STREAK_DURATION * 0.3}`
+      )
+      .to(
+        clouds,
+        {
+          left: (index) => `${CLOUD_VARIANTS[index].restLeft}%`,
+          top: (index) => `${CLOUD_VARIANTS[index].restTop}%`,
+          duration: (index) => COVER_DURATION / CLOUD_VARIANTS[index].speed,
+          ease: 'power2.in',
+          stagger: { each: 0.014, from: 'random' }
+        },
+        'coverStart'
+      )
       // Le sagome dei `.puff` coprono lo schermo "in media", ma con solo
       // `CLOUD_COUNT` direzioni discrete (12° tra una nuvola e l'altra a 30)
       // e forma/raggio di ognuna indipendenti dal suo angolo, una direzione
@@ -163,6 +251,23 @@ export function CloudTransition({ trigger, onCovered, onCleared }: CloudTransiti
   return (
     <div className={styles.container}>
       <div ref={veilRef} className={styles.veil} />
+
+      <div className={styles.starField}>
+        {STAR_STREAK_VARIANTS.map((variant, index) => (
+          <div
+            key={index}
+            className={styles.starStreakWrap}
+            style={{ left: `${variant.startLeft}%`, top: `${variant.startTop}%`, transform: `rotate(${variant.angleDeg}deg)` }}
+          >
+            <div
+              ref={(el) => {
+                starRefs.current[index] = el;
+              }}
+              className={styles.starStreak}
+            />
+          </div>
+        ))}
+      </div>
 
       {CLOUD_VARIANTS.map((variant, index) => (
         <div

@@ -6,16 +6,35 @@
   gap: var(--space-4);
 }
 
-/* Fila dei pulsanti mondo, sopra l'elenco livelli vero e proprio. */
+/* Fila dei pulsanti mondo, sopra l'elenco livelli vero e proprio — niente
+   `gap`: lo spazio tra un pulsante e il successivo lo fa il connettore
+   (`.worldConnector` sotto), non un gap uniforme, perché deve poter
+   "accendersi" (acciaio) quando il mondo a sinistra è completato. */
 .worldRow {
   display: flex;
-  gap: var(--space-2);
+  align-items: center;
 }
 
 .worldButton {
   flex: 1;
   padding: var(--space-2) var(--space-3);
   font-size: 0.78rem;
+}
+
+/* Filo tra un mondo e il successivo: la sequenza Oristano→Silì→Cagliari è
+   un percorso reale, non tre scelte equivalenti — vedi `data/levels.ts`
+   (`order`) e `isLevelUnlocked`. Squadrato (una linea, non una capsula):
+   coerente con "niente forme a pillola" già stabilito nel sistema.
+   Acciaio (STATO, non azione, stesso linguaggio di `.cardCompleted` sotto)
+   quando il mondo PRECEDENTE nella sequenza è già stato completato. */
+.worldConnector {
+  flex: 0 0 var(--space-3);
+  height: 2px;
+  background: var(--line);
+}
+
+.worldConnectorCompleted {
+  background: var(--steel);
 }
 
 /* Mondo oggi mostrato sulla mappa 3D — solo il testo cambia colore: NON
@@ -29,6 +48,22 @@
    testo e sfondo nello stesso arancione pieno (bug reale visto a schermo). */
 .worldButton[aria-pressed='true'] {
   color: var(--accent);
+}
+
+/* Pallino identità del mondo, colore di `level.color` — un'ETICHETTA
+   accanto al nome, mai un riempimento del pulsante intero: nel sistema
+   l'ambra resta l'unico accento d'azione e l'acciaio l'unico accento di
+   stato, un terzo colore per riga va usato con parsimonia. Collega
+   visivamente questo pannello 2D al colore già usato sul marker 3D
+   (cristallo/anello a terra in `LevelMarker.tsx`), oggi senza alcun
+   legame tra i due linguaggi. */
+.worldDot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  margin-right: var(--space-1);
+  vertical-align: middle;
 }
 
 /* Fuoco da controller (L1/R1 lo spostano): stesso trucco di

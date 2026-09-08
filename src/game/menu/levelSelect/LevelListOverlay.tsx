@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { getWorldLevel, isLevelUnlocked, levels } from '@/data/levels';
-import { getWorldName, worlds } from '@/data/worlds';
+import { getWorldName, worlds, type WorldInfo } from '@/data/worlds';
 import { useGamepadCycleSelect } from '@/hooks/useGamepadCycleSelect';
 import ui from '@/styles/ui.module.css';
 import styles from './LevelListOverlay.module.css';
@@ -30,10 +30,19 @@ interface LevelListOverlayProps {
  * secondo livello di ciclo dentro la mappa stessa (vedi `LevelMarker`).
  */
 export function LevelListOverlay({ completedLevelIds, activeWorldId, onSelect, onSelectWorld }: LevelListOverlayProps) {
+  // Ordinati per `order` del LIVELLO di ciascun mondo, non per l'ordine
+  // dell'array `worlds` — oggi coincidono, ma ordinare esplicitamente evita
+  // un bug futuro se `worlds` cambiasse ordine. Fallback a 0 per un mondo
+  // senza livelli (non dovrebbe succedere, ma non deve rompere il sort).
+  const orderedWorlds = useMemo(
+    () => [...worlds].sort((a, b) => (getWorldLevel(a.id)?.order ?? 0) - (getWorldLevel(b.id)?.order ?? 0)),
+    []
+  );
+
   const [focusedWorldIndex, setFocusedWorldIndex] = useState(() =>
     Math.max(
       0,
-      worlds.findIndex((world) => world.id === activeWorldId)
+      orderedWorlds.findIndex((world) => world.id === activeWorldId)
     )
   );
 
@@ -41,21 +50,28 @@ export function LevelListOverlay({ completedLevelIds, activeWorldId, onSelect, o
   // mouse ha già portato in mostra, invece di lasciarlo indietro su un
   // mondo non più corrispondente.
   useEffect(() => {
-    const index = worlds.findIndex((world) => world.id === activeWorldId);
+    const index = orderedWorlds.findIndex((world) => world.id === activeWorldId);
     if (index >= 0) setFocusedWorldIndex(index);
-  }, [activeWorldId]);
+  }, [activeWorldId, orderedWorlds]);
 
   useGamepadCycleSelect(
     {
-      onPrevious: () => setFocusedWorldIndex((index) => (index - 1 + worlds.length) % worlds.length),
-      onNext: () => setFocusedWorldIndex((index) => (index + 1) % worlds.length),
+      onPrevious: () => setFocusedWorldIndex((index) => (index - 1 + orderedWorlds.length) % orderedWorlds.length),
+      onNext: () => setFocusedWorldIndex((index) => (index + 1) % orderedWorlds.length),
       onConfirm: () => {
-        const level = getWorldLevel(worlds[focusedWorldIndex].id);
+        const level = getWorldLevel(orderedWorlds[focusedWorldIndex].id);
         if (level) onSelect(level.id);
       }
     },
     { enabled: true }
   );
+
+  /** Il mondo è "completato" se il suo (unico, oggi) livello è tra quelli
+   * finiti — usato per accendere il connettore verso il mondo successivo. */
+  const isWorldCompleted = (world: WorldInfo): boolean => {
+    const level = getWorldLevel(world.id);
+    return !!level && completedLevelIds.includes(level.id);
+  };
 
   return (
     <div className={ui.panelOverlay}>
@@ -64,20 +80,35 @@ export function LevelListOverlay({ completedLevelIds, activeWorldId, onSelect, o
         <p className={ui.bodyText}>Scegli un luogo sulla mappa.</p>
 
         <div className={styles.worldRow}>
-          {worlds.map((world, index) => (
-            <button
-              key={world.id}
-              type="button"
-              className={`${ui.secondary} ${styles.worldButton} ${index === focusedWorldIndex ? styles.worldButtonFocused : ''}`}
-              aria-pressed={world.id === activeWorldId}
-              onClick={() => {
-                setFocusedWorldIndex(index);
-                onSelectWorld(world.id);
-              }}
-            >
-              {world.name}
-            </button>
-          ))}
+          {orderedWorlds.map((world, index) => {
+            const worldLevel = getWorldLevel(world.id);
+            return (
+              <Fragment key={world.id}>
+                {index > 0 && (
+                  <span
+                    className={`${styles.worldConnector} ${
+                      isWorldCompleted(orderedWorlds[index - 1]) ? styles.worldConnectorCompleted : ''
+                    }`}
+                    aria-hidden="true"
+                  />
+                )}
+                <button
+                  type="button"
+                  className={`${ui.secondary} ${styles.worldButton} ${index === focusedWorldIndex ? styles.worldButtonFocused : ''}`}
+                  aria-pressed={world.id === activeWorldId}
+                  onClick={() => {
+                    setFocusedWorldIndex(index);
+                    onSelectWorld(world.id);
+                  }}
+                >
+                  {worldLevel && (
+                    <span className={styles.worldDot} style={{ background: worldLevel.color }} aria-hidden="true" />
+                  )}
+                  {world.name}
+                </button>
+              </Fragment>
+            );
+          })}
         </div>
 
         <div className={styles.grid}>

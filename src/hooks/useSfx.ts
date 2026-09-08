@@ -5,13 +5,21 @@ import { useSettingsStore } from '@/store/settingsStore';
 /**
  * Gli effetti sonori disponibili.
  *
- * I file NON sono ancora nel repository: finché non li aggiungi in
- * `public/audio/sfx/`, `play()` non fa nulla e Howler segnala un errore di
- * caricamento una volta sola. Il resto della sequenza funziona lo stesso.
+ * `impact`/`rubble` NON sono ancora nel repository: finché non li aggiungi
+ * in `public/audio/sfx/`, `play()` non fa nulla e Howler segnala un errore
+ * di caricamento una volta sola. Il resto della sequenza funziona lo
+ * stesso — lo stesso trattamento tollerante vale per QUALUNQUE voce futura,
+ * non serve toccare `play()` sotto se un file manca. `warp` invece C'È
+ * (`scripts/generate-warp-whoosh.mjs`, sintetizzato via codice — niente
+ * asset scaricato da internet, stesso principio "nessun asset esterno a
+ * runtime" già seguito per mappe/texture nel resto del progetto, qui esteso
+ * anche alla FONTE dell'asset in fase di sviluppo, non solo al caricamento
+ * a runtime).
  */
 const SFX_SOURCES = {
   impact: 'audio/sfx/wall-impact.mp3',
-  rubble: 'audio/sfx/rubble.mp3'
+  rubble: 'audio/sfx/rubble.mp3',
+  warp: 'audio/sfx/level-select-warp.wav'
 } as const;
 
 export type SfxName = keyof typeof SFX_SOURCES;

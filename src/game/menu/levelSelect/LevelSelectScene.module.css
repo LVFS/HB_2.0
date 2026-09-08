@@ -52,9 +52,38 @@
 .canvasWrapper {
   width: 100%;
   height: 100%;
-  transition: filter 0.6s ease-out;
+  transition:
+    filter 0.6s ease-out,
+    transform 0.6s ease-out;
 }
 
 .canvasWrapperBlurred {
   filter: blur(10px);
+}
+
+/* Blur "di movimento" durante QUALSIASI dolly della camera (cambio mondo,
+   focus su un marker, ritorno all'elenco) — acceso/spento da `CameraRig`
+   stesso via `onFlightChange` (non un timeout indovinato qui: la sorgente
+   di verità sulla durata resta la timeline GSAP che muove davvero la
+   camera). Più leggero di `.canvasWrapperBlurred` (quello è un effetto
+   drammatico, un tantum, per il push-in finale; questo si ripete a ogni
+   spostamento, non deve stancare).
+   Lo `scale` combinato col blur è il trucco che si avvicina di più a un
+   vero "zoom blur" radiale (sfocatura che si allarga dal centro verso i
+   bordi in base alla velocità) senza un vero passaggio di post-processing
+   — qui non c'è nessuna libreria del genere nel progetto (vedi CLAUDE.md),
+   e introdurne una per un solo effetto sarebbe sproporzionato: `scale`
+   ancorato al centro (default `transform-origin`) fa "crescere" l'intera
+   inquadratura verso lo spettatore proprio mentre sfoca, e la stessa
+   `overflow: hidden` di `.scene-shell` (styles/global.css) impedisce che
+   il canvas ingrandito sbordi oltre il resto dell'interfaccia. Transizione
+   dedicata e più rapida in entrata (uno scatto secco quando il movimento
+   parte) — l'uscita eredita quella di `.canvasWrapper` sopra (0.6s, un
+   rilascio più morbido quando la camera si assesta). */
+.canvasWrapperFlying {
+  filter: blur(1px);
+  transform: scale(1.07);
+  transition:
+    filter 0.25s ease-out,
+    transform 0.25s ease-out;
 }

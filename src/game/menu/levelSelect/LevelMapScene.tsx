@@ -15,97 +15,10 @@ import { BufferAttribute, CanvasTexture, DoubleSide, ExtrudeGeometry, RepeatWrap
 import gsap from 'gsap';
 import { getLevelMapImageUrl, levels, type LevelInfo } from '@/data/levels';
 import { CapsuleSequence } from './CapsuleSequence';
+import { getIslandOffset } from './islandLayout';
 import { LevelMarker } from './LevelMarker';
+import { CAMERA_FAR_TARGET, CAMERA_NEAR, MAX_POLAR_ANGLE, PAN_MARGIN, getMapGeometry } from './mapGeometry';
 import { imageOffsetToPlanePosition, projectToImageOffset } from './mapProjection';
-
-/** Unità mondo per lato di UNA tile della griglia con cui è generata
- * l'immagine statica (vedi `scripts/generate-map-images.mjs`): il piano
- * (quadrato) su cui è mappata la texture è `PLANE_SIZE_PER_TILE *
- * level.mapGrid` unità, l'immagine finale `TILE_SIZE_PX * level.mapGrid`
- * pixel — griglie diverse per livello (Silì resta a 3, Oristano/Cagliari a
- * 5) danno mappe di dimensioni diverse, vedi `getMapGeometry`. Il piano
- * resta un concetto "quadrato" solo per la matematica di UV/proiezione —
- * la geometria VISIBILE è l'isola frastagliata sotto (`buildIslandGeometry`),
- * un ritaglio di quel quadrato, non il quadrato stesso. */
-const PLANE_SIZE_PER_TILE = 12;
-const TILE_SIZE_PX = 640;
-
-// Rapporti tarati a vista sul livello di riferimento (Silì, mapGrid=3,
-// PLANE_SIZE=36: 27/36, 21/36, 38/36≈1.05) e poi tenuti come FORMULA invece
-// che numeri fissi — bug reale già preso tre volte in questa sessione
-// dimenticando di riscalare camera/nebbia insieme a PLANE_SIZE quando
-// cambiava; ora che PLANE_SIZE varia per livello (mapGrid diverso), la
-// formula previene la quarta ricorrenza.
-const CAMERA_FAR_Y_RATIO = 27 / 36;
-const CAMERA_FAR_Z_RATIO = 21 / 36;
-const MAX_DISTANCE_RATIO = 1.05;
-/** Margine (unità mondo) tenuto tra il bordo frastagliato dell'isola e il
- * punto più lontano a cui il pan può portare `controls.target` — vedi il
- * clamp radiale in `CameraRig`. Più largo di quando il limite era un
- * quadrato pieno: un'inquadratura storta vicino a una punta frastagliata
- * mostrerebbe più facilmente il "bordo grezzo" della roccia. */
-const PAN_MARGIN = 5;
-
-const CAMERA_FAR_TARGET = [0, 0, 0] as const;
-// Target ad altezza ~1 (non a terra): guarda il marker/modello, non i suoi
-// piedi — con un target a y=0 e la camera a soli 2-3 unità di distanza,
-// l'angolo era troppo ripido dall'alto e si vedeva perlopiù il piano sotto
-// invece del modello (bug reale scovato a schermo, non un dettaglio). Non
-// dipende da `level`/`PLANE_SIZE` apposta: il modello/pin restano a
-// dimensione reale fissa, questa è l'inquadratura ravvicinata su di loro,
-// non sul piano.
-const CAMERA_NEAR = { position: [0, 2.1, 4.6] as const, target: [0, 1, 0] as const };
-
-/**
- * Angolo polare (dall'asse verticale) implicito in `CAMERA_NEAR`: con
- * `position=[0,2.1,4.6]` e `target=[0,1,0]`, l'offset è `[0,1.1,4.6]` —
- * `acos(1.1/|offset|) ≈ 76.55°`, qualche grado SOPRA il vecchio
- * `maxPolarAngle` di `MapControls` (75°, `Math.PI/2.4`). Bug reale scovato a
- * schermo (non solo teorico): `MapControls.update()` ri-clampa SEMPRE
- * l'angolo polare della camera dalla sua posizione attuale, a prescindere
- * da `enableRotate`/`enabled` (che bloccano solo l'input utente, non
- * `update()` stesso — vedi il commento su `CameraRig` più sotto per lo
- * stesso principio) — ogni fotogramma in cui il volo GSAP verso
- * `CAMERA_NEAR` era concluso e `controls.update()` girava di nuovo, la
- * camera veniva silenziosamente ritirata dentro il limite di 75°,
- * allontanandola dall'inquadratura voluta (a vista: mappa visibile dietro
- * l'edificio invece dell'inquadratura stretta, nei casi peggiori una deriva
- * abbastanza ampia da mostrare quasi solo il piano). `MAX_POLAR_ANGLE` tiene
- * i due valori coerenti tra loro invece di lasciarli scollegati come prima —
- * margine di ~3° oltre l'angolo di `CAMERA_NEAR`, non esatto: un margine
- * risicato ririschierebbe lo stesso bug alla prossima modifica di uno dei
- * due senza l'altro.
- */
-const CAMERA_NEAR_POLAR_ANGLE = Math.acos(
-  (CAMERA_NEAR.position[1] - CAMERA_NEAR.target[1]) /
-    Math.hypot(
-      CAMERA_NEAR.position[1] - CAMERA_NEAR.target[1],
-      CAMERA_NEAR.position[2] - CAMERA_NEAR.target[2]
-    )
-);
-const MAX_POLAR_ANGLE = CAMERA_NEAR_POLAR_ANGLE + (3 * Math.PI) / 180;
-
-interface MapGeometry {
-  planeSize: number;
-  imageSize: number;
-  cameraFarPosition: readonly [number, number, number];
-  maxDistance: number;
-}
-
-/** Tutte le grandezze che dipendono dalla dimensione del piano-mappa di
- * QUESTO livello, derivate da `level.mapGrid` — un solo posto dove
- * PLANE_SIZE e tutto ciò che ne dipende (immagine, camera, limite di pan)
- * restano coerenti tra loro, invece di costanti sparse da ricordarsi di
- * aggiornare insieme. */
-function getMapGeometry(level: LevelInfo): MapGeometry {
-  const planeSize = PLANE_SIZE_PER_TILE * level.mapGrid;
-  return {
-    planeSize,
-    imageSize: TILE_SIZE_PX * level.mapGrid,
-    cameraFarPosition: [0, planeSize * CAMERA_FAR_Y_RATIO, planeSize * CAMERA_FAR_Z_RATIO],
-    maxDistance: planeSize * MAX_DISTANCE_RATIO
-  };
-}
 
 // --- Isola frastagliata -----------------------------------------------
 //
@@ -379,61 +292,6 @@ class SceneErrorBoundary extends Component<{ children: ReactNode }, SceneErrorBo
   }
 }
 
-interface HiddenCityTextureProps {
-  level: LevelInfo;
-}
-
-/**
- * Monta (invisibile) la texture della mappa di un'altra città, nello STESSO
- * `<Canvas>`/contesto WebGL di questa scena — precompilarla in un contesto
- * diverso non servirebbe a nulla, ogni Canvas ha il proprio WebGLRenderer.
- * `visible={false}` ma presente nell'albero: `gl.compile` traversa TUTTI i
- * mesh (non solo quelli visibili, vedi la sua implementazione in Three.js),
- * quindi trova comunque questo e ne compila lo shader/carica la texture in
- * GPU — quando l'utente cambia davvero città (`CloudTransition`) il primo
- * render del coperchio vero non paga più quel costo. Vedi
- * `docs/PIANO_CARICAMENTO_ASSET.md`, Fase 4.
- */
-function HiddenCityTexture({ level }: HiddenCityTextureProps) {
-  const texture = useTexture(getLevelMapImageUrl(level));
-  const { gl, scene, camera } = useThree();
-
-  useEffect(() => {
-    gl.compile(scene, camera);
-  }, [texture, gl, scene, camera]);
-
-  return (
-    <mesh visible={false}>
-      <planeGeometry args={[1, 1]} />
-      <meshStandardMaterial map={texture} />
-    </mesh>
-  );
-}
-
-interface CityTexturePrewarmProps {
-  currentLevelId: string;
-}
-
-/**
- * Riscalda la GPU per le mappe delle città NON mostrate ora — un mesh
- * invisibile per città, ciascuno nel proprio `Suspense` scoped (una mappa
- * non ancora arrivata da `assetPreload.ts` non deve bloccare le altre né la
- * scena visibile).
- */
-function CityTexturePrewarm({ currentLevelId }: CityTexturePrewarmProps) {
-  return (
-    <>
-      {levels
-        .filter((level) => level.id !== currentLevelId)
-        .map((level) => (
-          <Suspense key={level.id} fallback={null}>
-            <HiddenCityTexture level={level} />
-          </Suspense>
-        ))}
-    </>
-  );
-}
-
 function createRockCanvas(): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
   canvas.width = 128;
@@ -638,12 +496,31 @@ interface CameraRigProps {
   /** `true` quando la camera deve essere vicina al marker (livello scelto
    * dall'elenco), `false` per l'inquadratura d'insieme. */
   focused: boolean;
+  /** Posizione `[x, z]` dell'isola ATTIVA (`level`) nello spazio — vedi
+   * `islandLayout.ts`. Con più isole permanentemente montate e sparse,
+   * tutto ciò che prima assumeva l'isola centrata sull'origine (il tween
+   * GSAP verso `CAMERA_FAR`/`CAMERA_NEAR`, il clamp radiale del pan) deve
+   * essere traslato di questo offset — la camera stessa vive fuori da
+   * qualunque `<group>` isola, quindi non eredita l'offset "gratis" da un
+   * genitore Three.js, va sommato a mano qui. */
+  islandOffset: readonly [number, number];
   /** `true` mentre `CapsuleSequence` possiede la camera per il push-in
    * finale — vedi il commento su `cameraLockedRef` lì. Guard esplicito
    * sul lato opposto, stesso principio di `CameraDirector`/`CharacterIntro`
    * nel menu: appena `true`, questo `useFrame` smette del tutto di
    * leggere/scrivere `controls`/`camera.position`. */
   cameraLockedRef: MutableRefObject<boolean>;
+  /** Chiamato `true` all'inizio di OGNI dolly GSAP (cambio mondo, focus su
+   * un marker, ritorno all'elenco) e `false` al suo completamento —
+   * `LevelSelectScene` lo usa per sfocare leggermente il Canvas via CSS
+   * mentre la camera si muove (richiesto esplicitamente: un blur "di
+   * movimento", non un vero motion-blur renderizzato — niente libreria di
+   * post-processing in questo progetto, vedi CLAUDE.md). Non chiamato al
+   * primissimo montaggio: quel tween parte già "arrivato" (anim inizializzato
+   * sugli stessi valori della destinazione), sfocare il Canvas mentre la
+   * schermata sta ancora caricando sarebbe un effetto spurio senza alcun
+   * movimento reale da accompagnare. */
+  onFlightChange: (flying: boolean) => void;
 }
 
 /**
@@ -680,26 +557,43 @@ interface CameraRigProps {
  *    radice, qualunque essa sia, invece di rincorrere il singolo parametro
  *    responsabile.
  */
-function CameraRig({ level, focused, cameraLockedRef }: CameraRigProps) {
+function CameraRig({ level, focused, islandOffset, cameraLockedRef, onFlightChange }: CameraRigProps) {
   const { camera } = useThree();
   const controlsRef = useRef<ComponentRef<typeof MapControls>>(null);
   const isAnimating = useRef(false);
+  // Il primo giro di questo effetto (al montaggio) non è un vero
+  // spostamento — `anim` è già inizializzato sulla stessa destinazione,
+  // vedi il commento su `onFlightChange` in `CameraRigProps` — non deve
+  // sfocare nulla.
+  const isFirstRun = useRef(true);
   const geometry = useMemo(() => getMapGeometry(level), [level]);
   const islandProfile = useMemo(
     () => getIslandProfile(level, geometry.planeSize * ISLAND_BASE_RADIUS_RATIO),
     [level, geometry.planeSize]
   );
   const anim = useRef({
-    x: geometry.cameraFarPosition[0],
+    x: geometry.cameraFarPosition[0] + islandOffset[0],
     y: geometry.cameraFarPosition[1],
-    z: geometry.cameraFarPosition[2],
-    tx: CAMERA_FAR_TARGET[0],
+    z: geometry.cameraFarPosition[2] + islandOffset[1],
+    tx: CAMERA_FAR_TARGET[0] + islandOffset[0],
     ty: CAMERA_FAR_TARGET[1],
-    tz: CAMERA_FAR_TARGET[2]
+    tz: CAMERA_FAR_TARGET[2] + islandOffset[1]
   });
   useEffect(() => {
-    const dest = focused ? CAMERA_NEAR : { position: geometry.cameraFarPosition, target: CAMERA_FAR_TARGET };
+    const [offsetX, offsetZ] = islandOffset;
+    const dest = focused
+      ? {
+          position: [CAMERA_NEAR.position[0] + offsetX, CAMERA_NEAR.position[1], CAMERA_NEAR.position[2] + offsetZ],
+          target: [CAMERA_NEAR.target[0] + offsetX, CAMERA_NEAR.target[1], CAMERA_NEAR.target[2] + offsetZ]
+        }
+      : {
+          position: [geometry.cameraFarPosition[0] + offsetX, geometry.cameraFarPosition[1], geometry.cameraFarPosition[2] + offsetZ],
+          target: [CAMERA_FAR_TARGET[0] + offsetX, CAMERA_FAR_TARGET[1], CAMERA_FAR_TARGET[2] + offsetZ]
+        };
     isAnimating.current = true;
+    const shouldNotifyFlight = !isFirstRun.current;
+    isFirstRun.current = false;
+    if (shouldNotifyFlight) onFlightChange(true);
     const tween = gsap.to(anim.current, {
       x: dest.position[0],
       y: dest.position[1],
@@ -711,13 +605,14 @@ function CameraRig({ level, focused, cameraLockedRef }: CameraRigProps) {
       ease: 'power2.inOut',
       onComplete: () => {
         isAnimating.current = false;
+        if (shouldNotifyFlight) onFlightChange(false);
       }
     });
 
     return () => {
       tween.kill();
     };
-  }, [focused, geometry]);
+  }, [focused, geometry, islandOffset, onFlightChange]);
 
   useFrame(() => {
     if (cameraLockedRef.current) return;
@@ -769,14 +664,21 @@ function CameraRig({ level, focused, cameraLockedRef }: CameraRigProps) {
     controls.update();
 
     // Non lasciare che il pan porti la camera oltre il bordo frastagliato
-    // dell'isola: clamp RADIALE (non più un quadrato) contro
+    // dell'isola ATTIVA: clamp RADIALE (non più un quadrato) contro
     // `islandRadiusAt`, la stessa formula usata per costruire il contorno —
     // applicato a `target` e a `camera.position` con lo stesso delta, per
-    // non alterare distanza/angolo di vista. Sempre sicuro qui sotto: si
-    // arriva a questo punto solo quando `isAnimating.current` è già `false`
-    // (il ramo sopra esce con `return` mentre l'animazione dura).
-    const x = controls.target.x;
-    const z = controls.target.z;
+    // non alterare distanza/angolo di vista. Con più isole sparse nello
+    // spazio, il centro rispetto a cui clampare non è più l'origine ma il
+    // centro dell'isola attiva (`islandOffset`) — senza questa traslazione,
+    // panare vicino al bordo di un'isola diversa da quella all'origine
+    // clamperebbe rispetto al punto [0,0] invece che al centro vero
+    // dell'isola, bloccando il pan nel posto sbagliato per due isole su
+    // tre. Sempre sicuro qui sotto: si arriva a questo punto solo quando
+    // `isAnimating.current` è già `false` (il ramo sopra esce con `return`
+    // mentre l'animazione dura).
+    const [offsetX, offsetZ] = islandOffset;
+    const x = controls.target.x - offsetX;
+    const z = controls.target.z - offsetZ;
     const dist = Math.hypot(x, z);
     if (dist > 0) {
       const angle = Math.atan2(z, x);
@@ -787,8 +689,11 @@ function CameraRig({ level, focused, cameraLockedRef }: CameraRigProps) {
         const clampedZ = z * scale;
         const dx = clampedX - x;
         const dz = clampedZ - z;
-        controls.target.x = clampedX;
-        controls.target.z = clampedZ;
+        // `+=`, non un'assegnazione assoluta: `controls.target.x` è già
+        // `x + offsetX` (vedi sopra), quindi sommare il delta locale `dx`
+        // porta a `clampedX + offsetX` senza dover ricalcolare l'offset qui.
+        controls.target.x += dx;
+        controls.target.z += dz;
         camera.position.x += dx;
         camera.position.z += dz;
       }
@@ -810,9 +715,12 @@ function CameraRig({ level, focused, cameraLockedRef }: CameraRigProps) {
 interface LevelMapSceneProps {
   level: LevelInfo;
   focused: boolean;
-  /** Click/conferma sul marker (pin) mentre non si è ancora zoomati —
-   * stesso effetto di scegliere questo livello dall'elenco 2D. */
-  onActivateMarker: () => void;
+  /** Click/conferma sul marker (pin) di UNA QUALUNQUE delle isole (tutte
+   * permanentemente montate, non solo quella attiva, vedi il rendering
+   * sotto) — stesso effetto di scegliere quel livello dall'elenco 2D.
+   * Prende l'id del livello cliccato: con più isole visibili insieme non
+   * basta più sapere CHE è stato cliccato un marker, serve sapere QUALE. */
+  onActivateMarker: (levelId: string) => void;
   /** Contatore: incrementato da "Avvia livello" per far partire la
    * sequenza capsula-impatto-zoom (Parte E del piano "Stellar Blade") —
    * vedi `CapsuleSequence.tsx`. */
@@ -822,6 +730,10 @@ interface LevelMapSceneProps {
    * `CapsuleSequence.tsx` (`onOutroBlur`) e `LevelSelectScene.tsx`. */
   onOutroBlur: () => void;
   onSequenceComplete: () => void;
+  /** Vedi il commento su `CameraRigProps.onFlightChange` — inoltrato fin
+   * qui da `LevelSelectScene` per accendere/spegnere lo stesso blur CSS
+   * (un'altra classe, più leggera) durante QUALSIASI dolly della camera. */
+  onFlightChange: (flying: boolean) => void;
 }
 
 /**
@@ -839,45 +751,49 @@ export function LevelMapScene({
   launchTrigger,
   onImpactFlash,
   onOutroBlur,
-  onSequenceComplete
+  onSequenceComplete,
+  onFlightChange
 }: LevelMapSceneProps) {
   const geometry = useMemo(() => getMapGeometry(level), [level]);
-  const island = useMemo(() => buildIslandGeometry(level, geometry.planeSize), [level, geometry.planeSize]);
-  // `useMemo` non ha un meccanismo di pulizia integrato per il valore
-  // PRECEDENTE quando ricalcola — un `useEffect` con le stesse dipendenze
-  // sì (la cleanup riceve la chiusura del render appena sostituito). Bug
-  // reale scovato a schermo (non solo teorico, e non probabilistico: si
-  // presentava SEMPRE dalla seconda ripetizione del ciclo cambio-città in
-  // poi, mai alla prima): ogni cambio città qui sopra costruiva TRE
-  // `BufferGeometry` nuove (coperchio/gonna/pancia, `ExtrudeGeometry` con
-  // centinaia di vertici) senza mai liberare quelle precedenti — non solo
-  // un leak di memoria JS (quello lo avrebbe preso il garbage collector),
-  // ma un leak dei BUFFER GPU caricati da Three.js per quelle geometrie,
-  // che `.dispose()` è l'unico modo per liberare esplicitamente. Il
-  // `key={level.id}` sul gruppo pancia/gonna in Level MapScene (già in
-  // questo file, per un bug precedente) rende il problema PEGGIORE, non
-  // migliore: forza un rimontaggio completo — e quindi risorse GPU
-  // interamente nuove — a ogni cambio città invece di riusare le mesh
-  // esistenti.
+  // Geometria di TUTTE le isole, costruita una sola volta e mai più —
+  // prima veniva ricalcolata (e la precedente smontata via `key`) a ogni
+  // cambio città, dato che esisteva un solo set di mesh riusato per il
+  // livello di turno. Con le isole permanentemente montate (vedi il
+  // rendering sotto), ognuna ha bisogno della propria geometria UNA volta
+  // sola per tutta la vita di questa scena — `levels` è un import statico,
+  // mai una variabile di stato: `[]` come dipendenza è corretto (non
+  // "dimenticato"), non deriva da nulla che possa cambiare a runtime.
+  const islandGeometries = useMemo(
+    () => new Map(levels.map((mapLevel) => [mapLevel.id, buildIslandGeometry(mapLevel, getMapGeometry(mapLevel).planeSize)] as const)),
+    []
+  );
+  // Stessa dispose di prima (vedi il commento storico sul leak GPU), ma
+  // per TUTTE le isole nello stesso ciclo di pulizia — l'effetto gira una
+  // sola volta, al vero smontaggio di `LevelMapScene` (mai più a ogni
+  // cambio città, che ora non ricostruisce più nulla).
   useEffect(() => {
     return () => {
-      island.capGeometry.dispose();
-      island.transitionGeometry.dispose();
-      island.bellyGeometry.dispose();
+      islandGeometries.forEach((geom) => {
+        geom.capGeometry.dispose();
+        geom.transitionGeometry.dispose();
+        geom.bellyGeometry.dispose();
+      });
     };
-  }, [island]);
+  }, [islandGeometries]);
   // Condiviso tra `CameraRig` e `CapsuleSequence`, non sollevato a stato:
   // cambia dentro un `useFrame`/timer, mai per un render — vedi i commenti
   // su `cameraLockedRef` in entrambi.
   const cameraLockedRef = useRef(false);
 
-  // Indipendente dalla texture: il marker deve comparire anche se
-  // l'immagine della mappa non è ancora stata generata.
-  const offset = projectToImageOffset(level.coordinates, level.coordinates, level.zoom);
-  const markerPosition = imageOffsetToPlanePosition(offset, geometry.planeSize, geometry.imageSize);
+  const initialOffset = getIslandOffset(level.id);
+  const initialCameraPosition: readonly [number, number, number] = [
+    geometry.cameraFarPosition[0] + initialOffset[0],
+    geometry.cameraFarPosition[1],
+    geometry.cameraFarPosition[2] + initialOffset[1]
+  ];
 
   return (
-    <Canvas camera={{ position: geometry.cameraFarPosition, fov: 50 }}>
+    <Canvas camera={{ position: initialCameraPosition, fov: 50 }}>
       <ambientLight intensity={0.6} />
       <directionalLight position={[6, 10, 6]} intensity={1.2} />
       {/* Luce di riempimento da sotto/di lato, debole e fredda (come un
@@ -925,63 +841,85 @@ export function LevelMapScene({
         </Environment>
       </Suspense>
 
-      {/* Tutto quello che dipende da `level` sotto un unico `SceneErrorBoundary`:
-          se qualcosa lancia un'eccezione al cambio città, un avviso visibile
-          (vedi la classe sopra) invece di una scena vuota senza spiegazione. */}
+      {/* Tutte le isole sotto un unico `SceneErrorBoundary`: se qualcosa
+          lancia un'eccezione, un avviso visibile (vedi la classe sopra)
+          invece di una scena vuota senza spiegazione. Le tre isole sono
+          ORA permanentemente montate insieme (non più una sola, sostituita
+          a ogni cambio città) — ognuna nel proprio `<group position=
+          {[offsetX, 0, offsetZ]}>` (vedi `islandLayout.ts`), sparse
+          nello spazio invece che sovrapposte all'origine: è quello che
+          rende visibile il volo della camera tra un'isola e l'altra
+          (`CameraRig`) invece di un semplice cambio di distanza sullo
+          stesso punto. */}
       <SceneErrorBoundary>
-        <Suspense fallback={null}>
-          <group rotation={[-Math.PI / 2, 0, 0]}>
-            {/* `key={level.id}`: senza, `hasError` di questo boundary
-                resterebbe `true` per SEMPRE dopo il primo errore di
-                caricamento — anche su una città diversa che carica bene —
-                dato che il suo stato non si resetta da solo al cambio
-                `level`. Con la key, un cambio città rimonta il boundary da
-                zero e gli dà una seconda possibilità pulita. */}
-            <IslandCapErrorBoundary key={level.id} fallback={<IslandCapFallback level={level} geometry={island.capGeometry} />}>
-              <IslandCapTexture level={level} geometry={island.capGeometry} />
-            </IslandCapErrorBoundary>
-          </group>
-        </Suspense>
+        {levels.map((mapLevel) => {
+          const [offsetX, offsetZ] = getIslandOffset(mapLevel.id);
+          const mapGeometry = getMapGeometry(mapLevel);
+          const mapIsland = islandGeometries.get(mapLevel.id);
+          if (!mapIsland) return null;
 
-        {/* Fuori dal Suspense apposta: geometria/texture sincrone (nessuna
-            useTexture), deve restare visibile anche se la mappa sopra non
-            carica — stesso principio del marker sotto. `key={level.id}`
-            come sul coperchio sopra: senza, i due `<mesh>` restano la STESSA
-            istanza tra un cambio città e l'altro, e si limitano a ricevere
-            una `geometry`/texture diversa in-place — bug reale scovato a
-            schermo (non solo teorico): al ritorno su una città già vista la
-            pancia/gonna a volte semplicemente non si ridisegnavano più,
-            mentre il coperchio (già rimontato via `key`) tornava sempre
-            visibile. Con `key`, un cambio città smonta questi due mesh e ne
-            monta di nuovi da zero — stesso trattamento del coperchio,
-            nessuna asimmetria tra i due strati dello stesso oggetto. */}
-        {/* Prefisso `island-`: questo `key` deve restare unico tra i fratelli
-            diretti di `SceneErrorBoundary` — `LevelMarker` sotto usa la
-            STESSA `level.id` come chiave, React avvisa (ed è un bug vero,
-            non solo un warning) se due elementi fratelli condividono la
-            stessa key indipendentemente dal tipo. */}
-        <group key={`island-${level.id}`} rotation={[-Math.PI / 2, 0, 0]}>
-          <IslandTransition geometry={island.transitionGeometry} />
-          <IslandBelly geometry={island.bellyGeometry} planeSize={geometry.planeSize} />
-        </group>
+          // Indipendente dalla texture: il marker deve comparire anche se
+          // l'immagine della mappa non è ancora stata generata. Posizione
+          // LOCALE (relativa al `<group>` dell'isola sotto, che applica già
+          // l'offset): non va sommato di nuovo qui, altrimenti l'offset
+          // finirebbe applicato due volte.
+          const markerOffset = projectToImageOffset(mapLevel.coordinates, mapLevel.coordinates, mapLevel.zoom);
+          const localMarkerPosition = imageOffsetToPlanePosition(markerOffset, mapGeometry.planeSize, mapGeometry.imageSize);
+          // A fuoco SOLO se è l'isola del livello attivo: senza questo
+          // scoping, mettere a fuoco un livello disabiliterebbe l'hover
+          // anche sui marker delle altre due isole, non ancora scelte.
+          const isActiveIsland = mapLevel.id === level.id;
 
-        {/* `key={level.id}`: stesso motivo del coperchio/pancia sopra.
-            Senza, `LevelMarker` resta la STESSA istanza tra un cambio città
-            e l'altro — in particolare il suo `wasCloseupRef` (rileva il
-            fronte di salita "camera appena entrata in modalità ravvicinata"
-            per far partire `Grow_Landing`) resta bloccato a `true` da una
-            visita precedente. Bug reale scovato a schermo: tornando su
-            Oristano e cliccando per fare zoom, la distanza rientra subito
-            sotto soglia ma il fronte di salita non scatta più (era già
-            "alto"), quindi l'animazione di crescita del Cinema Ariston non
-            parte mai — l'edificio resta nella posa "non cresciuto" di
-            `primeAtStart`, invisibile. Con `key`, un cambio città rimonta
-            `LevelMarker` da zero e il ref riparte pulito. */}
-        <LevelMarker key={`marker-${level.id}`} level={level} position={markerPosition} focused={focused} onSelect={onActivateMarker} />
+          return (
+            <group key={mapLevel.id} position={[offsetX, 0, offsetZ]}>
+              {/* Niente più `key={level.id}` sul boundary: ogni istanza è
+                  ora legata PER SEMPRE a `mapLevel` (non più rimontata a
+                  ogni cambio città), quindi non serve resettarne lo stato
+                  con una key — se questa mappa fallisce una volta, resta a
+                  tinta unita per lei, le altre isole non ne risentono. */}
+              <Suspense fallback={null}>
+                <group rotation={[-Math.PI / 2, 0, 0]}>
+                  <IslandCapErrorBoundary fallback={<IslandCapFallback level={mapLevel} geometry={mapIsland.capGeometry} />}>
+                    <IslandCapTexture level={mapLevel} geometry={mapIsland.capGeometry} />
+                  </IslandCapErrorBoundary>
+                </group>
+              </Suspense>
 
-        <CityTexturePrewarm currentLevelId={level.id} />
+              {/* Fuori dal Suspense apposta: geometria/texture sincrone
+                  (nessuna useTexture), deve restare visibile anche se la
+                  mappa sopra non carica — stesso principio del marker
+                  sotto. */}
+              <group rotation={[-Math.PI / 2, 0, 0]}>
+                <IslandTransition geometry={mapIsland.transitionGeometry} />
+                <IslandBelly geometry={mapIsland.bellyGeometry} planeSize={mapGeometry.planeSize} />
+              </group>
 
-        <CameraRig level={level} focused={focused} cameraLockedRef={cameraLockedRef} />
+              {/* Niente più `key={level.id}` qui: ogni `LevelMarker` è
+                  ormai legato PER SEMPRE alla propria isola, mai più
+                  rimontato al cambio città (il bug storico che la key
+                  risolveva — `wasCloseupRef` bloccato da una visita
+                  precedente — non può più presentarsi: il fronte di salita
+                  ora scatta solo quando la camera attraversa DAVVERO la
+                  soglia di distanza, che con isole vere distanziate nello
+                  spazio è esattamente quello che succede ogni volta che si
+                  vola via e si ritorna). */}
+              <LevelMarker
+                level={mapLevel}
+                position={localMarkerPosition}
+                focused={focused && isActiveIsland}
+                onSelect={() => onActivateMarker(mapLevel.id)}
+              />
+            </group>
+          );
+        })}
+
+        <CameraRig
+          level={level}
+          focused={focused}
+          islandOffset={getIslandOffset(level.id)}
+          cameraLockedRef={cameraLockedRef}
+          onFlightChange={onFlightChange}
+        />
       </SceneErrorBoundary>
 
       {/* `<Physics>` VUOTO, mai popolato: serve solo a far partire da qui

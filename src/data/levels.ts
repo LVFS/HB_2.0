@@ -50,7 +50,7 @@ export interface LevelInfo {
  * pubblicato non contatta mai Google per le mappe.
  */
 export function getLevelMapImageUrl(level: LevelInfo): string {
-  return `${import.meta.env.BASE_URL}maps/${level.id}.png`;
+  return `${import.meta.env.BASE_URL}maps/${level.id}.webp`;
 }
 
 export const levels: LevelInfo[] = [

@@ -5,6 +5,7 @@ import { getWorldLevel, levels } from '@/data/levels';
 import { useGameStore } from '@/store/gameStore';
 import { useProgressStore } from '@/store/progressStore';
 import ui from '@/styles/ui.module.css';
+import { prefetchLevel1Assets, prefetchOtherCityMaps } from '../assetPreload';
 import { CAPSULE_TIMING } from './capsuleConfig';
 import { CloudTransition } from './CloudTransition';
 import { LevelListOverlay } from './LevelListOverlay';
@@ -40,22 +41,15 @@ export function LevelSelectScene({ onWhiteout }: LevelSelectSceneProps) {
   // Precarica il CODICE della schermata di gioco NON appena si entra qui,
   // non solo al click su "Avvia livello": da qui in poi l'utente può restare
   // a guardare l'elenco/la mappa per un tempo qualunque, tutto tempo "gratis"
-  // per scaricare in background — stesso principio dell'analogo effetto in
-  // `MenuScene.tsx`. Il motore fisico Rapier vero e proprio (~2MB di WASM)
-  // NON si precarica da qui con un secondo `import('@dimforge/rapier3d-compat')`
-  // diretto: provato, e scartato — `@react-three/rapier` lo importa a sua
-  // volta con un `import()` interno tutto suo (dentro `<Physics>`), e con
-  // `entriesAware` (vedi `vite.config.ts`) i due punti di importazione
-  // finiscono in DUE chunk fisicamente separati invece di condividerne uno
-  // solo: il bundle di build l'ha confermato, un secondo chunk da 2.2MB
-  // identico al primo, scaricato per niente (la cache di `suspend-react` che
-  // evita il doppio lavoro è tenuta per riferimento di funzione, e le due
-  // copie duplicate del modulo non sono la STESSA funzione). Il pre-warming
-  // di Rapier vero vive invece in `LevelMapScene.tsx`, con un `<Physics>`
-  // vuoto nello stesso Canvas — stesso identico punto di importazione di
-  // `SceneManager`, quindi stesso chunk, nessun doppione.
+  // per scaricare in background — vedi `assetPreload.ts` per il dettaglio
+  // (incluso il motivo per cui il motore fisico Rapier vero non si precarica
+  // da qui con un secondo `import()` diretto). Le mappe delle altre due città
+  // (non mostrate all'ingresso) si precaricano allo stesso modo, altrimenti
+  // il primo cambio città via `CloudTransition` scatterebbe comunque la
+  // prima volta.
   useEffect(() => {
-    import('@/game/levels/Level1/SceneManager').catch(() => {});
+    prefetchLevel1Assets();
+    prefetchOtherCityMaps(FIRST_LEVEL_ID);
   }, []);
 
   const [displayedLevelId, setDisplayedLevelId] = useState(FIRST_LEVEL_ID);
@@ -77,6 +71,19 @@ export function LevelSelectScene({ onWhiteout }: LevelSelectSceneProps) {
   // corso a metà, lasciando le nuvole a un fotogramma intermedio), viene
   // applicata solo quando il ciclo corrente si è chiuso del tutto.
   const queuedLevelIdRef = useRef<string | null>(null);
+  // Livello da mettere a fuoco non appena `displayedLevelId` diventa
+  // DAVVERO quel livello — non prima. Bug reale scovato a schermo: se si
+  // sceglie un livello mentre un cambio città precedente è ancora in coda
+  // (nuvole non ancora del tutto assestate), `setFocused(true)` veniva
+  // chiamato SUBITO mentre la scena mostrava ancora la città sbagliata (o
+  // stava per rimontare `LevelMarker`, vedi `LevelMapScene.tsx`): la camera
+  // arrivava all'inquadratura ravvicinata prima che il marker/edificio giusti
+  // fossero pronti, e il fronte di salita che fa partire la crescita del
+  // Cinema Ariston poteva scattare a vuoto (il callback del figlio non era
+  // ancora registrato in quel fotogramma) — l'edificio restava bloccato
+  // nella posa "non cresciuto". Applicato in `handleCloudCovered`, l'unico
+  // punto dove `displayedLevelId` cambia per davvero.
+  const pendingFocusIdRef = useRef<string | null>(null);
 
   const displayedLevel = levels.find((level) => level.id === displayedLevelId) ?? levels[0];
 
@@ -126,18 +133,31 @@ export function LevelSelectScene({ onWhiteout }: LevelSelectSceneProps) {
   );
 
   /** Selezione di un livello vero (elenco o marker 3D): cambia città E fa
-   * partire lo zoom. */
+   * partire lo zoom. Il fuoco parte SUBITO solo se la città giusta è già
+   * quella mostrata e nessun cambio è in coda — altrimenti aspetta che
+   * `handleCloudCovered` lo confermi (vedi `pendingFocusIdRef` sopra per il
+   * bug reale che questo guard risolve). */
   const handleSelectLevel = useCallback(
     (levelId: string) => {
-      setFocused(true);
+      if (displayedLevelId === levelId && !isTransitioningRef.current) {
+        setFocused(true);
+      } else {
+        pendingFocusIdRef.current = levelId;
+      }
       changeDisplayedCity(levelId);
     },
-    [changeDisplayedCity]
+    [changeDisplayedCity, displayedLevelId]
   );
 
   const handleCloudCovered = useCallback(() => {
     setPendingLevelId((pending) => {
-      if (pending) setDisplayedLevelId(pending);
+      if (pending) {
+        setDisplayedLevelId(pending);
+        if (pendingFocusIdRef.current === pending) {
+          pendingFocusIdRef.current = null;
+          setFocused(true);
+        }
+      }
       return null;
     });
   }, []);

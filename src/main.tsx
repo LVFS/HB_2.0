@@ -1,5 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { useGLTF } from '@react-three/drei';
 
 // Font self-hostati: niente richiesta a fonts.googleapis.com, niente dipendenza
 // da un servizio esterno, e i file vengono serviti con hash dalla nostra build
@@ -16,6 +17,14 @@ import App from '@/App';
 // L'ordine conta: i token definiscono le variabili che global.css usa.
 import '@/styles/tokens.css';
 import '@/styles/global.css';
+
+// I modelli `.glb` sono compressi con Draco (vedi `public/models/`): il
+// decoder di drei punta di default a un CDN esterno (gstatic.com) — vietato
+// dal progetto (vedi CLAUDE.md, "Bundle/performance"), quindi il decoder
+// vive self-hosted in `public/draco/` (copiato da
+// `node_modules/three/examples/jsm/libs/draco/gltf/`). Un solo punto di
+// configurazione globale invece di passarlo a ogni `useGLTF`/`.preload`.
+useGLTF.setDecoderPath(`${import.meta.env.BASE_URL}draco/`);
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

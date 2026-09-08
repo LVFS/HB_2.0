@@ -1,0 +1,15 @@
+/* Barra di caricamento reale (percentuale da `useProgress`) sotto l'etichetta
+   già fornita da `.screen-fallback` (globale, vedi `styles/global.css`). */
+.track {
+  width: min(220px, 60vw);
+  height: 3px;
+  border-radius: 999px;
+  background: var(--surface-inset-hover);
+  overflow: hidden;
+}
+
+.fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width var(--dur) var(--ease-out);
+}

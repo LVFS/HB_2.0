@@ -3,6 +3,7 @@ import { useGameStore } from '@/store/gameStore';
 import { useBackgroundMusic } from '@/hooks/useBackgroundMusic';
 import { useAudioUnlockHint } from '@/hooks/useAudioUnlockHint';
 import { useGamepadDetected } from '@/hooks/useGamepadDetected';
+import { LoadingScreen } from '@/components/LoadingScreen';
 import styles from './App.module.css';
 
 // Ogni schermata viene scaricata solo quando serve davvero (code splitting).
@@ -58,7 +59,7 @@ function App() {
   return (
     <div className="app-shell">
       {/* Suspense mostra il fallback mentre il codice della schermata arriva. */}
-      <Suspense fallback={<div className="screen-fallback">Caricamento...</div>}>
+      <Suspense fallback={<LoadingScreen />}>
         {/* Menu cinematografico in 3D con portone e animazione */}
         {screen === 'menu' && <MenuScene onWhiteout={setWhiteout} />}
 

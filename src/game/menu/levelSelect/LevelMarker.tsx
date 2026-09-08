@@ -284,6 +284,24 @@ export function LevelMarker({ level, position, focused, onSelect }: LevelMarkerP
   // da richiamare esattamente al fronte di salita, PRIMA di rendere
   // visibile il gruppo — vedi il commento sul tipo in `CinemaAristonModelProps`.
   const onCloseupEnterRef = useRef<(() => void) | null>(null);
+  // `true` da quando si rileva il fronte di salita a quando la chiamata a
+  // `onCloseupEnterRef` va A BUON FINE — non un semplice "quest'anno l'ho già
+  // chiamato" ma un vero e proprio ritentativo. Bug reale scovato a schermo:
+  // se il fronte di salita cade nel PRIMO fotogramma utile dopo che `Level
+  // Marker`/`CinemaAristonModel` sono stati rimontati (es. dopo un cambio
+  // città, `key={level.id}` in `LevelMapScene.tsx`) — cosa che succede
+  // proprio quando la camera è già vicina al marker in quel fotogramma —
+  // l'`useEffect` del figlio che scrive `onCloseupEnterRef.current` potrebbe
+  // non essere ancora girato (gli `useEffect` di React sono asincroni
+  // rispetto al loop `useFrame`, che gira sul proprio `requestAnimationFrame`
+  // indipendente): `onCloseupEnterRef.current` risultava `null` proprio nel
+  // fotogramma del fronte di salita, l'`?.()` non faceva nulla in silenzio, e
+  // l'edificio restava bloccato per sempre nella posa "non cresciuto" di
+  // `primeAtStart` — il fronte di salita non si ripresenta una seconda volta
+  // finché non si esce e rientra di nuovo in modalità ravvicinata. Con un
+  // ritentativo per fotogramma finché il ref non è valorizzato (bastano
+  // pochi millisecondi in pratica), la chiamata non va mai persa.
+  const pendingCloseupEnterRef = useRef(false);
 
   const [hovered, setHovered] = useState(false);
 
@@ -302,9 +320,16 @@ export function LevelMarker({ level, position, focused, onSelect }: LevelMarkerP
     // commento su `onCloseupEnterRef`/`CinemaAristonModelProps` per il bug
     // reale che questo ordine esplicito risolve.
     if (closeup && !wasCloseupRef.current) {
-      onCloseupEnterRef.current?.();
+      pendingCloseupEnterRef.current = true;
     }
     wasCloseupRef.current = closeup;
+    // Ritentativo, non un `?.()` a perdere: vedi il commento su
+    // `pendingCloseupEnterRef` sopra per il bug reale (mount+fronte di salita
+    // nello stesso fotogramma, ref del figlio non ancora scritto).
+    if (pendingCloseupEnterRef.current && onCloseupEnterRef.current) {
+      pendingCloseupEnterRef.current = false;
+      onCloseupEnterRef.current();
+    }
 
     if (pinRef.current) pinRef.current.visible = !closeup;
     if (modelRef.current) modelRef.current.visible = closeup;

@@ -20,11 +20,12 @@
 // Uso: GOOGLE_MAPS_API_KEY nel file .env (vedi .env.example), poi:
 //   node scripts/generate-map-images.mjs
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { readFileSync, mkdirSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import https from 'node:https';
 import { PNG } from 'pngjs';
+import sharp from 'sharp';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const OUTPUT_DIR = join(__dirname, '..', 'public', 'maps');
@@ -41,6 +42,19 @@ const LEVELS = [
  * "retina" di scale=2 su uno sfondo visto a distanza). */
 const TILE_SIZE = 640;
 const MAP_TYPE = 'hybrid';
+/** Le tile arrivano da Google come PNG (composte in memoria con `pngjs`,
+ * serve un formato lossless lì per non introdurre artefatti alle cuciture),
+ * ma il file finale su disco è una texture di sfondo vista a distanza in una
+ * scena 3D, non un'immagine da ispezionare da vicino: WebP a qualità 85
+ * taglia il peso del 90%+ rispetto al PNG lossless senza perdita percepibile
+ * applicata come texture. Il lato massimo è limitato a `OUTPUT_MAX_DIMENSION`
+ * — oltre quella risoluzione la superficie a schermo (vedi `PLANE_SIZE` in
+ * `LevelMapScene.tsx`) non mostra comunque il dettaglio aggiuntivo.
+ * `withoutEnlargement` evita di far crescere una griglia già più piccola
+ * del cap (Silì, mapGrid=3 -> 1920px, resta invariata). */
+const OUTPUT_MAX_DIMENSION = 2048;
+const OUTPUT_FORMAT = 'webp';
+const OUTPUT_QUALITY = 85;
 // Nasconde le icone/etichette dei punti di interesse (locali, negozi...) e
 // dei trasporti (fermate bus...): solo strade e nomi restano, niente
 // pittogrammi sparsi sulla mappa.
@@ -139,8 +153,16 @@ async function generateLevel(level, apiKey) {
     }
   }
 
-  const dest = join(OUTPUT_DIR, `${level.id}.png`);
-  writeFileSync(dest, PNG.sync.write(composite));
+  const dest = join(OUTPUT_DIR, `${level.id}.${OUTPUT_FORMAT}`);
+  await sharp(PNG.sync.write(composite))
+    .resize({
+      width: OUTPUT_MAX_DIMENSION,
+      height: OUTPUT_MAX_DIMENSION,
+      fit: 'inside',
+      withoutEnlargement: true
+    })
+    .webp({ quality: OUTPUT_QUALITY })
+    .toFile(dest);
   return dest;
 }
 

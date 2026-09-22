@@ -233,7 +233,7 @@ export function LevelSelectScene({ onWhiteout }: LevelSelectSceneProps) {
         </div>
       )}
 
-      {/* <CloudTransition trigger={cloudTrigger} direction={flightDirection} /> */}
+      <CloudTransition trigger={cloudTrigger} direction={flightDirection} />
     </div>
   );
 }

@@ -15,6 +15,7 @@ import gsap from 'gsap';
 import type { LevelInfo } from '@/data/levels';
 import { useCinemaAristonGltf } from './cinemaAristonModel';
 import { primeAtStart, playOnce } from './playOnce';
+import { useSiliIngressoGltf } from './siliIngressoModel';
 
 const DUST_PUFF_COUNT = 5;
 /** Nomi degli oggetti onda d'urto/polvere nel file del Cinema Ariston —
@@ -70,6 +71,22 @@ const CONFIRM_DELAY = 0.18;
  * rivedere se in futuro si rifinisce l'inquadratura a vista. */
 const CINEMA_MODEL_SCALE = 0.28;
 
+/** Lo scorcio di Silì è modellato a scala reale (~36×26×7.4 unità:
+ * `assets/blender/sili_ingresso.blend`) ma NON è un singolo edificio come
+ * il Cinema Ariston — è un'intera fila di case viste di fronte, molto più
+ * larga che alta. Scalarlo per far combaciare la LARGHEZZA con
+ * `CAMERA_NEAR` (come per `CINEMA_MODEL_SCALE`) lo farebbe apparire
+ * schiacciato e troppo basso rispetto a `CAMERA_NEAR.target` (y=1, tarato
+ * su edifici di qualche metro d'altezza — a parità di logica sulla
+ * larghezza l'altezza risulterebbe sotto 1 unità, con la camera che
+ * finirebbe per guardare sopra le case invece che verso di loro). Scalato
+ * invece sull'ALTEZZA (obiettivo ~3 unità, comparabile alla taglia
+ * effettiva del Cinema Ariston): la strada risulta più larga della cornice
+ * — voluto, si legge come "si è in mezzo alla via", non come un oggetto
+ * in vetrina. Primo numero da rivedere a vista, stesso spirito di
+ * `CINEMA_MODEL_SCALE`. */
+const SILI_MODEL_SCALE = 0.28;
+
 function isEmissiveMaterial(material: Material | null): material is MeshStandardMaterial {
   return !!material && 'emissiveIntensity' in material;
 }
@@ -80,8 +97,9 @@ function isEmissiveMaterial(material: Material | null): material is MeshStandard
  * maggiore" dello stesso linguaggio, non un punto ingrandito a caso. */
 const PLACEHOLDER_CRYSTAL_RADIUS = 0.95;
 
-/** Placeholder "ponte" per Silì e Cagliari, in attesa di un modello vero
- * per luogo (soluzione definitiva, fuori da questo giro — vedi
+/** Placeholder "ponte" per Cagliari (Silì ha ora il suo modello vero, vedi
+ * `SiliIngressoModel` sotto), in attesa di un modello vero per luogo
+ * (soluzione definitiva, fuori da questo giro — vedi
  * `docs/PIANO_ESECUZIONE_SELEZIONE_LIVELLO.md`): non più un cilindro pieno
  * generico, ma lo stesso linguaggio visivo del pin (`LevelMarker` sotto) —
  * ottaedro sfaccettato, bagliore, anello a terra — solo scalato per
@@ -281,10 +299,38 @@ function CinemaAristonModel({ onCloseupEnterRef }: CinemaAristonModelProps) {
 }
 
 /**
+ * Il modello vero dello scorcio di Silì: mesh statiche, nessuna animazione
+ * (a differenza del Cinema Ariston non c'è una crescita da innescare né
+ * un'insegna da far pulsare) — solo il precompilamento shader/materiali
+ * all'arrivo del file, stesso motivo di `CinemaAristonModel` sopra (evitare
+ * lo scatto del primo draw quando il gruppo diventa visibile).
+ */
+function SiliIngressoModel() {
+  const { scene } = useSiliIngressoGltf();
+  const { gl, camera, scene: rootScene } = useThree();
+
+  useEffect(() => {
+    gl.compileAsync(scene, camera, rootScene).catch(() => {});
+  }, [gl, camera, rootScene, scene]);
+
+  // Il bordo vicino del marciapiede modellato non arriva fino a
+  // `CAMERA_NEAR` (la strada è larga ma non infinita): senza questo
+  // spostamento in avanti (+Z, verso la camera) si vedeva un vuoto nero
+  // nella metà inferiore dell'inquadratura, tra il bordo del marciapiede e
+  // la camera stessa — bug reale scovato a schermo, non teorico. Valore
+  // tarato a vista, primo numero da rivedere insieme a `SILI_MODEL_SCALE`.
+  return (
+    <group position={[0, 0, 1.75]}>
+      <primitive object={scene} scale={SILI_MODEL_SCALE} />
+    </group>
+  );
+}
+
+/**
  * Il marker di un livello sul piano-mappa: da lontano un beacon/cristallo
  * (`pinRef`, sotto), da vicino il modello 3D (`modelRef` — il Cinema
- * Ariston per Oristano, un placeholder nello stesso linguaggio del pin per
- * Silì/Cagliari in attesa di un modello vero per luogo, vedi
+ * Ariston per Oristano, lo scorcio d'ingresso per Silì, un placeholder nello
+ * stesso linguaggio del pin per Cagliari in attesa di un modello vero, vedi
  * `PlaceholderModel` sopra) — scambio automatico legato alla distanza
  * camera↔marker (letta ogni fotogramma), non a un bottone o a una fase
  * separata.
@@ -345,6 +391,7 @@ export function LevelMarker({ level, position, focused, onSelect }: LevelMarkerP
 
   const emissiveColor = useMemo(() => new Color(level.color), [level.color]);
   const isCinemaAriston = level.id === 'oristano-ariston';
+  const isSiliIngresso = level.id === 'sili';
 
   useFrame(({ camera }, delta) => {
     if (!groupRef.current) return;
@@ -478,6 +525,10 @@ export function LevelMarker({ level, position, focused, onSelect }: LevelMarkerP
           // per mappa/audio/video mancanti.
           <Suspense fallback={<PlaceholderModel level={level} />}>
             <CinemaAristonModel onCloseupEnterRef={onCloseupEnterRef} />
+          </Suspense>
+        ) : isSiliIngresso ? (
+          <Suspense fallback={<PlaceholderModel level={level} />}>
+            <SiliIngressoModel />
           </Suspense>
         ) : (
           <PlaceholderModel level={level} />

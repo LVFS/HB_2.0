@@ -38,14 +38,17 @@ const MAX_DISTANCE_RATIO = 1.05;
 export const PAN_MARGIN = 5;
 
 export const CAMERA_FAR_TARGET = [0, 0, 0] as const;
-// Target ad altezza ~1 (non a terra): guarda il marker/modello, non i suoi
-// piedi — con un target a y=0 e la camera a soli 2-3 unità di distanza,
-// l'angolo era troppo ripido dall'alto e si vedeva perlopiù il piano sotto
-// invece del modello (bug reale scovato a schermo, non un dettaglio). Non
-// dipende da `level`/`PLANE_SIZE` apposta: il modello/pin restano a
-// dimensione reale fissa, questa è l'inquadratura ravvicinata su di loro,
-// non sul piano.
-export const CAMERA_NEAR = { position: [0, 2.1, 4.6] as const, target: [0, 1, 0] as const };
+// Target abbassato da 1 a 0.7 su richiesta esplicita ("la visuale verso il
+// modello un po' più in basso"): condiviso da tutti i modelli ravvicinati
+// (Cinema Ariston, scorcio di Silì, placeholder di Cagliari), quindi non
+// a terra (y=0) — con un target a y=0 e la camera a soli 2-3 unità di
+// distanza, l'angolo era troppo ripido dall'alto e si vedeva perlopiù il
+// piano sotto invece del modello (bug reale scovato a schermo, non un
+// dettaglio) — ma abbastanza più basso di prima da inquadrare più il piano
+// terra/ingresso e meno il tetto. Non dipende da `level`/`PLANE_SIZE`
+// apposta: il modello/pin restano a dimensione reale fissa, questa è
+// l'inquadratura ravvicinata su di loro, non sul piano.
+export const CAMERA_NEAR = { position: [0, 1.1, 4.6] as const, target: [0, 1, 0] as const };
 
 /**
  * Angolo polare (dall'asse verticale) implicito in `CAMERA_NEAR`: con

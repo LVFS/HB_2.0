@@ -1,29 +1,25 @@
 import { create } from 'zustand';
+import { resetLevel } from './levelStore';
 
 export type ScreenState = 'menu' | 'levelSelect' | 'game';
 
 interface GameState {
   screen: ScreenState;
-  /** Id dei frammenti già raccolti: evita di contare due volte lo stesso. */
-  collectedFragmentIds: string[];
   selectedLevel: string | null;
   setScreen: (screen: ScreenState) => void;
   setSelectedLevel: (levelId: string | null) => void;
-  collectFragment: (fragmentId: string) => void;
+  /** Azzera lo stato di avanzamento specifico di un livello prima di
+   * (ri)iniziarlo — chiamato da `LevelSelectScene` al lancio. Riporta
+   * `levelStore` a `intro_dialogo` (Fase 4 del piano, vedi
+   * docs/PIANO_LIVELLO1_2D.md): senza, rigiocare un livello già iniziato
+   * ripartirebbe dall'ultima fase raggiunta invece che dall'inizio. */
   resetProgress: () => void;
 }
 
 export const useGameStore = create<GameState>((set) => ({
   screen: 'menu',
-  collectedFragmentIds: [],
   selectedLevel: null,
   setScreen: (screen) => set({ screen }),
   setSelectedLevel: (levelId) => set({ selectedLevel: levelId }),
-  collectFragment: (fragmentId) =>
-    set((state) =>
-      state.collectedFragmentIds.includes(fragmentId)
-        ? state
-        : { collectedFragmentIds: [...state.collectedFragmentIds, fragmentId] }
-    ),
-  resetProgress: () => set({ collectedFragmentIds: [] })
+  resetProgress: () => resetLevel()
 }));

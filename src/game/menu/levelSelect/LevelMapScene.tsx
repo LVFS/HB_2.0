@@ -10,7 +10,6 @@ import {
 } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Environment, Lightformer, MapControls, Stars, Text, useTexture } from '@react-three/drei';
-import { Physics } from '@react-three/rapier';
 import { BufferAttribute, CanvasTexture, DoubleSide, ExtrudeGeometry, RepeatWrapping, Shape, ShapeGeometry, type BufferGeometry } from 'three';
 import gsap from 'gsap';
 import { getLevelMapImageUrl, levels, type LevelInfo } from '@/data/levels';
@@ -921,22 +920,6 @@ export function LevelMapScene({
           onFlightChange={onFlightChange}
         />
       </SceneErrorBoundary>
-
-      {/* `<Physics>` VUOTO, mai popolato: serve solo a far partire da qui
-          l'`import()` interno di `@react-three/rapier` per il motore WASM
-          (~2MB), così arriva già caricato quando `SceneManager` (livello di
-          gioco) monta il SUO `<Physics>` vero — stesso identico punto
-          d'importazione (`suspend-react` condivide la cache per riferimento
-          di funzione, non per bytes scaricati), quindi nessun doppione nel
-          bundle. Provato prima un `import('@dimforge/rapier3d-compat')`
-          diretto da `LevelSelectScene.tsx`: scartato, produceva un secondo
-          chunk da 2.2MB invece di condividere quello di `SceneManager` (vedi
-          il commento lì). Suspense proprio perché `<Physics>` sospende
-          (throw di una promise) finché il WASM non è pronto — innocuo qui,
-          non c'è nulla sotto ad aspettare. */}
-      <Suspense fallback={null}>
-        <Physics>{null}</Physics>
-      </Suspense>
 
       {/* Fuori dal Suspense dell'isola apposta: se il .glb della capsula
           tarda, non deve bloccare il resto della scena — Suspense qui è

@@ -1,5 +1,6 @@
 import { Suspense, lazy, useEffect, useState } from 'react';
 import { useGameStore } from '@/store/gameStore';
+import { useLevelStore } from '@/store/levelStore';
 import { useBackgroundMusic } from '@/hooks/useBackgroundMusic';
 import { useAudioUnlockHint } from '@/hooks/useAudioUnlockHint';
 import { useGamepadDetected } from '@/hooks/useGamepadDetected';
@@ -7,22 +8,31 @@ import { LoadingScreen } from '@/components/LoadingScreen';
 import styles from './App.module.css';
 
 // Ogni schermata viene scaricata solo quando serve davvero (code splitting).
-// Il guadagno grosso è la scena di gioco: si porta dietro il motore fisico
-// Rapier, che nel menu e nella selezione livelli non serve a niente.
 const MenuScene = lazy(() =>
   import('@/game/menu/MenuScene').then((module) => ({ default: module.MenuScene }))
 );
 const LevelSelectScene = lazy(() =>
   import('@/game/menu/levelSelect/LevelSelectScene').then((module) => ({ default: module.LevelSelectScene }))
 );
-const SceneManager = lazy(() =>
-  import('@/game/levels/Level1/SceneManager').then((module) => ({ default: module.SceneManager }))
+// Livello 1 in 2D (vedi docs/PIANO_LIVELLO1_2D.md): niente Rapier, il
+// vecchio commento su "si porta dietro il motore fisico" non vale più —
+// resta solo il motivo generico del code-splitting per schermata.
+const SceneManager2D = lazy(() =>
+  import('@/game/levels/Level1/SceneManager2D').then((module) => ({ default: module.SceneManager2D }))
+);
+// Interno isometrico dell'Ariston (vedi docs/FASE5_INTERNO_ISOMETRICO.md):
+// montato al posto di `SceneManager2D` — mai insieme — quando `levelPhase`
+// è `'attivita_stupide'` (decisione presa: quella fase VIVE nell'isometrico,
+// non è un momento ancora nello scorrimento laterale).
+const SceneManager2DIso = lazy(() =>
+  import('@/game/levels/Level1Interior/SceneManager2DIso').then((module) => ({ default: module.SceneManager2DIso }))
 );
 
 // App è il componente principale dell'app React.
 // Decide quale schermo mostrare in base allo stato globale del gioco.
 function App() {
   const screen = useGameStore((state) => state.screen);
+  const levelPhase = useLevelStore((state) => state.phase);
 
   // Musica di sottofondo: vive quanto l'app, indipendente dallo schermo attivo.
   useBackgroundMusic();
@@ -44,17 +54,21 @@ function App() {
   // nel fotogramma esatto del taglio, e non ci sarebbe più nulla a coprirlo.
   const [whiteout, setWhiteout] = useState(false);
 
-  // Ogni cambio di schermata con il bianco ancora attivo lo riporta a
-  // trasparente un istante dopo il mount della schermata nuova: si legge
-  // come "sfuma dal bianco", non come un secondo taglio secco. Chi ha
-  // acceso il bianco (oggi solo `CameraDirector`) decide QUANDO cambiare
-  // schermata, non se riportarlo giù: quello è generico, sta qui una volta sola.
+  // Ogni cambio di schermata (o, dentro `screen==='game'`, di `levelPhase` —
+  // il passaggio scorrimento laterale ↔ interno isometrico è anch'esso un
+  // taglio secco fra due componenti, non un cambio di `screen`) con il
+  // bianco ancora attivo lo riporta a trasparente un istante dopo il mount
+  // del nuovo contenuto: si legge come "sfuma dal bianco", non come un
+  // secondo taglio secco. Chi ha acceso il bianco (`CameraDirector`,
+  // `SceneManager2D.handleReachAriston`, `SceneManager2DIso.handleExitToExterior`)
+  // decide QUANDO cambiare schermata/fase, non se riportarlo giù: quello è
+  // generico, sta qui una volta sola.
   useEffect(() => {
     if (!whiteout) return;
     const id = requestAnimationFrame(() => setWhiteout(false));
     return () => cancelAnimationFrame(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- si vuole reagire SOLO al cambio schermata, non a ogni variazione di whiteout (altrimenti si richiuderebbe da solo appena acceso)
-  }, [screen]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- si vuole reagire SOLO al cambio schermata/fase, non a ogni variazione di whiteout (altrimenti si richiuderebbe da solo appena acceso)
+  }, [screen, levelPhase]);
 
   return (
     <div className="app-shell">
@@ -66,8 +80,13 @@ function App() {
         {/* Schermata di selezione dei livelli dopo aver aperto il portone */}
         {screen === 'levelSelect' && <LevelSelectScene onWhiteout={setWhiteout} />}
 
-        {/* Mostra la scena di gioco 3D quando è il momento di giocare */}
-        {screen === 'game' && <SceneManager />}
+        {/* Livello 1: scorrimento laterale fuori dall'Ariston, interno
+            isometrico dentro (decisione presa: `attivita_stupide` VIVE
+            nell'isometrico) — mai insieme, `levelPhase` decide quale. */}
+        {screen === 'game' && levelPhase !== 'attivita_stupide' && <SceneManager2D onWhiteout={setWhiteout} />}
+        {screen === 'game' && levelPhase === 'attivita_stupide' && (
+          <SceneManager2DIso onWhiteout={setWhiteout} />
+        )}
       </Suspense>
 
       <div className={`${styles.whiteout} ${whiteout ? styles.whiteoutActive : ''}`} />

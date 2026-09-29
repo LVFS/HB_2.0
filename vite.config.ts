@@ -24,9 +24,11 @@ export default defineConfig({
               test: /node_modules/,
               // entriesAware raggruppa le librerie in base a QUALI schermate le
               // usano davvero: quelle comuni finiscono in un chunk condiviso,
-              // il motore fisico resta nel chunk della sola scena di gioco.
-              // Senza questa opzione un solo gruppo "vendor" costringerebbe
-              // anche il menu a scaricare i 3 MB di Rapier.
+              // il motore fisico resta nel chunk di chi lo importa davvero
+              // (oggi solo `WallShatter.tsx` nel menu — il Livello 1 è 2D e
+              // non usa più Rapier, vedi docs/PIANO_LIVELLO1_2D.md). Senza
+              // questa opzione un solo gruppo "vendor" costringerebbe anche
+              // la selezione livelli a scaricare i 3 MB di Rapier.
               entriesAware: true
             }
           ]

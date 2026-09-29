@@ -38,18 +38,17 @@ export function prefetchLevelSelectAssets(): void {
 }
 
 /**
- * Codice della scena di gioco (Level1 + Rapier): da chiamare non appena si
- * entra nella selezione livelli, non solo al click su "Avvia livello" — da
- * quel momento l'utente può restare a guardare l'elenco/la mappa per un
- * tempo qualunque, tutto tempo gratis per scaricare in background. Il
- * pre-warming del motore fisico VERO (~2MB di WASM) non passa da qui: vive
- * in `LevelMapScene.tsx` con un `<Physics>` vuoto nello stesso `<Canvas>`,
- * stesso punto di importazione di `SceneManager` — vedi il commento lì sul
- * perché un secondo `import()` diretto produrrebbe un chunk duplicato.
+ * Codice della scena di gioco (Level1, 2D — vedi docs/PIANO_LIVELLO1_2D.md):
+ * da chiamare non appena si entra nella selezione livelli, non solo al
+ * click su "Avvia livello" — da quel momento l'utente può restare a
+ * guardare l'elenco/la mappa per un tempo qualunque, tutto tempo gratis per
+ * scaricare in background. Niente più pre-warming di Rapier da qui: il
+ * livello 2D non usa il motore fisico (collisioni a mano, vedi
+ * `@/game/render2d`).
  */
 export function prefetchLevel1Assets(): void {
   runWhenIdle(() => {
-    import('@/game/levels/Level1/SceneManager').catch(() => {});
+    import('@/game/levels/Level1/SceneManager2D').catch(() => {});
   });
 }
 

@@ -1,0 +1,51 @@
+/* Ancorato in basso, largo ma non a tutta pagina: lo spazio sopra resta
+   scena leggibile mentre si parla, come in quasi ogni dialogo di gioco. */
+.overlay {
+  position: absolute;
+  left: 50%;
+  bottom: var(--space-5);
+  transform: translateX(-50%);
+  z-index: 20;
+  width: min(640px, 92vw);
+  pointer-events: none;
+}
+
+.box {
+  pointer-events: auto;
+}
+
+.text {
+  margin: var(--space-2) 0 0;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+/* Il narratore non è un personaggio che parla: corsivo, tono smorzato, per
+   leggersi come didascalia invece che come battuta. */
+.narratorText {
+  composes: text;
+  margin-top: 0;
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.hint {
+  margin-top: var(--space-3);
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-dim);
+  text-align: right;
+  animation: pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}

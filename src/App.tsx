@@ -2,6 +2,7 @@ import { Suspense, lazy, useEffect, useState } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { useLevelStore } from '@/store/levelStore';
 import { useBackgroundMusic } from '@/hooks/useBackgroundMusic';
+import { useDevBossShortcut } from '@/hooks/useDevBossShortcut';
 import { useAudioUnlockHint } from '@/hooks/useAudioUnlockHint';
 import { useGamepadDetected } from '@/hooks/useGamepadDetected';
 import { LoadingScreen } from '@/components/LoadingScreen';
@@ -28,6 +29,14 @@ const SceneManager2DIso = lazy(() =>
   import('@/game/levels/Level1Interior/SceneManager2DIso').then((module) => ({ default: module.SceneManager2DIso }))
 );
 
+// Arena del boss (`boss_fase1`, vedi il piano di combattimento): scorrimento
+// laterale su un palco chiuso, montata al posto degli altri due — mai insieme.
+const SceneManagerBossArena = lazy(() =>
+  import('@/game/levels/BossArena/SceneManagerBossArena').then((module) => ({
+    default: module.SceneManagerBossArena
+  }))
+);
+
 // App è il componente principale dell'app React.
 // Decide quale schermo mostrare in base allo stato globale del gioco.
 function App() {
@@ -36,6 +45,9 @@ function App() {
 
   // Musica di sottofondo: vive quanto l'app, indipendente dallo schermo attivo.
   useBackgroundMusic();
+
+  // Solo in sviluppo: F9/F8 saltano all'arena del boss e ritorno.
+  useDevBossShortcut();
 
   // I browser bloccano l'audio finché non c'è stata un'interazione
   // "attendibile" sulla pagina (click/tasto/tocco) — un bottone del
@@ -83,9 +95,12 @@ function App() {
         {/* Livello 1: scorrimento laterale fuori dall'Ariston, interno
             isometrico dentro (decisione presa: `attivita_stupide` VIVE
             nell'isometrico) — mai insieme, `levelPhase` decide quale. */}
-        {screen === 'game' && levelPhase !== 'attivita_stupide' && <SceneManager2D onWhiteout={setWhiteout} />}
         {screen === 'game' && levelPhase === 'attivita_stupide' && (
           <SceneManager2DIso onWhiteout={setWhiteout} />
+        )}
+        {screen === 'game' && levelPhase === 'boss_fase1' && <SceneManagerBossArena onWhiteout={setWhiteout} />}
+        {screen === 'game' && levelPhase !== 'attivita_stupide' && levelPhase !== 'boss_fase1' && (
+          <SceneManager2D onWhiteout={setWhiteout} />
         )}
       </Suspense>
 

@@ -28,6 +28,9 @@ const ENTRY_LEVEL = 'Piano_terra';
 /** Valore sentinella nei dati LDtk: non è un `Level` vero, dice al codice di
  *  uscire del tutto dal modo isometrico (vedi il piano di handoff, §2). */
 const EXTERIOR_TARGET = 'esterno';
+/** `Level` LDtk della stanza del boss: attraversarne la porta avvia
+ *  `boss_fase1` invece di caricare la stanza isometrica. */
+const BOSS_ROOM_LEVEL = 'Sala_boss';
 
 interface SceneManager2DIsoProps {
   /** Accende il whiteout globale (`App.tsx`) — stesso identico meccanismo
@@ -162,9 +165,21 @@ export function SceneManager2DIso({ onWhiteout }: SceneManager2DIsoProps) {
     window.setTimeout(() => useLevelStore.getState().setPhase('cammino_libero_ariston'), 550);
   };
 
+  // Entrare in `Sala_boss` non mostra più la stanza isometrica: avvia il
+  // combattimento (`boss_fase1`, arena laterale). Per ora salta il dialogo
+  // pre-boss, che quando esisterà va inserito davanti a questo passaggio.
+  const handleEnterBossArena = () => {
+    onWhiteout(true);
+    window.setTimeout(() => useLevelStore.getState().setPhase('boss_fase1'), 550);
+  };
+
   const handleDoorEnter = (targetLevel: string) => {
     if (targetLevel === EXTERIOR_TARGET) {
       handleExitToExterior();
+      return;
+    }
+    if (targetLevel === BOSS_ROOM_LEVEL) {
+      handleEnterBossArena();
       return;
     }
     setCurrentLevel(targetLevel);

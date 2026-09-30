@@ -362,6 +362,58 @@ Menu e selezione livelli restano 3D, invariati.
   `intro_dialogo` (dialogo reale, 13 battute) → `cammino_libero_ariston` (D comandabile, Eve
   che segue) → `attivita_stupide` (placeholder) gioca per intero senza errori console.
 
+## Boss arena (`boss_fase1`) — in costruzione
+
+Combattimento a scorrimento laterale su un palco chiuso, camera fissa
+(`game/levels/BossArena/`: `arenaConfig.ts`, `arenaState.ts`, `PlayerArena.tsx`,
+`SceneManagerBossArena.tsx`) — piano completo nel documento di handoff del boss
+fight. `App.tsx` monta l'arena quando `levelPhase === 'boss_fase1'`, mai insieme a
+`SceneManager2D`/`SceneManager2DIso`. Il giocatore è `D1` (`ARENA_PLAYER_VARIANT`).
+Fatto (tutto il piano, passi 1-10):
+- Giocatore: attacco `J`/click sx, parata `K`/click dx, dash `Shift` (i-frames),
+  salto `Spazio`; stati `parry`/`stagger` in `CharacterAnimator2D`.
+- Checco (`BossChecco.tsx`): mosse in DATI (`checcoMoves.ts`, round 1 e round 2),
+  postura (colpi e parate la alzano, decade da sola, a 100 barcolla e prende danni
+  doppi), evento "Avvia il film" a `SPECIAL_TRIGGER_HP` (windup lungo; interrotto se
+  si para negli ultimi secondi o si infligge `SPECIAL_INTERRUPT_DAMAGE`; completato
+  altrimenti) con buff/malus, cambio sfondo in crossfade (`ArenaBackdrop.tsx`, film
+  segnaposto generati via canvas) e round 2. A vita 0 Checco fugge →
+  `transizione_seconda_spada`; se muore il giocatore l'arena riparte da zero.
+- Eve (`EveArena.tsx`): a terra all'inizio, `F` la richiama, poi supporto marginale.
+- HUD (`components/ArenaHud.tsx`, dati da `store/arenaStore.ts`), hit-stop e
+  contraccolpo dopo parata riuscita.
+Difficoltà aggiunta (piano "arena più ostica", passi 1-6): arena lunga 22 unità con
+camera che segue il punto medio giocatore/boss (`ArenaCameraRig`, clamp ai bordi);
+corpo solido di Checco (`BOSS_BLOCK_*`: il giocatore non lo attraversa, lo scavalca
+saltando — per questo `ARENA_JUMP_SPEED` è 9.5; vale in un solo senso); Checco ha un
+asse Y (`boss.y`) con le mosse `balzo` (gap closer, parabile) e `schianto`/
+`schianto_ampio` (sale, pausa in aria, onda d'urto dai due lati NON parabile: `leap`,
+`bothSides`, `unparryable` in `checcoMoves.ts`); 3 cure (`R`, canalizzazione 0.8s
+interrompibile, nessun i-frame) e barra abilità 0-100 (`E`: due soglie a 50/100, una
+sola tasto esegue la più forte disponibile; si carica con colpi a segno, parate e
+barcollamenti INFLITTI, mai subiti). Le due mosse d'abilità sono segnaposto
+(`SKILL_TIERS`). L'evento "Avvia il film" scatta ora a una FRAZIONE della vita massima
+(`SPECIAL_TRIGGER_HP_FRACTION`), non a un numero fisso. Non ancora fatto (passi 7-10
+del piano): finale sotto il 10% di vita con Eve che si rialza, QTE cooperativo,
+trasformazione in marionetta, `Sotterraneo`.
+
+Stato per-frame condiviso in un solo oggetto `ArenaWorld` (`arenaState.ts`, ref),
+regole di danno in `combat.ts`; lo store Zustand riceve solo copie agli eventi.
+Checco è ancora un segnaposto a tinte unite: rosso = carica il colpo, bianco =
+colpo attivo, azzurro = barcolla, oro lampeggiante = evento speciale. Tutti i
+numeri in `arenaConfig.ts`, da tarare giocando. In sviluppo `window.__arenaWorld`
+espone il mondo per provare esiti/round da console (es. `__arenaWorld.boss.hp = 60`).
+
+**Due entrate PROVVISORIE all'arena, da rimuovere quando non servono più a testare o
+quando ci sarà una selezione dei boss** (i due punti da togliere):
+1. Camminare dentro `Sala_boss` nell'interno isometrico: `SceneManager2DIso.tsx`
+   (`BOSS_ROOM_LEVEL`) avvia `boss_fase1` invece di caricare la stanza. Il dialogo
+   `dialogo_pre_boss`, quando esisterà, va inserito davanti a questo passaggio.
+2. Solo in sviluppo (`import.meta.env.DEV`): `F9` salta all'arena da qualunque
+   schermata, `F8` torna fuori dall'Ariston — `hooks/useDevBossShortcut.ts`, montato
+   in `App.tsx`. In sviluppo si vedono anche le hitbox (gialla = attacco, azzurra =
+   finestra di parata) e `1`/`2`/`3` mostrano le anteprime colpo/barcollo/parata.
+
 ## Bundle/performance
 
 - Code splitting via `rolldownOptions.output.codeSplitting` in `vite.config.ts`: un solo

@@ -7,6 +7,10 @@ import {
   CHARACTER_DEFAULT_HEIGHT,
   HIT_FLASH_BRIGHTNESS,
   HIT_FLASH_DURATION,
+  PARRY_FLASH_COLOR,
+  PARRY_FLASH_DURATION,
+  STAGGER_ANGLE,
+  STAGGER_DURATION,
   TRANSFORM_CROSSFADE_DURATION,
   WALK_STEP_DURATION,
   WALK_SWAY_ANGLE,
@@ -16,7 +20,14 @@ import {
 /** Nomi indicativi (Fase 3a del piano, vedi docs/PIANO_LIVELLO1_2D.md): la
  *  macchina a stati VERA del livello (dialoghi/boss/QTE) arriva in Fase 4 e
  *  scriverà su questo stato "di animazione", più basso livello. */
-export type CharacterAnimState = 'idle' | 'walk' | 'attack' | 'hit' | 'transformToD1';
+export type CharacterAnimState =
+  | 'idle'
+  | 'walk'
+  | 'attack'
+  | 'hit'
+  | 'parry'
+  | 'stagger'
+  | 'transformToD1';
 
 interface CharacterAnimator2DProps {
   variant: CharacterVariant;
@@ -113,6 +124,42 @@ export function CharacterAnimator2D({
     };
   }, [state]);
 
+  // Parata riuscita: stesso mixin di colore del flash da colpo, terna dorata
+  // (vedi `PARRY_FLASH_COLOR`) — la posa è la stessa di `hit`.
+  useEffect(() => {
+    if (state !== 'parry' || !materialRef.current) return;
+    const material = materialRef.current;
+    const tween = gsap.to(material.color, {
+      ...PARRY_FLASH_COLOR,
+      duration: PARRY_FLASH_DURATION,
+      yoyo: true,
+      repeat: 1,
+      ease: 'power1.out'
+    });
+    return () => {
+      tween.kill();
+      material.color.setScalar(1);
+    };
+  }, [state]);
+
+  // Barcollamento: un solo colpo di rotazione che si assesta (yoyo una volta,
+  // niente `repeat: -1`), all'indietro rispetto alla direzione in cui guarda.
+  useEffect(() => {
+    if (state !== 'stagger' || !groupRef.current) return;
+    const target = groupRef.current;
+    const tween = gsap.to(target.rotation, {
+      z: -facing * STAGGER_ANGLE,
+      duration: STAGGER_DURATION,
+      yoyo: true,
+      repeat: 1,
+      ease: 'power2.out'
+    });
+    return () => {
+      tween.kill();
+      target.rotation.z = 0;
+    };
+  }, [state, facing]);
+
   return (
     <group ref={groupRef} position={position}>
       {state === 'transformToD1' ? (
@@ -139,6 +186,8 @@ function resolvePose(
     case 'attack':
       return 'action';
     case 'hit':
+    case 'parry':
+    case 'stagger':
       return 'front';
     case 'walk':
       return variant === 'D0' ? walkFrame : 'front';

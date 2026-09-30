@@ -1,0 +1,201 @@
+/* HUD del combattimento col boss: barre vita/postura, messaggi al centro,
+   flash bianco e invito a richiamare Eve. Tutti overlay HTML sopra il Canvas
+   (pointer-events: none — non intercettano il gioco), colori dai token. */
+
+.layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  font-family: var(--font-display);
+}
+
+/* --- barre --- */
+.bossBar {
+  position: absolute;
+  top: var(--space-4);
+  left: 50%;
+  width: min(560px, calc(100vw - 2 * var(--space-4)));
+  transform: translateX(-50%);
+  display: grid;
+  gap: 0.3rem;
+}
+
+.name {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  color: var(--text);
+  font-size: 0.85rem;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.7);
+}
+
+.round {
+  color: var(--accent-bright);
+}
+
+.track {
+  height: 14px;
+  background: var(--surface-control);
+  border: 1px solid var(--line-strong);
+  overflow: hidden;
+}
+
+.trackThin {
+  composes: track;
+  height: 7px;
+}
+
+.fill {
+  height: 100%;
+  transition: width 120ms linear;
+}
+
+.fillBoss {
+  composes: fill;
+  background: linear-gradient(90deg, #b91c1c, #ef4444);
+}
+
+.fillPosture {
+  composes: fill;
+  background: linear-gradient(90deg, var(--steel), #e0f2fe);
+}
+
+.fillPostureBroken {
+  composes: fillPosture;
+  background: linear-gradient(90deg, var(--accent), var(--accent-bright));
+}
+
+.playerBar {
+  position: absolute;
+  top: var(--space-4);
+  left: var(--space-4);
+  width: min(280px, 34vw);
+  display: grid;
+  gap: 0.3rem;
+}
+
+.fillPlayer {
+  composes: fill;
+  background: linear-gradient(90deg, #15803d, #4ade80);
+}
+
+/* --- barra abilità e cure, sotto la vita del giocatore --- */
+.skillTrack {
+  position: relative;
+  height: 7px;
+  background: var(--surface-control);
+  border: 1px solid var(--line-strong);
+}
+
+.fillSkill {
+  height: 100%;
+  background: linear-gradient(90deg, #a16207, var(--accent));
+  transition: width 120ms linear;
+}
+
+.fillSkillFull {
+  composes: fillSkill;
+  background: linear-gradient(90deg, var(--accent), #fff2a0);
+  box-shadow: 0 0 10px var(--accent-line);
+}
+
+/* Segno della prima soglia (50%). */
+.skillMark {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  left: 50%;
+  width: 2px;
+  background: var(--text);
+  opacity: 0.6;
+}
+
+.heals {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.healFull,
+.healEmpty {
+  width: 14px;
+  height: 14px;
+  border: 2px solid #4ade80;
+  border-radius: 3px;
+  transform: rotate(45deg);
+}
+
+.healFull {
+  background: #4ade80;
+}
+
+.healEmpty {
+  background: transparent;
+  opacity: 0.4;
+}
+
+/* --- messaggio centrale --- */
+.message {
+  position: absolute;
+  top: 34%;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  animation: messageIn var(--dur) var(--ease-out);
+}
+
+.messageTitle {
+  color: var(--accent-bright);
+  font-size: clamp(2rem, 6vw, 3.6rem);
+  font-weight: 700;
+  letter-spacing: var(--tracking-title);
+  text-transform: uppercase;
+  text-shadow: 0 4px 18px rgba(0, 0, 0, 0.85);
+}
+
+.messageHint {
+  margin-top: 0.4rem;
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 0.95rem;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.85);
+}
+
+@keyframes messageIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+}
+
+/* --- flash bianco al cambio sfondo --- */
+.flash {
+  position: absolute;
+  inset: 0;
+  background: #ffffff;
+  opacity: 0;
+  animation: flash 0.7s ease-out;
+}
+
+@keyframes flash {
+  0% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* --- invito a richiamare Eve --- */
+.evePrompt {
+  composes: pill from '../styles/ui.module.css';
+  position: absolute;
+  bottom: var(--space-5);
+  left: 50%;
+  transform: translateX(-50%);
+}

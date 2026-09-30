@@ -23,6 +23,18 @@ export const WALK_SWAY_DURATION = 0.32;
 export const HIT_FLASH_DURATION = 0.08;
 export const HIT_FLASH_BRIGHTNESS = 6;
 
+/** Parata riuscita: stesso meccanismo del flash da colpo (`HIT_FLASH_*`) ma
+ *  con una terna RGB dorata invece del bianco, così si distingue a colpo
+ *  d'occhio "ho subito un colpo" da "ho parato". Valori sopra 1 come per
+ *  l'hit: il tone mapping li comprime. */
+export const PARRY_FLASH_DURATION = 0.1;
+export const PARRY_FLASH_COLOR = { r: 4, g: 3, b: 0.8 };
+
+/** Barcollamento quando la postura si rompe: una sola inclinazione che si
+ *  assesta (non periodica come il dondolio di cammino), in radianti. */
+export const STAGGER_ANGLE = 0.22;
+export const STAGGER_DURATION = 0.22;
+
 /** Dissolvenza D0→D1 quando il personaggio riceve la lama di Eve: un taglio
  *  onesto (poco più di mezzo respiro), non una finta transizione fluida che
  *  non abbiamo i fotogrammi per fare davvero. */

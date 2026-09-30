@@ -1,0 +1,399 @@
+import { useEffect, useRef, useState } from 'react';
+import { useFrame } from '@react-three/fiber';
+import type { Group, Mesh } from 'three';
+import { CharacterAnimator2D, type CharacterAnimState } from '@/game/render2d/CharacterAnimator2D';
+import { useArenaStore } from '@/store/arenaStore';
+import type { ArenaWorld } from './arenaState';
+import {
+  BOSS_BLOCK_HALF_WIDTH,
+  BOSS_BLOCK_HEIGHT,
+  HEAL_AMOUNT,
+  HEAL_CHANNEL,
+  PLAYER_ATTACK_DAMAGE,
+  PLAYER_ATTACK_POSTURE,
+  PLAYER_MAX_HP,
+  SKILL_TIERS,
+  ARENA_GRAVITY,
+  ARENA_GROUND_Y,
+  ARENA_HALF_WIDTH,
+  ARENA_JUMP_SPEED,
+  ARENA_PLAYER_HEIGHT,
+  ARENA_PLAYER_SPAWN_X,
+  ARENA_PLAYER_SPEED,
+  ARENA_PLAYER_VARIANT,
+  ATTACK_HALF_HEIGHT,
+  ATTACK_REACH,
+  ATTACK_TIMING,
+  DASH_COOLDOWN,
+  DASH_DURATION,
+  DASH_SPEED,
+  PARRY_REACH,
+  PARRY_TIMING
+} from './arenaConfig';
+
+// Stesso pattern di `Player2D.tsx`: i tasti premuti vivono in un Set del
+// modulo, non in stato React (un `setState` dentro `useFrame` causerebbe 60
+// render al secondo). In più, `justPressed` raccoglie le PRESSIONI (senza
+// l'auto-repeat del tasto tenuto): attacco/parata/dash sono azioni a scatto,
+// non a tasto tenuto.
+const held = new Set<string>();
+const justPressed = new Set<string>();
+
+function press(key: string, repeat = false) {
+  if (!repeat) justPressed.add(key);
+  held.add(key);
+}
+function release(key: string) {
+  held.delete(key);
+}
+function handleKeyDown(event: KeyboardEvent) {
+  press(event.key.toLowerCase(), event.repeat);
+}
+function handleKeyUp(event: KeyboardEvent) {
+  release(event.key.toLowerCase());
+}
+function handleMouseDown(event: MouseEvent) {
+  press(event.button === 2 ? 'mouse2' : 'mouse0');
+}
+function handleMouseUp(event: MouseEvent) {
+  release(event.button === 2 ? 'mouse2' : 'mouse0');
+}
+function handleContextMenu(event: MouseEvent) {
+  event.preventDefault();
+}
+
+/** Hitbox e finestre di parata visibili solo in sviluppo, per tararle. */
+const SHOW_DEBUG_BOXES = import.meta.env.DEV;
+
+/** Mezza larghezza del corpo del giocatore, per la collisione col boss. */
+const PLAYER_BODY_HALF_WIDTH = 0.35;
+
+type Action = 'none' | 'attack' | 'parry' | 'dash' | 'heal' | 'skill';
+
+interface PlayerArenaProps {
+  world: ArenaWorld;
+}
+
+/**
+ * Giocatore dell'arena: variante di combattimento di `Player2D` (file
+ * separato apposta — fuori dall'arena il giocatore non deve poter
+ * attaccare/parare). Attacco `J`/click sinistro, parata `K`/click destro,
+ * dash `Shift`, salto `Spazio`/`W`. Nessuna fisica Rapier: integrazione
+ * manuale come nel resto del livello 2D. I danni subiti li applica
+ * `combat.ts` scrivendo su `world.player`; qui si leggono (reazione al colpo,
+ * contraccolpo, i-frames) e si mostrano.
+ *
+ * In sviluppo (`import.meta.env.DEV`): `1` mostra la reazione al colpo,
+ * `2` il barcollamento, `3` la parata riuscita — anteprime degli stati di
+ * animazione.
+ */
+export function PlayerArena({ world }: PlayerArenaProps) {
+  const group = useRef<Group>(null);
+  const attackBoxMesh = useRef<Mesh>(null);
+  const parryBoxMesh = useRef<Mesh>(null);
+  const shieldMesh = useRef<Mesh>(null);
+  const healMesh = useRef<Mesh>(null);
+  const skillTier = useRef<(typeof SKILL_TIERS)[number] | null>(null);
+  const velocityY = useRef(0);
+  const onGround = useRef(true);
+  const facing = useRef<1 | -1>(1);
+  const action = useRef<Action>('none');
+  const actionTime = useRef(0);
+  const dashDirection = useRef<1 | -1>(1);
+  const dashCooldown = useRef(0);
+  const debugState = useRef<{ state: CharacterAnimState; time: number } | null>(null);
+
+  const [animState, setAnimState] = useState<CharacterAnimState>('idle');
+  const [facingState, setFacingState] = useState<1 | -1>(1);
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('mousedown', handleMouseDown);
+    window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('contextmenu', handleContextMenu);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('mousedown', handleMouseDown);
+      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('contextmenu', handleContextMenu);
+      held.clear();
+      justPressed.clear();
+    };
+  }, []);
+
+  useFrame((_, rawDelta) => {
+    const g = group.current;
+    if (!g) return;
+    // Hit-stop: il gameplay è congelato (l'input resta in coda, non si perde).
+    if (world.hitStop > 0) return;
+    const delta = Math.min(rawDelta, 0.05);
+    const state = world.player;
+
+    // A combattimento finito nessuno si muove più.
+    if (world.over) {
+      justPressed.clear();
+      setAnimState(world.over === 'defeat' ? 'hit' : 'idle');
+      return;
+    }
+
+    // --- timer che scendono da soli ---
+    state.iframes = Math.max(0, state.iframes - delta);
+    state.hitTimer = Math.max(0, state.hitTimer - delta);
+    state.parryFlash = Math.max(0, state.parryFlash - delta);
+    state.counterWindow = Math.max(0, state.counterWindow - delta);
+    dashCooldown.current = Math.max(0, dashCooldown.current - delta);
+
+    // --- input ---
+    let moveX = 0;
+    if (held.has('a') || held.has('arrowleft')) moveX -= 1;
+    if (held.has('d') || held.has('arrowright')) moveX += 1;
+    const stunned = state.hitTimer > 0;
+    const wantsAttack = !stunned && (justPressed.has('j') || justPressed.has('mouse0'));
+    const wantsParry = !stunned && (justPressed.has('k') || justPressed.has('mouse2'));
+    const wantsDash = !stunned && justPressed.has('shift');
+    const wantsJump = !stunned && (justPressed.has(' ') || justPressed.has('w') || justPressed.has('arrowup'));
+    const wantsHeal = !stunned && justPressed.has('r');
+    const wantsSkill = !stunned && justPressed.has('e');
+
+    if (import.meta.env.DEV) {
+      if (justPressed.has('1')) debugState.current = { state: 'hit', time: 0.35 };
+      if (justPressed.has('2')) debugState.current = { state: 'stagger', time: 0.6 };
+      if (justPressed.has('3')) debugState.current = { state: 'parry', time: 0.3 };
+    }
+    justPressed.clear();
+
+    // --- macchina a stati dell'azione ---
+    if (action.current === 'none') {
+      if (wantsDash && dashCooldown.current === 0) {
+        action.current = 'dash';
+        actionTime.current = 0;
+        dashDirection.current = moveX !== 0 ? (moveX < 0 ? -1 : 1) : facing.current;
+        dashCooldown.current = DASH_COOLDOWN;
+      } else if (wantsParry) {
+        action.current = 'parry';
+        actionTime.current = 0;
+      } else if (wantsHeal && state.heals > 0 && state.hp < PLAYER_MAX_HP) {
+        // Cura: la carica si consuma all'inizio; la vita arriva solo a fine
+        // canalizzazione, e un colpo subito nel mezzo la spreca (vedi
+        // `hitPlayer`: azzera `healing`). Nessun i-frame mentre si cura.
+        action.current = 'heal';
+        actionTime.current = 0;
+        state.heals -= 1;
+        state.healing = true;
+        useArenaStore.getState().set({ healsLeft: state.heals });
+      } else if (wantsSkill && state.skill >= SKILL_TIERS[SKILL_TIERS.length - 1].threshold) {
+        // Un solo tasto, due mosse: la più forte disponibile in quel momento.
+        const tier = SKILL_TIERS.find((candidate) => state.skill >= candidate.threshold);
+        if (tier) {
+          skillTier.current = tier;
+          action.current = 'skill';
+          actionTime.current = 0;
+          state.swingId += 1;
+          state.attackDamage = tier.damage;
+          state.attackPosture = tier.posture;
+          state.skill = Math.max(0, state.skill - tier.cost);
+          useArenaStore.getState().set({ skill: Math.round(state.skill) });
+        }
+      } else if (wantsAttack) {
+        action.current = 'attack';
+        actionTime.current = 0;
+        state.swingId += 1;
+        state.attackDamage = PLAYER_ATTACK_DAMAGE;
+        state.attackPosture = PLAYER_ATTACK_POSTURE;
+      }
+    } else if (stunned) {
+      action.current = 'none';
+      state.healing = false;
+    }
+
+    actionTime.current += delta;
+    const t = actionTime.current;
+    let attackActive = false;
+    let parryActive = false;
+    let dashing = false;
+    let attackReach = ATTACK_REACH;
+
+    switch (action.current) {
+      case 'attack': {
+        const { windup, active, recovery } = ATTACK_TIMING;
+        attackActive = t >= windup && t < windup + active;
+        if (t >= windup + active + recovery) action.current = 'none';
+        break;
+      }
+      case 'skill': {
+        const tier = skillTier.current;
+        if (!tier) {
+          action.current = 'none';
+          break;
+        }
+        attackReach = tier.reach;
+        attackActive = t >= tier.windup && t < tier.windup + tier.active;
+        if (t >= tier.windup + tier.active + tier.recovery) action.current = 'none';
+        break;
+      }
+      case 'heal': {
+        // Canalizzazione compiuta senza essere interrotti: la vita arriva ora.
+        if (!state.healing) {
+          action.current = 'none';
+        } else if (t >= HEAL_CHANNEL) {
+          state.healing = false;
+          state.hp = Math.min(PLAYER_MAX_HP, state.hp + HEAL_AMOUNT);
+          useArenaStore.getState().set({ playerHp: Math.round(state.hp) });
+          action.current = 'none';
+        }
+        break;
+      }
+      case 'parry': {
+        parryActive = t < PARRY_TIMING.active;
+        if (t >= PARRY_TIMING.active + PARRY_TIMING.recovery) action.current = 'none';
+        break;
+      }
+      case 'dash': {
+        dashing = true;
+        if (t >= DASH_DURATION) action.current = 'none';
+        break;
+      }
+      default:
+        break;
+    }
+
+    // --- movimento ---
+    const locked =
+      action.current === 'attack' ||
+      action.current === 'parry' ||
+      action.current === 'skill' ||
+      action.current === 'heal' ||
+      stunned;
+    let vx = 0;
+    if (dashing) {
+      vx = dashDirection.current * DASH_SPEED;
+      facing.current = dashDirection.current;
+    } else if (!locked && moveX !== 0) {
+      vx = moveX * ARENA_PLAYER_SPEED * state.speedMultiplier;
+      facing.current = moveX < 0 ? -1 : 1;
+    }
+    // Contraccolpo dopo un colpo subito: decade da solo.
+    state.knockbackVx -= state.knockbackVx * Math.min(1, 10 * delta);
+    vx += state.knockbackVx;
+    const previousX = g.position.x;
+    g.position.x = Math.min(ARENA_HALF_WIDTH, Math.max(-ARENA_HALF_WIDTH, previousX + vx * delta));
+
+    if (wantsJump && onGround.current && !locked && !dashing) {
+      velocityY.current = ARENA_JUMP_SPEED;
+      onGround.current = false;
+    }
+    velocityY.current += ARENA_GRAVITY * delta;
+    let nextY = g.position.y + velocityY.current * delta;
+    if (nextY <= ARENA_GROUND_Y) {
+      nextY = ARENA_GROUND_Y;
+      velocityY.current = 0;
+      onGround.current = true;
+    }
+    g.position.y = nextY;
+
+    // --- corpo solido di Checco: non si attraversa camminando, si scavalca
+    // saltando (piedi sopra `BOSS_BLOCK_HEIGHT`) o si passa sotto se è in aria.
+    // Vale in un solo senso: Checco non è bloccato dal giocatore. ---
+    const boss = world.boss;
+    if (
+      boss.hp > 0 &&
+      nextY < boss.y + BOSS_BLOCK_HEIGHT &&
+      nextY + ARENA_PLAYER_HEIGHT > boss.y
+    ) {
+      const reach = BOSS_BLOCK_HALF_WIDTH + PLAYER_BODY_HALF_WIDTH;
+      if (Math.abs(g.position.x - boss.x) < reach) {
+        // Lato da cui arrivava: così non si "teletrasporta" dall'altra parte.
+        const side = previousX === boss.x ? facing.current * -1 : previousX < boss.x ? -1 : 1;
+        g.position.x = Math.min(ARENA_HALF_WIDTH, Math.max(-ARENA_HALF_WIDTH, boss.x + side * reach));
+      }
+    }
+
+    // --- stato condiviso (letto dal boss) ---
+    const px = g.position.x;
+    const py = g.position.y;
+    state.x = px;
+    state.y = py;
+    state.facing = facing.current;
+    state.attackBox = attackActive
+      ? {
+          x: px + (facing.current * attackReach) / 2,
+          y: py + ARENA_PLAYER_HEIGHT / 2,
+          halfWidth: attackReach / 2,
+          halfHeight: ATTACK_HALF_HEIGHT
+        }
+      : null;
+    state.parryActive = parryActive;
+    state.invulnerable = dashing;
+
+    // La parata si vede sempre (scudo azzurro); le hitbox d'attacco/parata
+    // esatte solo in sviluppo, per tararle.
+    if (shieldMesh.current) {
+      shieldMesh.current.visible = action.current === 'parry';
+      shieldMesh.current.position.set(px + (facing.current * PARRY_REACH) / 2, py + ARENA_PLAYER_HEIGHT / 2, 0.1);
+    }
+    if (attackBoxMesh.current) {
+      attackBoxMesh.current.visible = SHOW_DEBUG_BOXES && state.attackBox !== null;
+      if (state.attackBox) {
+        attackBoxMesh.current.position.set(state.attackBox.x, state.attackBox.y, 0.1);
+        attackBoxMesh.current.scale.x = (state.attackBox.halfWidth * 2) / ATTACK_REACH;
+      }
+    }
+    if (healMesh.current) {
+      healMesh.current.visible = action.current === 'heal';
+      healMesh.current.position.set(px, py + ARENA_PLAYER_HEIGHT / 2, 0.1);
+    }
+    if (parryBoxMesh.current) {
+      parryBoxMesh.current.visible = SHOW_DEBUG_BOXES && parryActive;
+      parryBoxMesh.current.position.set(px + (facing.current * PARRY_REACH) / 2, py + ARENA_PLAYER_HEIGHT / 2, 0.15);
+    }
+
+    // --- stato d'animazione (React solo quando cambia il valore LOGICO) ---
+    let nextAnim: CharacterAnimState = 'idle';
+    if (debugState.current && (debugState.current.time -= delta) > 0) {
+      nextAnim = debugState.current.state;
+    } else if (state.hitTimer > 0) {
+      nextAnim = 'hit';
+    } else if (state.parryFlash > 0) {
+      nextAnim = 'parry';
+    } else if (action.current === 'attack' || action.current === 'skill') {
+      nextAnim = 'attack';
+    } else if (dashing || vx !== 0) {
+      nextAnim = 'walk';
+    }
+    setAnimState(nextAnim);
+    setFacingState(facing.current);
+  });
+
+  return (
+    <>
+      <group ref={group} position={[ARENA_PLAYER_SPAWN_X, ARENA_GROUND_Y, 0]}>
+        <CharacterAnimator2D
+          variant={ARENA_PLAYER_VARIANT}
+          state={animState}
+          facing={facingState}
+          height={ARENA_PLAYER_HEIGHT}
+        />
+      </group>
+
+      <mesh ref={shieldMesh} visible={false}>
+        <planeGeometry args={[PARRY_REACH * 0.6, ARENA_PLAYER_HEIGHT * 0.9]} />
+        <meshBasicMaterial color="#7dd3fc" transparent opacity={0.35} />
+      </mesh>
+      {/* Canalizzazione della cura: alone verde, si vede che si è scoperti. */}
+      <mesh ref={healMesh} visible={false}>
+        <planeGeometry args={[1.3, ARENA_PLAYER_HEIGHT * 1.05]} />
+        <meshBasicMaterial color="#4ade80" transparent opacity={0.28} />
+      </mesh>
+      <mesh ref={attackBoxMesh} visible={false}>
+        <planeGeometry args={[ATTACK_REACH, ATTACK_HALF_HEIGHT * 2]} />
+        <meshBasicMaterial color="#facc15" transparent opacity={0.25} />
+      </mesh>
+      <mesh ref={parryBoxMesh} visible={false}>
+        <planeGeometry args={[PARRY_REACH, ARENA_PLAYER_HEIGHT]} />
+        <meshBasicMaterial color="#38bdf8" transparent opacity={0.25} />
+      </mesh>
+    </>
+  );
+}

@@ -10,3 +10,12 @@ coverage/
 
 *.blend1
 assets/ldtk/*/backups/
+# Backup lossless delle mappe (rigenerabili con scripts/generate-map-images.mjs):
+# fuori da public/ per non finire in dist/ e su GitHub Pages
+assets/map-backups/
+
+# File di sistema/editor
+Thumbs.db
+*.psd~
+*.tmp
+.claude/settings.local.json

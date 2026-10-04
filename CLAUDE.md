@@ -466,6 +466,16 @@ ogni 10-15s (round 1, max 2) o 6-10s (round 2, max 4), a terra o su uno dei due 
 attaccandole (`damageTurret` in `combat.ts`, un colpo per swing). Il giocatore ha il doppio
 salto (`ARENA_MAX_JUMPS`, `ARENA_DOUBLE_JUMP_SPEED`; il contatore si azzera all'atterraggio).
 
+Numeri di danno e valori sulle barre: ogni danno passa da `hitBoss`/`hitPlayer`/
+`damageTotem`/`damageTurret` in `combat.ts`, che mettono un `DamagePopup` in
+`world.popups`; `DamageNumbers.tsx` (drei `<Html>`, animazione CSS) la svuota ogni frame e
+mostra il numero sopra chi ha subito il colpo (oro e più grande se il colpo è potenziato:
+`boost` > 1, cioè barcollante / finestra post-parata / buff; "BLOCCATO" contro lo scudo del
+Buen Camino). La HUD mostra "vita / max" sulle barre e "Postura x / max": il massimo
+(`bossPostureMax`) arriva dallo store perché `POSTURE_MAX` non è più 100 — la barra
+postura prima si riempiva in percentuale diretta e risultava "piena" a un terzo.
+In sviluppo ogni colpo sul boss stampa in console `[danno boss] …` con i moltiplicatori.
+
 Stato per-frame condiviso in un solo oggetto `ArenaWorld` (`arenaState.ts`, ref),
 regole di danno in `combat.ts`; lo store Zustand riceve solo copie agli eventi.
 Checco è ancora un segnaposto a tinte unite: rosso = carica il colpo, bianco =

@@ -5,6 +5,7 @@ import { CharacterAnimator2D, type CharacterAnimState } from '@/game/render2d/Ch
 import { useArenaStore } from '@/store/arenaStore';
 import type { ArenaWorld } from './arenaState';
 import {
+  CLASH_PRESS_GAIN,
   BOSS_BLOCK_HALF_WIDTH,
   BOSS_BLOCK_HEIGHT,
   HEAL_AMOUNT,
@@ -16,7 +17,9 @@ import {
   ARENA_GRAVITY,
   ARENA_GROUND_Y,
   ARENA_HALF_WIDTH,
+  ARENA_DOUBLE_JUMP_SPEED,
   ARENA_JUMP_SPEED,
+  ARENA_MAX_JUMPS,
   ARENA_PLAYER_HEIGHT,
   ARENA_PLAYER_SPAWN_X,
   ARENA_PLAYER_SPEED,
@@ -96,6 +99,7 @@ export function PlayerArena({ world }: PlayerArenaProps) {
   const skillTier = useRef<(typeof SKILL_TIERS)[number] | null>(null);
   const velocityY = useRef(0);
   const onGround = useRef(true);
+  const jumpsUsed = useRef(0);
   const facing = useRef<1 | -1>(1);
   const action = useRef<Action>('none');
   const actionTime = useRef(0);
@@ -135,6 +139,26 @@ export function PlayerArena({ world }: PlayerArenaProps) {
     if (world.over) {
       justPressed.clear();
       setAnimState(world.over === 'defeat' ? 'hit' : 'idle');
+      return;
+    }
+
+    // Braccio di ferro del contrasto: fermo e invulnerabile, ogni pressione di
+    // attacco (J/click) fa salire la barra. L'esito lo decide `BossChecco`.
+    if (world.clash) {
+      if (justPressed.has('j') || justPressed.has('mouse0')) {
+        world.clash.progress = Math.min(1, world.clash.progress + CLASH_PRESS_GAIN);
+      }
+      justPressed.clear();
+      action.current = 'none';
+      actionTime.current = 0;
+      state.invulnerable = true;
+      state.dashDir = 0;
+      state.parryActive = false;
+      state.attackBox = null;
+      facing.current = world.boss.x >= g.position.x ? 1 : -1;
+      state.facing = facing.current;
+      setAnimState('attack');
+      setFacingState(facing.current);
       return;
     }
 
@@ -280,9 +304,25 @@ export function PlayerArena({ world }: PlayerArenaProps) {
     const previousX = g.position.x;
     g.position.x = Math.min(ARENA_HALF_WIDTH, Math.max(-ARENA_HALF_WIDTH, previousX + vx * delta));
 
-    if (wantsJump && onGround.current && !locked && !dashing) {
-      velocityY.current = ARENA_JUMP_SPEED;
+    if (wantsJump && !locked && !dashing) {
+      if (onGround.current) {
+        velocityY.current = ARENA_JUMP_SPEED;
+        onGround.current = false;
+        jumpsUsed.current = 1;
+      } else if (jumpsUsed.current < ARENA_MAX_JUMPS) {
+        // Doppio salto: un secondo impulso in aria (serve anche a raggiungere
+        // le torrette sui muri).
+        velocityY.current = ARENA_DOUBLE_JUMP_SPEED;
+        jumpsUsed.current += 1;
+      }
+    }
+    // Spinta verso l'alto (es. dopo una parata in aria di un fulmine): conta
+    // come il primo salto, il doppio salto resta disponibile.
+    if (state.airBoost > 0) {
+      velocityY.current = state.airBoost;
       onGround.current = false;
+      jumpsUsed.current = Math.min(jumpsUsed.current, 1);
+      state.airBoost = 0;
     }
     velocityY.current += ARENA_GRAVITY * delta;
     let nextY = g.position.y + velocityY.current * delta;
@@ -290,6 +330,7 @@ export function PlayerArena({ world }: PlayerArenaProps) {
       nextY = ARENA_GROUND_Y;
       velocityY.current = 0;
       onGround.current = true;
+      jumpsUsed.current = 0;
     }
     g.position.y = nextY;
 
@@ -326,6 +367,7 @@ export function PlayerArena({ world }: PlayerArenaProps) {
       : null;
     state.parryActive = parryActive;
     state.invulnerable = dashing;
+    state.dashDir = dashing ? dashDirection.current : 0;
 
     // La parata si vede sempre (scudo azzurro); le hitbox d'attacco/parata
     // esatte solo in sviluppo, per tararle.

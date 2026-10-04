@@ -12,6 +12,10 @@ interface ArenaHudState {
   healsLeft: number;
   /** Barra abilità 0-100. */
   skill: number;
+  /** Oggetti del Buen Camino ancora in piedi (> 0 = Checco invulnerabile). */
+  totemsLeft: number;
+  /** Progresso del braccio di ferro del contrasto (0-1), o null se non in corso. */
+  clash: number | null;
   round: 1 | 2;
   backdrop: ArenaBackdropId;
   /** Contatore, non booleano: ogni incremento fa scattare un flash bianco. */
@@ -41,6 +45,8 @@ export const useArenaStore = create<ArenaHudState>((set) => ({
   bossPosture: 0,
   healsLeft: 3,
   skill: 0,
+  totemsLeft: 0,
+  clash: null,
   round: 1,
   backdrop: 'sala',
   flash: 0,
@@ -58,6 +64,8 @@ export const useArenaStore = create<ArenaHudState>((set) => ({
       bossPosture: 0,
       healsLeft: 3,
       skill: 0,
+      totemsLeft: 0,
+      clash: null,
       round: 1,
       backdrop: 'sala',
       message: null,

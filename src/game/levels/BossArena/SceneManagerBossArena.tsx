@@ -5,6 +5,7 @@ import { ArenaHud } from '@/components/ArenaHud';
 import { useArenaStore } from '@/store/arenaStore';
 import { useLevelStore } from '@/store/levelStore';
 import { ArenaBackdrop } from './ArenaBackdrop';
+import { ArenaThreats } from './ArenaThreats';
 import { BossChecco } from './BossChecco';
 import { EveArena } from './EveArena';
 import { PlayerArena } from './PlayerArena';
@@ -93,6 +94,7 @@ export function SceneManagerBossArena({ onWhiteout }: SceneManagerBossArenaProps
           <ArenaBackdrop key={runId} />
           <EveArena key={`eve-${runId}`} world={world} />
           <BossChecco key={`boss-${runId}`} world={world} onVictory={handleVictory} onDefeat={handleDefeat} />
+          <ArenaThreats key={`threats-${runId}`} world={world} />
           <PlayerArena key={`player-${runId}`} world={world} />
         </Suspense>
       </Canvas>
@@ -101,7 +103,7 @@ export function SceneManagerBossArena({ onWhiteout }: SceneManagerBossArenaProps
 
       <div className={styles.hint}>
         <span className={styles.hintPill}>
-          A/D muovi · Spazio salta · J attacca · K para · Shift schiva · R cura · E abilità · F richiama Eve
+          A/D muovi · Spazio salta (anche doppio) · J attacca · K para · Shift schiva · R cura · E abilità · F richiama Eve
           {import.meta.env.DEV ? ' · 1/2/3 anteprima colpo/barcollo/parata' : ''}
         </span>
       </div>

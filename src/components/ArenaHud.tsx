@@ -14,6 +14,8 @@ export function ArenaHud() {
   const bossHp = useArenaStore((s) => s.bossHp);
   const bossHpMax = useArenaStore((s) => s.bossHpMax);
   const bossPosture = useArenaStore((s) => s.bossPosture);
+  const clash = useArenaStore((s) => s.clash);
+  const totemsLeft = useArenaStore((s) => s.totemsLeft);
   const healsLeft = useArenaStore((s) => s.healsLeft);
   const skill = useArenaStore((s) => s.skill);
   const round = useArenaStore((s) => s.round);
@@ -40,6 +42,9 @@ export function ArenaHud() {
             style={{ width: `${bossPosture}%` }}
           />
         </div>
+        {totemsLeft > 0 && (
+          <div className={styles.totems}>Checco è invulnerabile — oggetti da distruggere: {totemsLeft}</div>
+        )}
       </div>
 
       <div className={styles.playerBar}>
@@ -65,6 +70,15 @@ export function ArenaHud() {
         <div className={styles.message} key={message}>
           <div className={styles.messageTitle}>{message}</div>
           {hint && <div className={styles.messageHint}>{hint}</div>}
+        </div>
+      )}
+
+      {clash !== null && (
+        <div className={styles.clash}>
+          <div className={styles.clashTitle}>Premi J a ripetizione!</div>
+          <div className={styles.clashTrack}>
+            <div className={styles.clashFill} style={{ width: `${Math.round(clash * 100)}%` }} />
+          </div>
         </div>
       )}
 

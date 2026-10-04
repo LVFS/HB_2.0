@@ -397,6 +397,75 @@ barcollamenti INFLITTI, mai subiti). Le due mosse d'abilità sono segnaposto
 del piano): finale sotto il 10% di vita con Eve che si rialza, QTE cooperativo,
 trasformazione in marionetta, `Sotterraneo`.
 
+Nuove minacce (`ArenaThreats.tsx`, pool di mesh aggiornate da `world.projectiles`/
+`world.hazards`): proiettili parabili — la parata a timing li RIMANDA contro Checco
+(`parryProjectile` in `combat.ts`, `PROJECTILE_REFLECT_*`) — e detriti dal soffitto con
+marcatore rosso a terra prima della caduta (non parabili). Mosse (dati in
+`checcoMoves.ts`): `lancio`/`crollo` dal round 1; `raffica` (3 lanci a quote diverse),
+`crollo_esteso` e `comparsa` (teletrasporto dietro il giocatore con marcatore viola,
+boss invisibile e non colpibile mentre è sparito: `boss.vanished`) dal round 2. Avviso
+alla Sekiro per i colpi NON parabili: triangolo giallo con "!" e la parola `SALTA`
+sopra il boss (`CheccoMove.warning`, texture via canvas in `BossChecco.tsx`, mai oltre
+`WARNING_MAX_Y` per non uscire dallo schermo). Le mosse a distanza (`lancio`, `raffica`)
+hanno `minRange: RANGED_MIN_RANGE` (3): da più vicino Checco usa la mischia. Evento
+"oggetti del Buen Camino" (`TOTEM_*` in `arenaConfig.ts`): a 45% e 20% di vita Checco
+evoca 3 poi 4 oggetti lontani da lui; finché ne esiste uno è INVULNERABILE (scudo
+azzurro, `hitBoss`/`addPosture` bloccano tutto) e il giocatore deve staccarsi per
+distruggerli (colpendoli, o rimandando un proiettile parato: `damageTotem` in
+`combat.ts`; anche Eve li colpisce). Fili dorati li legano a Checco, la HUD mostra il
+conteggio. Questo è ciò che rende utile il range minimo dei proiettili: il giocatore
+lontano da Checco è proprio quando lui tira.
+
+Contrattacchi e tempesta: le cariche di Checco (`charge: true` in `checcoMoves.ts`:
+`passo_falso`, `balzo`, `carica`) hanno un avviso ROSSO "PARA O CONTRASTA" e si fermano
+o parando o con un CONTRASTO (alla mikiri di Sekiro): un dash VERSO di lui mentre
+carica (`player.dashDir`, `counterCharge` in `combat.ts`) lo stordisce per
+`COUNTER_STUN_DURATION` e carica la barra abilità. Mossa `tempesta` (solo round 2, campo
+`storm`): Checco salta e resta in aria a caricare con una zona elettrica che ferisce
+(`boss.zoneRadius`), poi scaglia 1-3 fulmini a ricerca (`kind: 'bolt'`, `homing` in
+`ArenaThreats.tsx`, avviso azzurro "SCHIVA O PARA IN ARIA"): dash = schivata; parata a
+TERRA = poco danno e giocatore fermo (`BOLT_PARRY_GROUND_*`); parata IN ARIA
+(`player.y >= BOLT_AIR_MIN_Y`) = il fulmine torna a Checco e lo stordisce
+(`BOLT_REFLECT_*`). Solo in sviluppo: `__arenaWorld.forceMove = 'id'` (es. `'tempesta'`,
+`'carica'`) fa usare a Checco quella mossa alla prossima scelta, per provarla.
+
+Rifiniture alle cariche/tempesta: le cariche (`lunge`/`balzo`) arrivano SEMPRE nel punto
+in cui era il bersaglio al momento della scelta (`MoveRuntime.targetX`), con velocità
+adattata alla distanza fra `LUNGE_MIN_SPEED`/`LUNGE_MAX_SPEED` — per questo le
+`maxRange` di `passo_falso`/`carica` sono quelle raggiungibili a velocità massima; la
+hitbox del `balzo` è attiva per tutto il volo e segue il corpo in quota (`offsetY` delle
+hit è relativo a `boss.y`); dopo un contrasto Checco fa un mini balzo all'indietro
+(`COUNTER_HOP_*`, `boss.hopTime`). In `tempesta` Checco resta in aria per tutta la mossa
+(`storm.chargeTime` per la zona elettrica, poi i fulmini partono ancora in quota) e ogni
+parata in aria di un fulmine spinge il giocatore verso l'alto (`BOLT_AIR_PARRY_BOOST`,
+`player.airBoost`) per poter parare anche i successivi.
+
+Il contrasto è un braccio di ferro (`CLASH_*` in `arenaConfig.ts`, `world.clash`):
+giocatore e Checco si bloccano e bisogna premere `J`/click a ripetizione (~6 al
+secondo). La barra parte da 30%, ogni pressione la alza, la spinta di Checco la
+abbassa. Piena = vinci (Checco stordito + mini balzo, come prima); a 0 o a tempo
+scaduto = perdi (sbalzato via con danno e stordimento). La logica sta in `BossChecco`
+(la vittoria va controllata PRIMA del decadimento dello stesso frame), il lato
+giocatore in `PlayerArena`, la barra in `ArenaHud`.
+
+Percorrenza minima delle cariche a terra (`LUNGE_MIN_TRAVEL`, non per il balzo): se il
+bersaglio è più vicino Checco prosegue oltre di lui nella stessa direzione.
+
+Frequenza delle cariche: Checco sceglie a ogni ciclo una distanza di ingaggio
+(`pickEngageDistance` in `BossChecco.tsx`: 45% vicino, altrimenti 3.8-8) e la raggiunge
+(avvicinandosi, o arretrando piano se il giocatore è troppo vicino) PRIMA di scegliere
+la mossa; senza questo si avvicinava sempre a ~1.6 e `passo_falso`/`carica`/`balzo`/
+lanci non uscivano mai. Le mosse hanno un `weight` (cariche 2-3) per la scelta casuale
+pesata. In sviluppo `__arenaWorld.moveLog` registra le mosse scelte.
+
+Torrette (attacco asincrono, `TURRET_*` in `arenaConfig.ts`, `world.turrets`): un timer
+proprio in `BossChecco` (`turretTimer`, indipendente da mosse/stordimento) ne lancia una
+ogni 10-15s (round 1, max 2) o 6-10s (round 2, max 4), a terra o su uno dei due muri a
+`TURRET_WALL_Y` (raggiungibile col doppio salto). Sparano da sole al giocatore
+(`ArenaThreats.tsx`); un proiettile parato viene rimandato VERSO IL BOSS; si distruggono solo
+attaccandole (`damageTurret` in `combat.ts`, un colpo per swing). Il giocatore ha il doppio
+salto (`ARENA_MAX_JUMPS`, `ARENA_DOUBLE_JUMP_SPEED`; il contatore si azzera all'atterraggio).
+
 Stato per-frame condiviso in un solo oggetto `ArenaWorld` (`arenaState.ts`, ref),
 regole di danno in `combat.ts`; lo store Zustand riceve solo copie agli eventi.
 Checco è ancora un segnaposto a tinte unite: rosso = carica il colpo, bianco =

@@ -7,7 +7,10 @@ import {
   BOSS_HEIGHT,
   BOSS_STAGGER_DAMAGE_MULTIPLIER,
   BOSS_STAGGER_DURATION,
+  COUNTER_HOP_DISTANCE,
+  COUNTER_HOP_DURATION,
   COUNTER_MULTIPLIER,
+  COUNTER_STUN_DURATION,
   COUNTER_WINDOW,
   EVE_HEIGHT,
   HITSTOP_LIGHT,
@@ -60,7 +63,14 @@ export function hitBoss(
   hit: { damage: number; posture: number; source: 'player' | 'eve' }
 ): void {
   const { boss, player } = world;
-  if (boss.hp <= 0 || world.over) return;
+  if (boss.hp <= 0 || world.over || boss.vanished) return;
+
+  // Finché esiste un oggetto del Buen Camino Checco è invulnerabile: il colpo
+  // viene bloccato (lampo dello scudo) e non dà danno, postura né abilità.
+  if (world.totems.length > 0) {
+    boss.shieldHit = 0.15;
+    return;
+  }
 
   let damage = hit.damage;
   if (hit.source === 'player') {
@@ -87,13 +97,79 @@ export function hitBoss(
  */
 export function addPosture(world: ArenaWorld, amount: number, byPlayer = false): void {
   const { boss } = world;
-  if (boss.staggerTimer > 0) return;
+  if (boss.staggerTimer > 0 || world.totems.length > 0) return;
   boss.posture = Math.min(POSTURE_MAX, boss.posture + amount);
   if (boss.posture >= POSTURE_MAX) {
     boss.staggerTimer = BOSS_STAGGER_DURATION;
     if (byPlayer) gainSkill(world, SKILL_GAIN_STAGGER);
   }
   useArenaStore.getState().set({ bossPosture: Math.round(boss.posture) });
+}
+
+/**
+ * CONTRASTO (alla "mikiri"): il giocatore schiva CONTRO una carica di Checco, la
+ * ferma e lo stordisce per qualche secondo — è vulnerabile (danni maggiorati,
+ * come in ogni barcollamento) e non si muove. Premia il rischio più della
+ * semplice parata e carica la barra abilità.
+ */
+export function counterCharge(world: ArenaWorld): void {
+  const { boss } = world;
+  boss.staggerTimer = Math.max(boss.staggerTimer, COUNTER_STUN_DURATION);
+  boss.attackBox = null;
+  // Mini balzo all'indietro, lontano dal giocatore.
+  const away = boss.x >= world.player.x ? 1 : -1;
+  boss.hopTime = COUNTER_HOP_DURATION;
+  boss.hopVx = (away * COUNTER_HOP_DISTANCE) / COUNTER_HOP_DURATION;
+  world.hitStop = Math.max(world.hitStop, HITSTOP_PARRY * 1.6);
+  gainSkill(world, SKILL_GAIN_STAGGER);
+}
+
+/**
+ * Un colpo (giocatore, Eve o proiettile rimandato) raggiunge un oggetto del
+ * Buen Camino. A zero l'oggetto si distrugge; quando cade l'ultimo Checco
+ * torna vulnerabile.
+ */
+export function damageTotem(world: ArenaWorld, index: number, amount: number): void {
+  const totem = world.totems[index];
+  if (!totem) return;
+  totem.hp -= amount;
+  totem.flash = 0.12;
+  world.hitStop = Math.max(world.hitStop, HITSTOP_LIGHT);
+  const store = useArenaStore.getState();
+  if (totem.hp <= 0) {
+    world.totems.splice(index, 1);
+    store.set({ totemsLeft: world.totems.length });
+    if (world.totems.length === 0) {
+      store.set({ message: 'Checco è vulnerabile!', hint: null });
+      window.setTimeout(() => useArenaStore.getState().set({ message: null }), 1800);
+    }
+  }
+}
+
+/** Un colpo raggiunge una torretta: a zero si distrugge (e carica un po' l'abilità). */
+export function damageTurret(world: ArenaWorld, index: number, amount: number): void {
+  const turret = world.turrets[index];
+  if (!turret) return;
+  turret.hp -= amount;
+  turret.flash = 0.12;
+  world.hitStop = Math.max(world.hitStop, HITSTOP_LIGHT);
+  if (turret.hp <= 0) {
+    world.turrets.splice(index, 1);
+    gainSkill(world, SKILL_GAIN_HIT);
+  }
+}
+
+/**
+ * Parata riuscita contro un PROIETTILE: stessi premi di una parata normale
+ * (lampo dorato, finestra di contraccolpo, hit-stop, abilità), ma la postura la
+ * guadagna Checco quando il proiettile rimandato lo colpisce, non subito.
+ */
+export function parryProjectile(world: ArenaWorld): void {
+  const { player } = world;
+  player.parryFlash = 0.25;
+  player.counterWindow = COUNTER_WINDOW;
+  requestHitStop(world, HITSTOP_PARRY);
+  gainSkill(world, SKILL_GAIN_PARRY);
 }
 
 export type PlayerHitResult = 'hit' | 'parried' | 'ignored';

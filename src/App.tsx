@@ -37,6 +37,14 @@ const SceneManagerBossArena = lazy(() =>
   }))
 );
 
+// Sotterraneo (`transizione_seconda_spada`): scena scriptata dopo il finale del
+// boss, dialogo a distanza fra D (caduto sotto) ed Eve (rimasta di sopra).
+const SceneManagerSotterraneo = lazy(() =>
+  import('@/game/levels/Sotterraneo/SceneManagerSotterraneo').then((module) => ({
+    default: module.SceneManagerSotterraneo
+  }))
+);
+
 // App è il componente principale dell'app React.
 // Decide quale schermo mostrare in base allo stato globale del gioco.
 function App() {
@@ -99,9 +107,11 @@ function App() {
           <SceneManager2DIso onWhiteout={setWhiteout} />
         )}
         {screen === 'game' && levelPhase === 'boss_fase1' && <SceneManagerBossArena onWhiteout={setWhiteout} />}
-        {screen === 'game' && levelPhase !== 'attivita_stupide' && levelPhase !== 'boss_fase1' && (
-          <SceneManager2D onWhiteout={setWhiteout} />
-        )}
+        {screen === 'game' && levelPhase === 'transizione_seconda_spada' && <SceneManagerSotterraneo />}
+        {screen === 'game' &&
+          levelPhase !== 'attivita_stupide' &&
+          levelPhase !== 'boss_fase1' &&
+          levelPhase !== 'transizione_seconda_spada' && <SceneManager2D onWhiteout={setWhiteout} />}
       </Suspense>
 
       <div className={`${styles.whiteout} ${whiteout ? styles.whiteoutActive : ''}`} />

@@ -213,6 +213,32 @@ export function PlayerArena({ world }: PlayerArenaProps) {
       return;
     }
 
+    // Finale scriptato (QTE + cutscene, `finale.ts`): input ignorato, posizione e
+    // posa comandate dalla sequenza (D guarda Checco, dal lato in cui si trova).
+    if (world.finale) {
+      const f = world.finale;
+      justPressed.clear();
+      g.position.set(f.playerX, f.playerY, 0);
+      g.rotation.z = f.playerRot;
+      velocityY.current = 0;
+      onGround.current = f.playerY <= 0.01;
+      jumpsUsed.current = 0;
+      action.current = 'none';
+      actionTime.current = 0;
+      const faceBoss: 1 | -1 = f.playerSide === -1 ? 1 : -1;
+      facing.current = faceBoss;
+      state.x = f.playerX;
+      state.y = f.playerY;
+      state.facing = faceBoss;
+      state.invulnerable = true;
+      state.dashDir = 0;
+      state.parryActive = false;
+      state.attackBox = null;
+      setAnimState(f.playerAnim);
+      setFacingState(faceBoss);
+      return;
+    }
+
     // Carica con falce: la sequenza (`finisher.ts`, fatta avanzare da `BossChecco`)
     // comanda la posizione del giocatore, che è invulnerabile.
     if (world.finisher) {

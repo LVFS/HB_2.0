@@ -4,6 +4,7 @@ import { CanvasTexture, Color } from 'three';
 import type { Group, Mesh, MeshBasicMaterial } from 'three';
 import { aabbOverlap } from '@/game/render2d/collision';
 import { useArenaStore } from '@/store/arenaStore';
+import { useLevelStore } from '@/store/levelStore';
 import type { ArenaWorld } from './arenaState';
 import { CHECCO_MOVES_ROUND1, CHECCO_MOVES_ROUND2, type CheccoMove, type CheccoWarning } from './checcoMoves';
 import {
@@ -16,9 +17,11 @@ import {
   onPlayerMeleeHit,
   playerHurtbox
 } from './combat';
+import { startFinale, updateFinale } from './finale';
 import { updateFinisher } from './finisher';
 import { POWER_UP_IDS, POWER_UPS, type PowerUpId } from './powerUps';
 import {
+  FINALE_HP_FRACTION,
   POWER_UP_INTRO_SECONDS,
   ARENA_CEILING_Y,
   TURRET_FIRST_DELAY,
@@ -88,6 +91,7 @@ const COLOR_STAGGER = new Color('#7aa7ff');
 const COLOR_SPECIAL_A = new Color('#c9a227');
 const COLOR_SPECIAL_B = new Color('#fff2a0');
 const COLOR_FLASH = new Color('#ffffff');
+const COLOR_MARIONETTE = new Color('#cdb892');
 
 interface MoveRuntime {
   move: CheccoMove;
@@ -212,6 +216,7 @@ export function BossChecco({ world, onVictory, onDefeat }: BossCheccoProps) {
   const slashDebug = useRef<Mesh>(null);
   const shieldMesh = useRef<Mesh>(null);
   const shieldMat = useRef<MeshBasicMaterial>(null);
+  const marionetteGroup = useRef<Group>(null);
   const warningMesh = useRef<Mesh>(null);
   const warningMat = useRef<MeshBasicMaterial>(null);
   const teleportMarker = useRef<Mesh>(null);
@@ -258,6 +263,17 @@ export function BossChecco({ world, onVictory, onDefeat }: BossCheccoProps) {
   });
 
   useEffect(() => () => window.clearTimeout(messageTimer.current), []);
+
+  // Tasti del QTE del finale: si accodano nel mondo e li legge `updateFinale`.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const finale = world.finale;
+      if (!finale || !finale.qte || event.repeat) return;
+      finale.pressed.push(event.key === ' ' ? 'space' : event.key.toLowerCase());
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [world]);
 
   const flashMessage = (message: string, hint: string | null, seconds = 2.4) => {
     useArenaStore.getState().set({ message, hint });
@@ -517,6 +533,47 @@ export function BossChecco({ world, onVictory, onDefeat }: BossCheccoProps) {
         player.hitTimer = Math.max(player.hitTimer, CLASH_LOSE_STUN);
         player.airBoost = CLASH_FLING_BOOST;
         flashMessage('SBALZATO!', 'Contrasto fallito', 1.6);
+      }
+      return;
+    }
+
+    // --- finale: sotto `FINALE_HP_FRACTION` di vita il combattimento si ferma e
+    // parte la sequenza scriptata (QTE cooperativo + cutscene), vedi `finale.ts` ---
+    if (!world.finale && boss.hp <= boss.hpMax * FINALE_HP_FRACTION) {
+      r.action = null;
+      r.special = null;
+      r.summon = null;
+      r.specialDone = true;
+      boss.specialActive = false;
+      boss.attackBox = null;
+      boss.vanished = false;
+      boss.teleportDestX = null;
+      boss.zoneRadius = null;
+      boss.hopTime = 0;
+      boss.staggerTimer = 0;
+      boss.parryable = false;
+      boss.interrupted = false;
+      player.healing = false;
+      world.finale = startFinale(world);
+    }
+    if (world.finale) {
+      const f = world.finale;
+      for (const mesh of [warningMesh.current, slash.current, slashDebug.current, zoneMesh.current, zoneColumn.current, shieldMesh.current, teleportMarker.current]) {
+        if (mesh) mesh.visible = false;
+      }
+      const status = updateFinale(world, delta, { message: flashMessage });
+      g.position.set(boss.x, boss.y, 0);
+      g.scale.x = boss.facing;
+      // Tirato dai fili: scatta per un istante quando si trasforma.
+      g.rotation.z = f.phase === 'transform' && f.marionette ? Math.sin(f.t * 45) * 0.1 * Math.max(0, 1 - f.t) : 0;
+      if (marionetteGroup.current) marionetteGroup.current.visible = f.marionette;
+      if (bodyMat.current) bodyMat.current.color.copy(f.marionette ? COLOR_MARIONETTE : COLOR_STAGGER);
+      if (status === 'victory' && !r.endNotified) {
+        // Cutscene finita: il combattimento si chiude (whiteout e cambio di fase li fa il padre).
+        r.endNotified = true;
+        world.over = 'victory';
+        useLevelStore.getState().setFinalQteSuccess(f.qteSuccess ?? true);
+        onVictory();
       }
       return;
     }
@@ -1034,6 +1091,26 @@ export function BossChecco({ world, onVictory, onDefeat }: BossCheccoProps) {
           <planeGeometry args={[0.18, 0.1]} />
           <meshBasicMaterial color="#1a1a1a" />
         </mesh>
+        {/* Marionetta (finale): snodi scuri sul corpo e fili che salgono dalla
+            testa. Segnaposto: solo linee, come il resto del boss. */}
+        <group ref={marionetteGroup} visible={false}>
+          {[0.2, 0.46, 0.62].map((fraction) => (
+            <mesh key={fraction} position={[0, BOSS_HEIGHT * fraction, 0.06]}>
+              <planeGeometry args={[BOSS_HALF_WIDTH * 2, 0.07]} />
+              <meshBasicMaterial color="#2b1d12" />
+            </mesh>
+          ))}
+          <mesh position={[0, BOSS_HEIGHT * 0.34, 0.06]}>
+            <planeGeometry args={[0.07, BOSS_HEIGHT * 0.68]} />
+            <meshBasicMaterial color="#2b1d12" />
+          </mesh>
+          {[-0.34, 0, 0.34].map((x) => (
+            <mesh key={x} position={[x, BOSS_HEIGHT + 4, 0.02]}>
+              <planeGeometry args={[0.035, 8]} />
+              <meshBasicMaterial color="#e5e7eb" transparent opacity={0.75} />
+            </mesh>
+          ))}
+        </group>
       </group>
 
       {/* Scudo di invulnerabilità (oggetti del Buen Camino ancora in piedi). */}

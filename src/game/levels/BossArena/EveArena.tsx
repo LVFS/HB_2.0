@@ -48,26 +48,32 @@ export function EveArena({ world }: { world: ArenaWorld }) {
     g.position.set(EVE_DOWN_X, LYING_LIFT, 0);
   }, []);
 
+  // Si rialza (richiamo con `F`, oppure da sola all'inizio del finale).
+  const riseUp = () => {
+    const eve = world.eve;
+    const g = group.current;
+    if (eve.status !== 'down' || !g || world.over) return;
+    eve.status = 'rising';
+    useArenaStore.getState().set({ evePromptVisible: false });
+    gsap.to(g.rotation, { z: 0, duration: RISE_DURATION, ease: 'power2.out' });
+    gsap.to(g.position, {
+      y: 0,
+      duration: RISE_DURATION,
+      ease: 'power2.out',
+      onComplete: () => {
+        eve.status = 'active';
+      }
+    });
+  };
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key.toLowerCase() !== 'f' || event.repeat) return;
-      const eve = world.eve;
-      const g = group.current;
-      if (eve.status !== 'down' || !g || world.over) return;
-      eve.status = 'rising';
-      useArenaStore.getState().set({ evePromptVisible: false });
-      gsap.to(g.rotation, { z: 0, duration: RISE_DURATION, ease: 'power2.out' });
-      gsap.to(g.position, {
-        y: 0,
-        duration: RISE_DURATION,
-        ease: 'power2.out',
-        onComplete: () => {
-          eve.status = 'active';
-        }
-      });
+      riseUp();
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `riseUp` legge solo ref e `world`, stabili
   }, [world]);
 
   useFrame((_, rawDelta) => {
@@ -79,6 +85,29 @@ export function EveArena({ world }: { world: ArenaWorld }) {
     const boss = world.boss;
 
     eve.attackBox = null;
+
+    // Finale scriptato (`finale.ts`): Eve si rialza SEMPRE (anche se non è mai
+    // stata richiamata), raggiunge il suo lato di Checco e, scaraventata, la
+    // sequenza ne comanda posizione e rotazione.
+    const finale = world.finale;
+    if (finale) {
+      if (eve.status === 'down') riseUp();
+      else if (eve.status === 'staggered') eve.status = 'active';
+      attackPhase.current = 'none';
+      eve.facing = finale.playerSide;
+      if (finale.phase === 'fling' || finale.phase === 'fade') {
+        g.position.set(finale.eveX, finale.eveY, 0);
+        g.rotation.z = finale.eveRot;
+      } else {
+        // Prima di `fling` la quota (rialzata da terra) la gestisce la tween di `riseUp`.
+        g.position.x = finale.eveX;
+      }
+      eve.x = g.position.x;
+      setAnimState(finale.eveAnim);
+      setFacing(eve.facing);
+      return;
+    }
+
     let nextAnim: CharacterAnimState = 'idle';
 
     if (eve.status === 'staggered') {

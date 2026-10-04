@@ -1,4 +1,5 @@
 import { useArenaStore } from '@/store/arenaStore';
+import { QteChallenge } from './QteChallenge';
 import { PowerUpChoice } from './PowerUpChoice';
 import { PowerUpIntro } from './PowerUpIntro';
 import styles from './ArenaHud.module.css';
@@ -121,6 +122,7 @@ export function ArenaHud() {
 
       {flash > 0 && <div className={styles.flash} key={flash} />}
 
+      <QteChallenge />
       <PowerUpChoice />
       <PowerUpIntro />
 

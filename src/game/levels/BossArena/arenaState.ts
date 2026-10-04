@@ -1,5 +1,7 @@
 import type { AABB } from '@/game/render2d/collision';
+import type { CharacterAnimState } from '@/game/render2d/CharacterAnimator2D';
 import type { PowerUpId } from './powerUps';
+import type { QteState } from './qte';
 import {
   ARENA_GROUND_Y,
   ARENA_PLAYER_SPAWN_X,
@@ -220,6 +222,44 @@ export interface ArenaFinisher {
   playerY: number;
 }
 
+/**
+ * Finale del combattimento (sotto `FINALE_HP_FRACTION` di vita): sequenza
+ * scriptata che comanda boss, giocatore ed Eve (vedi `finale.ts`) — Checco è
+ * bersaglio fisso, QTE cooperativo, atterra, diventa una marionetta e
+ * scaraventa i due eroi. Come per `ArenaFinisher`, `BossChecco` la fa
+ * avanzare e `PlayerArena`/`EveArena` leggono le posizioni qui scritte.
+ */
+export interface ArenaFinale {
+  phase: 'gather' | 'qte' | 'land' | 'transform' | 'fling' | 'fade';
+  /** Secondi dall'inizio della fase corrente. */
+  t: number;
+  /** Lato del giocatore rispetto a Checco (-1 = a sinistra); Eve sta dall'altro. */
+  playerSide: -1 | 1;
+  playerStartX: number;
+  playerStartY: number;
+  eveStartX: number;
+  bossStartX: number;
+  /** Posizioni scritte dalla sequenza (il giocatore le legge sempre; Eve solo da `fling`,
+   *  prima si muove da sola mentre si rialza). */
+  playerX: number;
+  playerY: number;
+  playerRot: number;
+  eveX: number;
+  eveY: number;
+  eveRot: number;
+  playerAnim: CharacterAnimState;
+  eveAnim: CharacterAnimState;
+  /** Prompt del QTE (null fuori dalla fase `qte`) e tasti premuti in attesa di essere letti. */
+  qte: QteState | null;
+  pressed: string[];
+  /** `true` se il QTE è andato bene (null finché non finisce). */
+  qteSuccess: boolean | null;
+  /** Secondi residui di "colpo insieme" (animazione d'attacco di D ed Eve). */
+  strikeTimer: number;
+  /** Checco è già diventato una marionetta. */
+  marionette: boolean;
+}
+
 /** Scelta del potenziamento in corso: il gioco è fermo finché non si sceglie. */
 export interface ArenaChoice {
   picked: PowerUpId | null;
@@ -265,6 +305,8 @@ export interface ArenaWorld {
   fx: ArenaFx[];
   /** Carica con falce in corso (giocatore e boss comandati dalla sequenza), o null. */
   finisher: ArenaFinisher | null;
+  /** Finale scriptato (QTE + cutscene) in corso, o null. */
+  finale: ArenaFinale | null;
   /** SOLO SVILUPPO: id di una mossa che Checco userà alla prossima scelta
    *  (es. da console `__arenaWorld.forceMove = 'tempesta'`), per provarla. */
   forceMove: string | null;
@@ -341,6 +383,7 @@ export function createArenaWorld(): ArenaWorld {
     shots: [],
     fx: [],
     finisher: null,
+    finale: null,
     forceMove: null,
     clash: null,
     moveLog: [],

@@ -393,9 +393,8 @@ interrompibile, nessun i-frame) e barra abilità 0-100 (`E`: due soglie a 50/100
 sola tasto esegue la più forte disponibile; si carica con colpi a segno, parate e
 barcollamenti INFLITTI, mai subiti). Le due mosse d'abilità sono segnaposto
 (`SKILL_TIERS`). L'evento "Avvia il film" scatta ora a una FRAZIONE della vita massima
-(`SPECIAL_TRIGGER_HP_FRACTION`), non a un numero fisso. Non ancora fatto (passi 7-10
-del piano): finale sotto il 10% di vita con Eve che si rialza, QTE cooperativo,
-trasformazione in marionetta, `Sotterraneo`.
+(`SPECIAL_TRIGGER_HP_FRACTION`), non a un numero fisso. Passi 7-10 del piano (finale):
+vedi "Finale del boss" più sotto.
 
 Nuove minacce (`ArenaThreats.tsx`, pool di mesh aggiornate da `world.projectiles`/
 `world.hazards`): proiettili parabili — la parata a timing li RIMANDA contro Checco
@@ -507,6 +506,28 @@ l'attacco conta anche come parata, danni subiti ×0.5, ogni colpo a segno alza i
 moltiplicatore a catena (`player.combo`, tetto `BERSERK_COMBO_MAX`, torna a 1 al primo colpo
 preso), colpi in salto fanno un'area (`onPlayerMeleeHit`/`areaBlast` in `combat.ts`) e `E`
 costa furia e lancia ruggito + onda d'urto fino al bordo dell'arena (`launchShock`).
+
+Finale del boss (passi 7-10 del piano; `finale.ts`, `qte.ts`, `world.finale`): Checco non
+muore più per danno (`hitBoss` lascia vita minima 1) — sotto `FINALE_HP_FRACTION` (10%) il
+combattimento si ferma (pulizia di proiettili/torrette/oggetti, mosse e carica annullate) e
+`BossChecco` fa avanzare la sequenza fase per fase: `gather` (Checco al centro, D ed Eve ai
+lati; Eve si rialza SEMPRE da sola) → `qte` (5 prompt a tempo, tasti a caso da `QTE_KEYS`,
+`QTE_WINDOWS`; i colpi durante il finale sono ignorati) → `land` (atterra) → `transform`
+(marionetta: snodi e fili, segnaposto a linee) → `fling` (D ed Eve scaraventati ai due
+lati) → `fade` (`onVictory`, whiteout, fase `transizione_seconda_spada`). Come per
+`finisher.ts`, la sequenza scrive le posizioni (`playerX/Y`, `eveX/Y`) e `PlayerArena`/
+`EveArena` le applicano. L'esito del QTE (≤ `QTE_MAX_MISSES` mancati = riuscito) NON cambia la
+storia: finisce in `levelStore.finalQteSuccess` e sceglie una riga di dialogo
+(`data/dialogues/level1_sotterraneo.ts`); il bonus/malus di vita per `boss_fase2_tunnel` è
+ancora da collegare quando quella fase esisterà. La logica del QTE (`qte.ts`) è pura e
+riusabile; `components/QteChallenge.tsx` la disegna da `store.qte`. Il Sotterraneo
+(`game/levels/Sotterraneo/SceneManagerSotterraneo.tsx`, montato da `App.tsx` per
+`transizione_seconda_spada`) è una scena SCRIPTATA 2D senza LDtk (D caduto sotto, Eve dal
+varco, dialogo; a fine dialogo `setPhase('boss_fase2_tunnel')`): se serve un livello LDtk vero
+si sostituisce il componente. Il dialogo `getSecondSwordDialogue` è stato scritto di nuovo
+(il testo del piano madre `LEVEL1_SECOND_SWORD_DIALOGUE` non era nel repo). L'arena usa D1
+fin dall'inizio, quindi `transformToD1` al Sotterraneo non è stato fatto (servirebbe una
+posa d'attacco per D0).
 
 Stato per-frame condiviso in un solo oggetto `ArenaWorld` (`arenaState.ts`, ref),
 regole di danno in `combat.ts`; lo store Zustand riceve solo copie agli eventi.

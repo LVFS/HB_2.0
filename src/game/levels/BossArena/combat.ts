@@ -85,7 +85,7 @@ export function hitBoss(
   hit: { damage: number; posture: number; source: 'player' | 'eve' }
 ): void {
   const { boss, player } = world;
-  if (boss.hp <= 0 || world.over || boss.vanished) return;
+  if (boss.hp <= 0 || world.over || boss.vanished || world.finale) return;
 
   // Finché esiste un oggetto del Buen Camino Checco è invulnerabile: il colpo
   // viene bloccato (lampo dello scudo) e non dà danno, postura né abilità.
@@ -119,7 +119,9 @@ export function hitBoss(
   }
   pushPopup(world, { x: popupX, y: popupY, amount: damage, target: 'boss', boost: damage / hit.damage });
 
-  boss.hp = Math.max(0, boss.hp - damage);
+  // Non muore qui: sotto `FINALE_HP_FRACTION` parte il finale scriptato, che
+  // chiude il combattimento. La vita minima è 1.
+  boss.hp = Math.max(1, boss.hp - damage);
   boss.hitFlash = 0.1;
   if (boss.specialActive) boss.specialDamageTaken += damage;
   requestHitStop(world, HITSTOP_LIGHT);

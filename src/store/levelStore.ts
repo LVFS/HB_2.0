@@ -37,6 +37,11 @@ interface LevelState {
    *  (vedi `aristonExitX` in `data/level1/triggers.ts`). */
   lateralSpawnX: number;
   setLateralSpawnX: (x: number) => void;
+  /** Esito del QTE cooperativo del finale del boss (null = non ancora giocato):
+   *  cambia una riga del dialogo nel Sotterraneo e, quando esisterà
+   *  `boss_fase2_tunnel`, un piccolo bonus/malus di partenza. */
+  finalQteSuccess: boolean | null;
+  setFinalQteSuccess: (success: boolean | null) => void;
 }
 
 const INITIAL_LATERAL_SPAWN_X: number = LEVEL1_TRIGGERS_PLACEHOLDER.eveArrivalX;
@@ -52,7 +57,9 @@ export const useLevelStore = create<LevelState>((set) => ({
   phase: INITIAL_PHASE,
   setPhase: (next) => set({ phase: next }),
   lateralSpawnX: INITIAL_LATERAL_SPAWN_X,
-  setLateralSpawnX: (x) => set({ lateralSpawnX: x })
+  setLateralSpawnX: (x) => set({ lateralSpawnX: x }),
+  finalQteSuccess: null,
+  setFinalQteSuccess: (success) => set({ finalQteSuccess: success })
 }));
 
 /**
@@ -62,5 +69,9 @@ export const useLevelStore = create<LevelState>((set) => ({
  * fase raggiunta invece che da `intro_dialogo`.
  */
 export function resetLevel(): void {
-  useLevelStore.setState({ phase: INITIAL_PHASE, lateralSpawnX: INITIAL_LATERAL_SPAWN_X });
+  useLevelStore.setState({
+    phase: INITIAL_PHASE,
+    lateralSpawnX: INITIAL_LATERAL_SPAWN_X,
+    finalQteSuccess: null
+  });
 }

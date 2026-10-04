@@ -3,6 +3,20 @@ import { create } from 'zustand';
 /** Sfondi dell'arena: lo schermo del cinema mostra il film "in corso". */
 export type ArenaBackdropId = 'sala' | 'buen_camino' | 'altro_film' | 'bloodborne';
 
+/** Cosa mostra `QteChallenge`: la sequenza di tasti e a che punto è. */
+export interface QteView {
+  keys: string[];
+  /** Prompt corrente (== keys.length quando finita). */
+  index: number;
+  results: ('hit' | 'miss' | null)[];
+  /** Finestra, in secondi, del prompt corrente (dura l'animazione della barra). */
+  windowSeconds: number;
+  /** In pausa fra un prompt e l'altro: nessun prompt attivo. */
+  waiting: boolean;
+  /** Etichetta in testa (es. "Colpite insieme!"). */
+  title: string;
+}
+
 /** Una carta della schermata di scelta del potenziamento. */
 export interface PowerUpOption {
   id: string;
@@ -51,6 +65,8 @@ interface ArenaHudState {
   powerUpChoice: PowerUpOption[] | null;
   powerUpPicked: string | null;
   powerUpIntro: PowerUpIntro | null;
+  /** QTE in corso (null = nessuno). */
+  qte: QteView | null;
   set: (patch: Partial<Omit<ArenaHudState, 'set' | 'reset' | 'triggerFlash'>>) => void;
   triggerFlash: () => void;
   reset: (playerHpMax: number, bossHpMax: number, bossPostureMax: number) => void;
@@ -87,6 +103,7 @@ export const useArenaStore = create<ArenaHudState>((set) => ({
   powerUpChoice: null,
   powerUpPicked: null,
   powerUpIntro: null,
+  qte: null,
   set: (patch) => set(patch),
   triggerFlash: () => set((state) => ({ flash: state.flash + 1 })),
   reset: (playerHpMax, bossHpMax, bossPostureMax) =>
@@ -112,6 +129,7 @@ export const useArenaStore = create<ArenaHudState>((set) => ({
       combo: 1,
       powerUpChoice: null,
       powerUpPicked: null,
-      powerUpIntro: null
+      powerUpIntro: null,
+      qte: null
     })
 }));

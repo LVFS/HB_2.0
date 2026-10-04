@@ -1,0 +1,102 @@
+/* QTE: fila di tasti + barra della finestra corrente. Overlay sopra il Canvas,
+   non intercetta il mouse. */
+
+.wrap {
+  position: absolute;
+  left: 50%;
+  bottom: 22%;
+  transform: translateX(-50%);
+  display: grid;
+  justify-items: center;
+  gap: 0.8rem;
+  pointer-events: none;
+  font-family: var(--font-display);
+}
+
+.title {
+  color: var(--accent-bright);
+  font-size: clamp(1.2rem, 3.5vw, 2rem);
+  font-weight: 700;
+  letter-spacing: var(--tracking-title);
+  text-transform: uppercase;
+  text-shadow: 0 4px 14px rgba(0, 0, 0, 0.85);
+}
+
+.subtitle {
+  margin-top: -0.4rem;
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 0.9rem;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.85);
+}
+
+.row {
+  display: flex;
+  gap: 0.7rem;
+}
+
+.key {
+  display: grid;
+  place-items: center;
+  min-width: 3.4rem;
+  height: 3.4rem;
+  padding: 0 0.6rem;
+  color: var(--text);
+  font-size: 1.1rem;
+  font-weight: 700;
+  background: var(--surface-control);
+  border: 2px solid var(--line-strong);
+  opacity: 0.6;
+}
+
+.current {
+  composes: key;
+  opacity: 1;
+  color: var(--accent-bright);
+  border-color: var(--accent-bright);
+  box-shadow: 0 0 20px var(--accent-line);
+  transform: scale(1.2);
+}
+
+.hit {
+  composes: key;
+  opacity: 1;
+  color: #052e16;
+  background: #4ade80;
+  border-color: #4ade80;
+}
+
+.miss {
+  composes: key;
+  opacity: 1;
+  color: #450a0a;
+  background: #f87171;
+  border-color: #f87171;
+}
+
+.timer {
+  width: min(360px, 70vw);
+  height: 8px;
+  background: var(--surface-control);
+  border: 1px solid var(--line-strong);
+  overflow: hidden;
+}
+
+.timerFill {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, var(--accent), #fff2a0);
+  transform-origin: left center;
+  animation-name: drain;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+@keyframes drain {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}

@@ -328,3 +328,26 @@ export const SHOCK_SPEED = 16;
 export const SHOCK_DAMAGE = 140;
 export const SHOCK_POSTURE = 80;
 export const SHOCK_HALF_HEIGHT = 1.3;
+
+/**
+ * Finale del boss: sotto questa frazione di vita il combattimento si ferma,
+ * Eve si rialza e parte il QTE cooperativo (D ed Eve colpiscono insieme), poi
+ * la cutscene (Checco atterra, diventa una marionetta e scaraventa i due eroi).
+ * Checco non può morire prima: la vita minima durante il combattimento è 1.
+ */
+export const FINALE_HP_FRACTION = 0.1;
+/** Posizionamento (Checco al centro, D ed Eve ai due lati) e distanza dai lati. */
+export const FINALE_GATHER = 2.1;
+export const FINALE_SIDE_DISTANCE = 1.7;
+/** Quando Eve, rialzata, comincia a camminare (la rialzata dura `RISE_DURATION`). */
+export const FINALE_EVE_WALK_DELAY = 0.7;
+/** QTE: numero di prompt, tasti possibili, finestra per ciascuno (secondi) e
+ *  pausa fra l'uno e il successivo. Riuscito se i mancati sono al massimo `QTE_MAX_MISSES`. */
+export const QTE_KEYS = ['j', 'k', 'e', 'r', 'space'] as const;
+export const QTE_WINDOWS = [1.3, 1.2, 1.1, 1.0, 0.9];
+export const QTE_GAP = 0.35;
+export const QTE_MAX_MISSES = 1;
+export const FINALE_LAND = 1.3;
+export const FINALE_TRANSFORM = 1.7;
+export const FINALE_FLING = 1.1;
+export const FINALE_FLING_DISTANCE = 6.5;

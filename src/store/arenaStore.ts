@@ -1,7 +1,22 @@
 import { create } from 'zustand';
 
 /** Sfondi dell'arena: lo schermo del cinema mostra il film "in corso". */
-export type ArenaBackdropId = 'sala' | 'buen_camino' | 'altro_film';
+export type ArenaBackdropId = 'sala' | 'buen_camino' | 'altro_film' | 'bloodborne';
+
+/** Una carta della schermata di scelta del potenziamento. */
+export interface PowerUpOption {
+  id: string;
+  label: string;
+  description: string;
+}
+
+/** Scritta (poi video) mostrata a tutto schermo dopo la scelta. */
+export interface PowerUpIntro {
+  title: string;
+  subtitle: string;
+  /** Se presente, al posto della scritta parte questo video (tollerante se manca). */
+  videoSrc?: string;
+}
 
 interface ArenaHudState {
   playerHp: number;
@@ -26,6 +41,16 @@ interface ArenaHudState {
   /** Sotto-riga di aiuto sotto il messaggio, o null. */
   hint: string | null;
   evePromptVisible: boolean;
+  /** Nome del potenziamento attivo (null = equipaggiamento base). */
+  powerUp: string | null;
+  /** Furia 0-100 (loadout con berserk), berserk in corso e moltiplicatore a catena. */
+  rage: number;
+  berserk: boolean;
+  combo: number;
+  /** Schermata di scelta: opzioni offerte (null = nessuna scelta in corso) e scelta fatta. */
+  powerUpChoice: PowerUpOption[] | null;
+  powerUpPicked: string | null;
+  powerUpIntro: PowerUpIntro | null;
   set: (patch: Partial<Omit<ArenaHudState, 'set' | 'reset' | 'triggerFlash'>>) => void;
   triggerFlash: () => void;
   reset: (playerHpMax: number, bossHpMax: number, bossPostureMax: number) => void;
@@ -55,6 +80,13 @@ export const useArenaStore = create<ArenaHudState>((set) => ({
   message: null,
   hint: null,
   evePromptVisible: false,
+  powerUp: null,
+  rage: 0,
+  berserk: false,
+  combo: 1,
+  powerUpChoice: null,
+  powerUpPicked: null,
+  powerUpIntro: null,
   set: (patch) => set(patch),
   triggerFlash: () => set((state) => ({ flash: state.flash + 1 })),
   reset: (playerHpMax, bossHpMax, bossPostureMax) =>
@@ -73,6 +105,13 @@ export const useArenaStore = create<ArenaHudState>((set) => ({
       backdrop: 'sala',
       message: null,
       hint: null,
-      evePromptVisible: true
+      evePromptVisible: true,
+      powerUp: null,
+      rage: 0,
+      berserk: false,
+      combo: 1,
+      powerUpChoice: null,
+      powerUpPicked: null,
+      powerUpIntro: null
     })
 }));

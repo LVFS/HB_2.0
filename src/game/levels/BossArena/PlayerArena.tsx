@@ -4,7 +4,24 @@ import type { Group, Mesh } from 'three';
 import { CharacterAnimator2D, type CharacterAnimState } from '@/game/render2d/CharacterAnimator2D';
 import { useArenaStore } from '@/store/arenaStore';
 import type { ArenaWorld } from './arenaState';
+import { addRing } from './combat';
+import { createFinisher } from './finisher';
+import { fireGun, launchShock, launchWave } from './playerShots';
 import {
+  BERSERK_ATTACK_SPEED,
+  BERSERK_DRAIN_PER_SECOND,
+  BERSERK_JUMP,
+  BERSERK_REACH,
+  BERSERK_SKILL_COST,
+  BERSERK_SPEED,
+  GUN_COOLDOWN,
+  GUN_WINDUP,
+  RAGE_MAX,
+  SHOCK_RECOVERY,
+  SHOCK_WINDUP,
+  SKILL_TIERS_BLOODBORNE,
+  WAVE_RECOVERY,
+  WAVE_WINDUP,
   CLASH_PRESS_GAIN,
   BOSS_BLOCK_HALF_WIDTH,
   BOSS_BLOCK_HEIGHT,
@@ -71,7 +88,17 @@ const SHOW_DEBUG_BOXES = import.meta.env.DEV;
 /** Mezza larghezza del corpo del giocatore, per la collisione col boss. */
 const PLAYER_BODY_HALF_WIDTH = 0.35;
 
-type Action = 'none' | 'attack' | 'parry' | 'dash' | 'heal' | 'skill';
+type Action = 'none' | 'attack' | 'parry' | 'dash' | 'heal' | 'skill' | 'cast';
+
+/** Azione a distanza del potenziamento Bloodborne: parte dopo `windup`, poi `recovery`. */
+interface Cast {
+  kind: 'gun' | 'wave' | 'shock';
+  fired: boolean;
+  windup: number;
+  recovery: number;
+  damage: number;
+  posture: number;
+}
 
 interface PlayerArenaProps {
   world: ArenaWorld;
@@ -106,6 +133,24 @@ export function PlayerArena({ world }: PlayerArenaProps) {
   const dashDirection = useRef<1 | -1>(1);
   const dashCooldown = useRef(0);
   const debugState = useRef<{ state: CharacterAnimState; time: number } | null>(null);
+  const cast = useRef<Cast | null>(null);
+  const lastRageShown = useRef(0);
+
+  /** Avvia un'azione a distanza (pistola, onda celeste, ruggito). */
+  const startCast = (kind: Cast['kind'], windup: number, recovery: number, damage = 0, posture = 0) => {
+    cast.current = { kind, fired: false, windup, recovery, damage, posture };
+    action.current = 'cast';
+    actionTime.current = 0;
+  };
+
+  /** Furia mostrata in HUD solo quando cambia il valore arrotondato. */
+  const syncRage = () => {
+    const rounded = Math.round(world.player.rage);
+    if (rounded !== lastRageShown.current) {
+      lastRageShown.current = rounded;
+      useArenaStore.getState().set({ rage: rounded });
+    }
+  };
 
   const [animState, setAnimState] = useState<CharacterAnimState>('idle');
   const [facingState, setFacingState] = useState<1 | -1>(1);
@@ -130,6 +175,12 @@ export function PlayerArena({ world }: PlayerArenaProps) {
   useFrame((_, rawDelta) => {
     const g = group.current;
     if (!g) return;
+    // Scelta del potenziamento: gioco fermo, l'input non si accumula (i tasti
+    // premuti per scegliere non devono scattare appena si riparte).
+    if (world.choice) {
+      justPressed.clear();
+      return;
+    }
     // Hit-stop: il gameplay è congelato (l'input resta in coda, non si perde).
     if (world.hitStop > 0) return;
     const delta = Math.min(rawDelta, 0.05);
@@ -162,12 +213,48 @@ export function PlayerArena({ world }: PlayerArenaProps) {
       return;
     }
 
+    // Carica con falce: la sequenza (`finisher.ts`, fatta avanzare da `BossChecco`)
+    // comanda la posizione del giocatore, che è invulnerabile.
+    if (world.finisher) {
+      const f = world.finisher;
+      justPressed.clear();
+      g.position.set(f.playerX, f.playerY, 0);
+      velocityY.current = 0;
+      onGround.current = f.playerY <= 0.01;
+      jumpsUsed.current = 0;
+      action.current = 'none';
+      actionTime.current = 0;
+      facing.current = f.dir;
+      state.x = f.playerX;
+      state.y = f.playerY;
+      state.facing = f.dir;
+      state.invulnerable = true;
+      state.dashDir = 0;
+      state.parryActive = false;
+      state.attackBox = null;
+      setAnimState('attack');
+      setFacingState(f.dir);
+      return;
+    }
+
     // --- timer che scendono da soli ---
     state.iframes = Math.max(0, state.iframes - delta);
     state.hitTimer = Math.max(0, state.hitTimer - delta);
     state.parryFlash = Math.max(0, state.parryFlash - delta);
     state.counterWindow = Math.max(0, state.counterWindow - delta);
     dashCooldown.current = Math.max(0, dashCooldown.current - delta);
+
+    const bloodborne = world.powerUp === 'bloodborne';
+    // Berserk: la furia si svuota piano; a zero finisce e la catena si azzera.
+    if (state.berserk) {
+      state.rage = Math.max(0, state.rage - BERSERK_DRAIN_PER_SECOND * delta);
+      syncRage();
+      if (state.rage <= 0) {
+        state.berserk = false;
+        state.combo = 1;
+        useArenaStore.getState().set({ berserk: false, combo: 1 });
+      }
+    }
 
     // --- input ---
     let moveX = 0;
@@ -180,6 +267,7 @@ export function PlayerArena({ world }: PlayerArenaProps) {
     const wantsJump = !stunned && (justPressed.has(' ') || justPressed.has('w') || justPressed.has('arrowup'));
     const wantsHeal = !stunned && justPressed.has('r');
     const wantsSkill = !stunned && justPressed.has('e');
+    const wantsRage = !stunned && justPressed.has('q');
 
     if (import.meta.env.DEV) {
       if (justPressed.has('1')) debugState.current = { state: 'hit', time: 0.35 };
@@ -195,9 +283,21 @@ export function PlayerArena({ world }: PlayerArenaProps) {
         actionTime.current = 0;
         dashDirection.current = moveX !== 0 ? (moveX < 0 ? -1 : 1) : facing.current;
         dashCooldown.current = DASH_COOLDOWN;
+      } else if (wantsRage && bloodborne && !state.berserk && state.rage >= RAGE_MAX) {
+        // "Premi per scatenare il potere della bestia": la furia comincia a svuotarsi.
+        state.berserk = true;
+        state.combo = 1;
+        useArenaStore.getState().set({ berserk: true, combo: 1 });
+        addRing(world, state.x, state.y + ARENA_PLAYER_HEIGHT / 2, 3.2, 0.5, '#ef4444');
+        world.hitStop = Math.max(world.hitStop, 0.2);
       } else if (wantsParry) {
-        action.current = 'parry';
-        actionTime.current = 0;
+        if (bloodborne) {
+          // Potenziamento Bloodborne: il tasto di parata spara.
+          startCast('gun', GUN_WINDUP, GUN_COOLDOWN);
+        } else {
+          action.current = 'parry';
+          actionTime.current = 0;
+        }
       } else if (wantsHeal && state.heals > 0 && state.hp < PLAYER_MAX_HP) {
         // Cura: la carica si consuma all'inizio; la vita arriva solo a fine
         // canalizzazione, e un colpo subito nel mezzo la spreca (vedi
@@ -207,6 +307,27 @@ export function PlayerArena({ world }: PlayerArenaProps) {
         state.heals -= 1;
         state.healing = true;
         useArenaStore.getState().set({ healsLeft: state.heals });
+      } else if (wantsSkill && bloodborne && state.berserk) {
+        // In berserk l'abilità costa furia: ruggito e onda d'urto in avanti.
+        if (state.rage >= BERSERK_SKILL_COST) {
+          state.rage -= BERSERK_SKILL_COST;
+          syncRage();
+          startCast('shock', SHOCK_WINDUP, SHOCK_RECOVERY);
+        }
+      } else if (wantsSkill && bloodborne) {
+        const tier = SKILL_TIERS_BLOODBORNE.find((candidate) => state.skill >= candidate.threshold);
+        if (tier?.id === 'carica_falce') {
+          // La carica serve un boss presente e colpibile.
+          if (world.boss.hp > 0 && !world.boss.vanished) {
+            state.skill -= tier.cost;
+            useArenaStore.getState().set({ skill: Math.round(state.skill) });
+            world.finisher = createFinisher(world, tier.damage, tier.posture);
+          }
+        } else if (tier) {
+          state.skill -= tier.cost;
+          useArenaStore.getState().set({ skill: Math.round(state.skill) });
+          startCast('wave', WAVE_WINDUP, WAVE_RECOVERY, tier.damage, tier.posture);
+        }
       } else if (wantsSkill && state.skill >= SKILL_TIERS[SKILL_TIERS.length - 1].threshold) {
         // Un solo tasto, due mosse: la più forte disponibile in quel momento.
         const tier = SKILL_TIERS.find((candidate) => state.skill >= candidate.threshold);
@@ -232,18 +353,37 @@ export function PlayerArena({ world }: PlayerArenaProps) {
       state.healing = false;
     }
 
-    actionTime.current += delta;
+    // Berserk: attacchi e azioni a distanza scorrono più in fretta.
+    const fastAction = state.berserk && (action.current === 'attack' || action.current === 'cast');
+    actionTime.current += delta * (fastAction ? BERSERK_ATTACK_SPEED : 1);
     const t = actionTime.current;
     let attackActive = false;
     let parryActive = false;
     let dashing = false;
-    let attackReach = ATTACK_REACH;
+    let attackReach = state.berserk ? ATTACK_REACH * BERSERK_REACH : ATTACK_REACH;
 
     switch (action.current) {
       case 'attack': {
         const { windup, active, recovery } = ATTACK_TIMING;
         attackActive = t >= windup && t < windup + active;
+        // Berserk: l'attacco conta anche come parata per tutta la sua durata.
+        parryActive = state.berserk;
         if (t >= windup + active + recovery) action.current = 'none';
+        break;
+      }
+      case 'cast': {
+        const current = cast.current;
+        if (!current) {
+          action.current = 'none';
+          break;
+        }
+        if (!current.fired && t >= current.windup) {
+          current.fired = true;
+          if (current.kind === 'gun') fireGun(world);
+          else if (current.kind === 'wave') launchWave(world, current.damage, current.posture);
+          else launchShock(world);
+        }
+        if (t >= current.windup + current.recovery) action.current = 'none';
         break;
       }
       case 'skill': {
@@ -288,6 +428,7 @@ export function PlayerArena({ world }: PlayerArenaProps) {
       action.current === 'attack' ||
       action.current === 'parry' ||
       action.current === 'skill' ||
+      action.current === 'cast' ||
       action.current === 'heal' ||
       stunned;
     let vx = 0;
@@ -295,7 +436,7 @@ export function PlayerArena({ world }: PlayerArenaProps) {
       vx = dashDirection.current * DASH_SPEED;
       facing.current = dashDirection.current;
     } else if (!locked && moveX !== 0) {
-      vx = moveX * ARENA_PLAYER_SPEED * state.speedMultiplier;
+      vx = moveX * ARENA_PLAYER_SPEED * state.speedMultiplier * (state.berserk ? BERSERK_SPEED : 1);
       facing.current = moveX < 0 ? -1 : 1;
     }
     // Contraccolpo dopo un colpo subito: decade da solo.
@@ -305,14 +446,15 @@ export function PlayerArena({ world }: PlayerArenaProps) {
     g.position.x = Math.min(ARENA_HALF_WIDTH, Math.max(-ARENA_HALF_WIDTH, previousX + vx * delta));
 
     if (wantsJump && !locked && !dashing) {
+      const jumpMultiplier = state.berserk ? BERSERK_JUMP : 1;
       if (onGround.current) {
-        velocityY.current = ARENA_JUMP_SPEED;
+        velocityY.current = ARENA_JUMP_SPEED * jumpMultiplier;
         onGround.current = false;
         jumpsUsed.current = 1;
       } else if (jumpsUsed.current < ARENA_MAX_JUMPS) {
         // Doppio salto: un secondo impulso in aria (serve anche a raggiungere
         // le torrette sui muri).
-        velocityY.current = ARENA_DOUBLE_JUMP_SPEED;
+        velocityY.current = ARENA_DOUBLE_JUMP_SPEED * jumpMultiplier;
         jumpsUsed.current += 1;
       }
     }
@@ -362,7 +504,7 @@ export function PlayerArena({ world }: PlayerArenaProps) {
           x: px + (facing.current * attackReach) / 2,
           y: py + ARENA_PLAYER_HEIGHT / 2,
           halfWidth: attackReach / 2,
-          halfHeight: ATTACK_HALF_HEIGHT
+          halfHeight: state.berserk ? ATTACK_HALF_HEIGHT * 1.25 : ATTACK_HALF_HEIGHT
         }
       : null;
     state.parryActive = parryActive;
@@ -399,7 +541,7 @@ export function PlayerArena({ world }: PlayerArenaProps) {
       nextAnim = 'hit';
     } else if (state.parryFlash > 0) {
       nextAnim = 'parry';
-    } else if (action.current === 'attack' || action.current === 'skill') {
+    } else if (action.current === 'attack' || action.current === 'skill' || action.current === 'cast') {
       nextAnim = 'attack';
     } else if (dashing || vx !== 0) {
       nextAnim = 'walk';

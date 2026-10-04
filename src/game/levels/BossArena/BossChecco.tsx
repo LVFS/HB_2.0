@@ -6,8 +6,20 @@ import { aabbOverlap } from '@/game/render2d/collision';
 import { useArenaStore } from '@/store/arenaStore';
 import type { ArenaWorld } from './arenaState';
 import { CHECCO_MOVES_ROUND1, CHECCO_MOVES_ROUND2, type CheccoMove, type CheccoWarning } from './checcoMoves';
-import { addPosture, bossHurtbox, counterCharge, eveHurtbox, hitBoss, hitPlayer, playerHurtbox } from './combat';
 import {
+  addPosture,
+  bossHurtbox,
+  counterCharge,
+  eveHurtbox,
+  hitBoss,
+  hitPlayer,
+  onPlayerMeleeHit,
+  playerHurtbox
+} from './combat';
+import { updateFinisher } from './finisher';
+import { POWER_UP_IDS, POWER_UPS, type PowerUpId } from './powerUps';
+import {
+  POWER_UP_INTRO_SECONDS,
   ARENA_CEILING_Y,
   TURRET_FIRST_DELAY,
   TURRET_FLOOR_CHANCE,
@@ -256,6 +268,24 @@ export function BossChecco({ world, onVictory, onDefeat }: BossCheccoProps) {
     );
   };
 
+  /**
+   * Ferma il gioco e offre i potenziamenti. Il blocco è lo stesso dell'hit-stop
+   * (tutti i sistemi lo controllano) ma senza scadenza; lo toglie il blocco
+   * "scelta" in cima al frame quando il giocatore ha scelto e la scritta è finita.
+   */
+  const startPowerUpChoice = () => {
+    world.choice = { picked: null, introT: 0 };
+    world.hitStop = Number.POSITIVE_INFINITY;
+    useArenaStore.getState().set({
+      powerUpPicked: null,
+      powerUpChoice: POWER_UP_IDS.map((id) => ({
+        id,
+        label: POWER_UPS[id].label,
+        description: POWER_UPS[id].description
+      }))
+    });
+  };
+
   const resolveSpecial = (kind: 'completed' | 'interrupted') => {
     const r = rt.current;
     const { boss, player } = world;
@@ -271,19 +301,21 @@ export function BossChecco({ world, onVictory, onDefeat }: BossCheccoProps) {
       store.set({ backdrop: 'buen_camino', bossHp: Math.round(boss.hp) });
       flashMessage('Round 2', 'Buen Camino: Checco si rinvigorisce e ti rallenta');
     } else {
-      // Interrotto: parte un altro film, buff al giocatore e malus a Checco.
+      // Interrotto: buff al giocatore e malus a Checco, poi il gioco si ferma e
+      // il giocatore sceglie un potenziamento (= il film che parte al posto
+      // del suo). Sfondo e messaggio di "Round 2" arrivano dopo la scelta.
       player.hp = Math.min(PLAYER_MAX_HP, player.hp + SPECIAL_INTERRUPTED_PLAYER_HEAL);
       player.damageMultiplier = SPECIAL_INTERRUPTED_PLAYER_DAMAGE;
       boss.speedMultiplier = SPECIAL_INTERRUPTED_BOSS_SPEED;
       boss.staggerTimer = 0;
       addPosture(world, POSTURE_MAX);
-      store.set({ backdrop: 'altro_film', playerHp: Math.round(player.hp) });
-      flashMessage('Round 2', 'Film interrotto! Recuperi forze, Checco è sbilanciato');
+      store.set({ playerHp: Math.round(player.hp), message: null, hint: null });
+      startPowerUpChoice();
     }
 
     boss.round = 2;
     store.set({ round: 2 });
-    store.triggerFlash();
+    if (kind === 'completed') store.triggerFlash();
     r.cooldown = 1.6;
     r.action = null;
     boss.attackBox = null;
@@ -388,6 +420,41 @@ export function BossChecco({ world, onVictory, onDefeat }: BossCheccoProps) {
     const g = group.current;
     if (!g) return;
     const r = rt.current;
+
+    // --- scelta del potenziamento: gioco fermo (hit-stop infinito). Prima si
+    // aspetta la carta scelta nella HUD, poi resta la scritta di introduzione,
+    // infine si riparte con "Round 2". ---
+    if (world.choice) {
+      const choice = world.choice;
+      const store = useArenaStore.getState();
+      if (!choice.picked) {
+        const picked = store.powerUpPicked;
+        if (picked && picked in POWER_UPS) {
+          const def = POWER_UPS[picked as PowerUpId];
+          choice.picked = def.id;
+          choice.introT = POWER_UP_INTRO_SECONDS;
+          world.powerUp = def.id;
+          store.set({
+            powerUpChoice: null,
+            powerUpPicked: null,
+            powerUp: def.label,
+            backdrop: def.backdrop,
+            powerUpIntro: def.intro
+          });
+        }
+      } else {
+        choice.introT -= rawDelta;
+        if (choice.introT <= 0) {
+          world.choice = null;
+          world.hitStop = 0;
+          store.set({ powerUpIntro: null });
+          store.triggerFlash();
+          flashMessage('Round 2', 'Film interrotto! Recuperi forze, Checco è sbilanciato');
+        }
+      }
+      return;
+    }
+
     // Hit-stop: unico punto che lo fa scendere (giocatore e boss controllano
     // solo che sia > 0, così scade una volta sola per frame).
     if (world.hitStop > 0) {
@@ -401,6 +468,8 @@ export function BossChecco({ world, onVictory, onDefeat }: BossCheccoProps) {
     // --- fine del combattimento ---
     if (!world.over && boss.hp <= 0) {
       world.over = 'victory';
+      world.finisher = null;
+      boss.y = 0;
       boss.attackBox = null;
       useArenaStore.getState().set({ message: 'Checco fugge!', hint: null });
     }
@@ -452,6 +521,52 @@ export function BossChecco({ world, onVictory, onDefeat }: BossCheccoProps) {
       return;
     }
 
+    // --- carica con falce (Bloodborne): sequenza guidata, boss e giocatore
+    // comandati da `finisher.ts`; l'IA di Checco resta ferma ---
+    if (world.finisher) {
+      const f = world.finisher;
+      if (!f.started) {
+        f.started = true;
+        r.action = null;
+        boss.attackBox = null;
+        boss.vanished = false;
+        boss.teleportDestX = null;
+        boss.zoneRadius = null;
+        boss.hopTime = 0;
+        boss.parryable = false;
+        boss.interrupted = false;
+      }
+      // Il blocco di resa in fondo al frame non gira durante la sequenza:
+      // spegni qui ciò che il boss lasciava acceso (avviso, scia e hitbox del colpo, zona).
+      for (const mesh of [warningMesh.current, slash.current, slashDebug.current, zoneMesh.current, zoneColumn.current]) {
+        if (mesh) mesh.visible = false;
+      }
+      if (updateFinisher(world, delta)) {
+        world.finisher = null;
+        boss.y = 0;
+        r.cooldown = 1.2;
+        r.preferredDistance = pickEngageDistance();
+      }
+      g.position.set(boss.x, boss.y, 0);
+      return;
+    }
+
+    // Un colpo a distanza ha PARATO la sua mossa: la interrompe.
+    if (boss.interrupted) {
+      boss.interrupted = false;
+      if (r.action) {
+        r.lastMoveId = r.action.move.id;
+        r.action = null;
+        boss.attackBox = null;
+        boss.y = 0;
+        boss.vanished = false;
+        boss.teleportDestX = null;
+        boss.zoneRadius = null;
+        r.cooldown = 1.1;
+        r.preferredDistance = pickEngageDistance();
+      }
+    }
+
     boss.hitFlash = Math.max(0, boss.hitFlash - delta);
 
     // --- torrette: attacco asincrono, scandito da un timer proprio e del tutto
@@ -487,6 +602,7 @@ export function BossChecco({ world, onVictory, onDefeat }: BossCheccoProps) {
       // Danno e postura del fendente in corso li fissa `PlayerArena` (attacco
       // base o abilità) quando lo inizia.
       hitBoss(world, { damage: player.attackDamage, posture: player.attackPosture, source: 'player' });
+      onPlayerMeleeHit(world);
     }
     if (eve.attackBox && r.lastEveSwing !== eve.swingId && aabbOverlap(eve.attackBox, hurt)) {
       r.lastEveSwing = eve.swingId;
@@ -801,6 +917,14 @@ export function BossChecco({ world, onVictory, onDefeat }: BossCheccoProps) {
     }
 
     boss.x = Math.min(ARENA_HALF_WIDTH - 0.4, Math.max(-ARENA_HALF_WIDTH + 0.4, boss.x));
+
+    // Sta eseguendo (o caricando) un attacco parabile? Un colpo a distanza lo
+    // para invece di ferirlo. Mosse con sole finestre non parabili: no.
+    const current = r.action;
+    boss.parryable =
+      current !== null &&
+      !staggered &&
+      current.move.hits.some((h) => !h.unparryable && current.t - current.move.windup < h.start + h.duration);
 
     // --- resa ---
     g.position.x = boss.x;

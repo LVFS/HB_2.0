@@ -151,6 +151,61 @@
   gap: 0.35rem;
 }
 
+/* --- furia / berserk (potenziamento Bloodborne) --- */
+.rageBlock {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.rageTrack {
+  height: 7px;
+  background: var(--surface-control);
+  border: 1px solid var(--line-strong);
+}
+
+.fillRage {
+  height: 100%;
+  background: linear-gradient(90deg, #7f1d1d, #ef4444);
+  transition: width 120ms linear;
+}
+
+.fillRageActive {
+  composes: fillRage;
+  background: linear-gradient(90deg, #ef4444, #fecaca);
+  box-shadow: 0 0 10px #ef4444;
+}
+
+.rageLabel {
+  color: #fca5a5;
+  font-size: 0.68rem;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+.combo {
+  color: var(--accent-bright);
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Bordo rosso pulsante finché il berserk è attivo. */
+.berserkVignette {
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 0 120px 10px rgba(220, 38, 38, 0.55);
+  animation: berserkPulse 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes berserkPulse {
+  from {
+    opacity: 0.55;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 .healFull,
 .healEmpty {
   width: 14px;

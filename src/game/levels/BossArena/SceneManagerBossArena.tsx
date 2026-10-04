@@ -10,6 +10,7 @@ import { BossChecco } from './BossChecco';
 import { DamageNumbers } from './DamageNumbers';
 import { EveArena } from './EveArena';
 import { PlayerArena } from './PlayerArena';
+import { PlayerShotsLayer } from './PlayerShotsLayer';
 import { createArenaWorld, type ArenaWorld } from './arenaState';
 import {
   ARENA_CAMERA_EDGE_MARGIN,
@@ -74,7 +75,11 @@ export function SceneManagerBossArena({ onWhiteout }: SceneManagerBossArenaProps
     // Solo in sviluppo: il mondo esposto su `window` permette di provare
     // esiti/round senza giocare un intero combattimento (es. da console
     // `__arenaWorld.boss.hp = 60`). Sparisce nella build pubblicata.
-    if (import.meta.env.DEV) (window as unknown as { __arenaWorld?: unknown }).__arenaWorld = world;
+    if (import.meta.env.DEV) {
+      const debugWindow = window as unknown as { __arenaWorld?: unknown; __arenaStore?: unknown };
+      debugWindow.__arenaWorld = world;
+      debugWindow.__arenaStore = useArenaStore;
+    }
   }, [world]);
 
   const handleVictory = () => {
@@ -82,6 +87,7 @@ export function SceneManagerBossArena({ onWhiteout }: SceneManagerBossArenaProps
     window.setTimeout(() => useLevelStore.getState().setPhase('transizione_seconda_spada'), 550);
   };
   const handleDefeat = () => setRunId((id) => id + 1);
+  const powerUp = useArenaStore((state) => state.powerUp);
 
   return (
     <div className="scene-shell">
@@ -98,6 +104,7 @@ export function SceneManagerBossArena({ onWhiteout }: SceneManagerBossArenaProps
           <BossChecco key={`boss-${runId}`} world={world} onVictory={handleVictory} onDefeat={handleDefeat} />
           <ArenaThreats key={`threats-${runId}`} world={world} />
           <PlayerArena key={`player-${runId}`} world={world} />
+          <PlayerShotsLayer key={`shots-${runId}`} world={world} />
           <DamageNumbers key={`damage-${runId}`} world={world} />
         </Suspense>
       </Canvas>
@@ -106,7 +113,8 @@ export function SceneManagerBossArena({ onWhiteout }: SceneManagerBossArenaProps
 
       <div className={styles.hint}>
         <span className={styles.hintPill}>
-          A/D muovi · Spazio salta (anche doppio) · J attacca · K para · Shift schiva · R cura · E abilità · F richiama Eve
+          A/D muovi · Spazio salta (anche doppio) · J attacca · {powerUp ? 'K spara (para)' : 'K para'} · Shift schiva · R cura
+          · E abilità{powerUp ? ' · Q berserk (furia piena)' : ''} · F richiama Eve
           {import.meta.env.DEV ? ' · 1/2/3 anteprima colpo/barcollo/parata' : ''}
         </span>
       </div>

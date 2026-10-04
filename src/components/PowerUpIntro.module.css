@@ -1,0 +1,64 @@
+/* Scritta (poi video) del potenziamento scelto: copre tutto, il gioco è fermo. */
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(5, 3, 12, 0.88);
+  animation: introIn 0.4s var(--ease-out);
+}
+
+.text {
+  text-align: center;
+}
+
+.title {
+  color: #fca5a5;
+  font-family: var(--font-display);
+  font-size: clamp(2.6rem, 11vw, 7rem);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-shadow:
+    0 0 30px rgba(220, 38, 38, 0.7),
+    0 6px 24px rgba(0, 0, 0, 0.9);
+  animation: titleRise 2.4s var(--ease-out) forwards;
+}
+
+.subtitle {
+  margin-top: 0.8rem;
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: clamp(0.9rem, 2.4vw, 1.3rem);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+.video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+@keyframes introIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes titleRise {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+    letter-spacing: 0.4em;
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+    letter-spacing: 0.18em;
+  }
+}

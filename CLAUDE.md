@@ -476,6 +476,38 @@ Buen Camino). La HUD mostra "vita / max" sulle barre e "Postura x / max": il mas
 postura prima si riempiva in percentuale diretta e risultava "piena" a un terzo.
 In sviluppo ogni colpo sul boss stampa in console `[danno boss] …` con i moltiplicatori.
 
+Potenziamenti (`powerUps.ts`, `PowerUpId`/`POWER_UPS`, oggi solo `bloodborne`): quando si
+INTERROMPE "Avvia il film" (`resolveSpecial('interrupted')`), oltre agli effetti già decisi
+(cura, ×1.25, postura al massimo) il gioco si ferma e compare `components/PowerUpChoice`.
+Il blocco è un hit-stop INFINITO (`world.hitStop = Infinity`: tutti i sistemi già lo
+controllano), gestito da `world.choice` in cima al frame di `BossChecco`: attesa della carta
+(`store.powerUpPicked`) → scritta di introduzione (`PowerUpIntro`, `powerUps[].intro`, il
+campo `videoSrc` la sostituirà col video, tollerante se manca) per `POWER_UP_INTRO_SECONDS`
+→ ripartenza con "Round 2". Lo sfondo cambia (`backdrop` in `ArenaBackdrop`, texture
+segnaposto via canvas). Per aggiungere un potenziamento: voce nel `Record` + la sua logica
+leggendo `world.powerUp` (i loadout non sono ancora un'astrazione a parte: in `PlayerArena`
+c'è `const bloodborne = world.powerUp === 'bloodborne'`). In sviluppo `window.__arenaStore`
+espone lo store per i test.
+Loadout Bloodborne (tutto in `arenaConfig.ts`, da tarare): `K`/click destro SPARA invece di
+parare (`fireGun` in `playerShots.ts`, hitscan: il primo bersaglio lungo la X fra
+proiettili nemici, torrette, oggetti del Buen Camino, boss). Proiettile nemico → rimandato
+contro Checco; torretta/oggetto → danno; Checco in attacco PARABILE (`boss.parryable`,
+calcolato da `BossChecco`: finestre non `unparryable` ancora da fare) → PARATA
+(`gunParryBoss`: interrompe la mossa via `boss.interrupted`, postura, contraccolpo, nessun
+danno), altrimenti danno minimo. Abilità a mezza barra = "fendente celeste": onda
+(`launchWave`, `world.shots`) che si ferma al primo ostacolo con la stessa regola. A barra
+piena = "carica con falce" (`finisher.ts`, `world.finisher`): sequenza guidata scatto →
+colpo che lo lancia in aria → falce che si schianta con danno ad area; la fa avanzare
+`BossChecco` (comanda `boss.y`) e `PlayerArena` legge `playerX/playerY`, giocatore
+invulnerabile. Asset segnaposto: pistola, asta e lama in `PlayerShotsLayer.tsx`.
+Berserk: l'eccesso della barra abilità già piena carica la FURIA (`player.rage`, in
+`gainSkill`); a furia piena `Q` attiva `player.berserk`, che si svuota di
+`BERSERK_DRAIN_PER_SECOND`. In berserk: più veloce/salti più alti/attacchi più ampi e rapidi,
+l'attacco conta anche come parata, danni subiti ×0.5, ogni colpo a segno alza il
+moltiplicatore a catena (`player.combo`, tetto `BERSERK_COMBO_MAX`, torna a 1 al primo colpo
+preso), colpi in salto fanno un'area (`onPlayerMeleeHit`/`areaBlast` in `combat.ts`) e `E`
+costa furia e lancia ruggito + onda d'urto fino al bordo dell'arena (`launchShock`).
+
 Stato per-frame condiviso in un solo oggetto `ArenaWorld` (`arenaState.ts`, ref),
 regole di danno in `combat.ts`; lo store Zustand riceve solo copie agli eventi.
 Checco è ancora un segnaposto a tinte unite: rosso = carica il colpo, bianco =

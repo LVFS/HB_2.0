@@ -255,3 +255,76 @@ export const TURRET_SHOT_DAMAGE = 10;
 /** Quota (centro) delle torrette a muro: raggiungibili saltando. */
 export const TURRET_WALL_Y: [number, number] = [1.5, 2.7];
 export const TURRET_FLOOR_CHANCE = 0.5;
+
+/**
+ * Potenziamento "Bloodborne" (scelto quando si interrompe l'evento "Avvia il
+ * film"): al posto della parata c'è la pistola, le abilità cambiano e a furia
+ * piena si può entrare in berserk. Tutto da tarare giocando.
+ */
+export const POWER_UP_INTRO_SECONDS = 2.6;
+
+/** Pistola: colpo istantaneo in linea retta (tasto parata). Fa il minimo del
+ *  danno, ma ferma tutto ciò che si frappone e PARA l'attacco di Checco. */
+export const GUN_WINDUP = 0.04;
+export const GUN_COOLDOWN = 0.42;
+export const GUN_HEIGHT = 1.05;
+export const GUN_RAY_HALF_HEIGHT = 0.2;
+export const GUN_DAMAGE = 4;
+export const GUN_POSTURE = 6;
+/** Postura data a Checco quando il colpo lo PARA mentre attacca. */
+export const GUN_PARRY_POSTURE = 60;
+/** Danno a torrette e oggetti del Buen Camino. */
+export const GUN_OBJECT_DAMAGE = 8;
+export const GUN_TRACER_LIFE = 0.09;
+
+/** Abilità Bloodborne (stesse soglie di SKILL_TIERS: 50 e 100). */
+export const SKILL_TIERS_BLOODBORNE = [
+  { id: 'carica_falce', threshold: 100, cost: 100, damage: 250, posture: 250 },
+  { id: 'fendente_celeste', threshold: 50, cost: 50, damage: 100, posture: 100 }
+] as const;
+
+/** Fendente celeste (mezza barra): onda che viaggia fino al primo ostacolo. */
+export const WAVE_WINDUP = 0.28;
+export const WAVE_RECOVERY = 0.3;
+export const WAVE_SPEED = 20;
+export const WAVE_HALF_HEIGHT = 0.7;
+
+/** Carica con falce (barra piena): sequenza guidata scatto → colpo che lo
+ *  lancia in aria → falce che si schianta. `launchShare` = quota di danno e
+ *  postura del primo colpo (il resto va allo schianto). */
+export const FINISHER = {
+  dashTime: 0.2,
+  standOff: 1.1,
+  launchTime: 0.3,
+  launchHeight: 3.4,
+  hangTime: 0.3,
+  slamTime: 0.16,
+  recoverTime: 0.4,
+  launchShare: 0.4,
+  slamRadius: 3.4
+} as const;
+
+/** Furia: si carica con l'eccesso della barra abilità già piena; `Q` a furia
+ *  piena scatena il berserk, che la svuota piano. */
+export const RAGE_MAX = 100;
+export const BERSERK_DRAIN_PER_SECOND = 8;
+/** Usare l'abilità (`E`) in berserk costa furia e lancia ruggito + onda d'urto. */
+export const BERSERK_SKILL_COST = 20;
+export const BERSERK_SPEED = 1.5;
+export const BERSERK_JUMP = 1.2;
+export const BERSERK_REACH = 1.6;
+export const BERSERK_ATTACK_SPEED = 1.6;
+export const BERSERK_DAMAGE = 1.5;
+export const BERSERK_DAMAGE_TAKEN = 0.5;
+/** Moltiplicatore a catena: +STEP a ogni colpo a segno, torna a 1 al primo colpo subito. */
+export const BERSERK_COMBO_STEP = 0.15;
+export const BERSERK_COMBO_MAX = 3;
+/** Attacco in salto in berserk: area attorno al giocatore a ogni colpo a segno. */
+export const BERSERK_AOE_RADIUS = 3;
+export const BERSERK_AOE_DAMAGE = 14;
+export const SHOCK_WINDUP = 0.2;
+export const SHOCK_RECOVERY = 0.35;
+export const SHOCK_SPEED = 16;
+export const SHOCK_DAMAGE = 140;
+export const SHOCK_POSTURE = 80;
+export const SHOCK_HALF_HEIGHT = 1.3;

@@ -1,8 +1,17 @@
 import { useArenaStore } from '@/store/arenaStore';
 import type { AABB } from '@/game/render2d/collision';
-import type { ArenaWorld, DamagePopup } from './arenaState';
+import type { ArenaProjectile, ArenaWorld, DamagePopup } from './arenaState';
 import {
   ARENA_PLAYER_HEIGHT,
+  BERSERK_AOE_DAMAGE,
+  BERSERK_AOE_RADIUS,
+  BERSERK_COMBO_MAX,
+  BERSERK_COMBO_STEP,
+  BERSERK_DAMAGE,
+  BERSERK_DAMAGE_TAKEN,
+  PROJECTILE_REFLECT_DAMAGE,
+  PROJECTILE_REFLECT_SPEED_MULTIPLIER,
+  RAGE_MAX,
   BOSS_HALF_WIDTH,
   BOSS_HEIGHT,
   BOSS_STAGGER_DAMAGE_MULTIPLIER,
@@ -33,8 +42,16 @@ import {
  */
 export function gainSkill(world: ArenaWorld, amount: number): void {
   const { player } = world;
-  player.skill = Math.min(SKILL_MAX, player.skill + amount);
-  useArenaStore.getState().set({ skill: Math.round(player.skill) });
+  const total = player.skill + amount;
+  player.skill = Math.min(SKILL_MAX, total);
+  const store = useArenaStore.getState();
+  store.set({ skill: Math.round(player.skill) });
+  // Potenziamento con berserk: ciò che eccede la barra già piena carica la
+  // furia (secondo livello di carica). Durante il berserk non si ricarica.
+  if (world.powerUp === 'bloodborne' && !player.berserk && total > SKILL_MAX) {
+    player.rage = Math.min(RAGE_MAX, player.rage + (total - SKILL_MAX));
+    store.set({ rage: Math.round(player.rage) });
+  }
 }
 
 /** Bersaglio dei colpi: le scatole "che possono essere colpite". */
@@ -81,9 +98,11 @@ export function hitBoss(
   }
 
   let damage = hit.damage;
+  const berserkMultiplier = hit.source === 'player' && player.berserk ? BERSERK_DAMAGE * player.combo : 1;
   if (hit.source === 'player') {
     damage *= player.damageMultiplier;
     if (player.counterWindow > 0) damage *= COUNTER_MULTIPLIER;
+    damage *= berserkMultiplier;
   }
   if (boss.staggerTimer > 0) damage *= BOSS_STAGGER_DAMAGE_MULTIPLIER;
 
@@ -92,6 +111,7 @@ export function hitBoss(
       `base ${hit.damage}`,
       hit.source === 'player' && player.damageMultiplier !== 1 ? `buff ×${player.damageMultiplier}` : null,
       hit.source === 'player' && player.counterWindow > 0 ? `parata ×${COUNTER_MULTIPLIER}` : null,
+      berserkMultiplier !== 1 ? `berserk ×${berserkMultiplier.toFixed(2)}` : null,
       boss.staggerTimer > 0 ? `stordito ×${BOSS_STAGGER_DAMAGE_MULTIPLIER}` : null
     ].filter(Boolean);
     // eslint-disable-next-line no-console -- log di sviluppo (rimosso dalla build)
@@ -104,7 +124,14 @@ export function hitBoss(
   if (boss.specialActive) boss.specialDamageTaken += damage;
   requestHitStop(world, HITSTOP_LIGHT);
 
-  if (hit.source === 'player') gainSkill(world, SKILL_GAIN_HIT);
+  if (hit.source === 'player') {
+    gainSkill(world, SKILL_GAIN_HIT);
+    // Berserk: ogni colpo a segno alza il moltiplicatore a catena.
+    if (player.berserk) {
+      player.combo = Math.min(BERSERK_COMBO_MAX, player.combo + BERSERK_COMBO_STEP);
+      useArenaStore.getState().set({ combo: Math.round(player.combo * 100) / 100 });
+    }
+  }
   if (boss.staggerTimer <= 0) addPosture(world, hit.posture, hit.source === 'player');
 
   useArenaStore.getState().set({ bossHp: Math.round(boss.hp) });
@@ -221,6 +248,12 @@ export function hitPlayer(
   }
 
   player.healing = false;
+  // Berserk: i danni subiti sono ridotti, ma il primo colpo preso azzera la catena.
+  if (player.berserk) {
+    damage *= BERSERK_DAMAGE_TAKEN;
+    player.combo = 1;
+    useArenaStore.getState().set({ combo: 1 });
+  }
   pushPopup(world, {
     x: player.x + (Math.random() - 0.5) * 0.5,
     y: player.y + ARENA_PLAYER_HEIGHT + 0.15,
@@ -240,4 +273,81 @@ export function hitPlayer(
     useArenaStore.getState().set({ message: 'Sconfitto', hint: 'Si riparte dall’inizio' });
   }
   return 'hit';
+}
+
+/**
+ * Rimanda un proiettile (non un fulmine) CONTRO CHECCO, più veloce — anche se
+ * l'aveva sparato una torretta, quindi in diagonale. Usato dalla parata normale
+ * e dai colpi a distanza (pistola, onda celeste).
+ */
+export function reflectProjectileToBoss(world: ArenaWorld, proj: ArenaProjectile): void {
+  const speed = Math.hypot(proj.vx, proj.vy ?? 0) * PROJECTILE_REFLECT_SPEED_MULTIPLIER;
+  const toBossX = world.boss.x - proj.x;
+  const toBossY = world.boss.y + 1.4 - proj.y;
+  const toBossLength = Math.hypot(toBossX, toBossY) || 1;
+  proj.owner = 'player';
+  proj.vx = (toBossX / toBossLength) * speed;
+  proj.vy = (toBossY / toBossLength) * speed;
+  proj.damage = PROJECTILE_REFLECT_DAMAGE;
+  parryProjectile(world);
+}
+
+/**
+ * Un colpo a distanza (pistola, onda celeste) raggiunge Checco MENTRE sta
+ * attaccando con una mossa parabile: è una parata, non un attacco. La mossa
+ * viene interrotta (lo fa `BossChecco` al frame successivo), la postura sale e
+ * si apre la finestra di contraccolpo — nessun danno.
+ */
+export function gunParryBoss(world: ArenaWorld, posture: number): void {
+  const { boss, player } = world;
+  boss.interrupted = true;
+  boss.attackBox = null;
+  player.parryFlash = 0.25;
+  player.counterWindow = COUNTER_WINDOW;
+  requestHitStop(world, HITSTOP_PARRY * 1.4);
+  gainSkill(world, SKILL_GAIN_PARRY);
+  addPosture(world, posture, true);
+  pushPopup(world, {
+    x: boss.x,
+    y: boss.y + BOSS_HEIGHT + 0.15,
+    amount: 0,
+    target: 'boss',
+    boost: 1,
+    label: 'PARATA'
+  });
+}
+
+/** Aggiunge un cerchio che si espande (esplosione, ruggito, schianto). */
+export function addRing(world: ArenaWorld, x: number, y: number, radius: number, life: number, color: string): void {
+  world.fx.push({ x, y, radius, life, lifeMax: life, color });
+}
+
+/**
+ * Esplosione a terra attorno a `x`: danneggia torrette e oggetti del Buen Camino
+ * entro `radius` e distrugge i proiettili nemici. NON tocca il boss (chi la
+ * provoca gli dà già il suo colpo a parte).
+ */
+export function areaBlast(world: ArenaWorld, x: number, radius: number, damage: number): void {
+  for (let i = world.turrets.length - 1; i >= 0; i -= 1) {
+    const turret = world.turrets[i];
+    if (turret.state === 'active' && Math.abs(turret.x - x) <= radius) damageTurret(world, i, damage);
+  }
+  for (let i = world.totems.length - 1; i >= 0; i -= 1) {
+    if (Math.abs(world.totems[i].x - x) <= radius) damageTotem(world, i, damage);
+  }
+  for (let i = world.projectiles.length - 1; i >= 0; i -= 1) {
+    const proj = world.projectiles[i];
+    if (proj.owner === 'boss' && Math.abs(proj.x - x) <= radius) world.projectiles.splice(i, 1);
+  }
+}
+
+/**
+ * In berserk, un colpo in salto che va a segno scatena un'area attorno al
+ * giocatore (`BERSERK_AOE_*`). Da chiamare a ogni colpo di spada a segno.
+ */
+export function onPlayerMeleeHit(world: ArenaWorld): void {
+  const { player } = world;
+  if (!player.berserk || player.y < 0.4) return;
+  areaBlast(world, player.x, BERSERK_AOE_RADIUS, BERSERK_AOE_DAMAGE);
+  addRing(world, player.x, player.y + 0.8, BERSERK_AOE_RADIUS, 0.35, '#ef4444');
 }

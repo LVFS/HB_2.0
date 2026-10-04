@@ -1,4 +1,6 @@
 import { useArenaStore } from '@/store/arenaStore';
+import { PowerUpChoice } from './PowerUpChoice';
+import { PowerUpIntro } from './PowerUpIntro';
 import styles from './ArenaHud.module.css';
 
 /**
@@ -19,6 +21,10 @@ export function ArenaHud() {
   const totemsLeft = useArenaStore((s) => s.totemsLeft);
   const healsLeft = useArenaStore((s) => s.healsLeft);
   const skill = useArenaStore((s) => s.skill);
+  const powerUp = useArenaStore((s) => s.powerUp);
+  const rage = useArenaStore((s) => s.rage);
+  const berserk = useArenaStore((s) => s.berserk);
+  const combo = useArenaStore((s) => s.combo);
   const round = useArenaStore((s) => s.round);
   const flash = useArenaStore((s) => s.flash);
   const message = useArenaStore((s) => s.message);
@@ -69,6 +75,25 @@ export function ArenaHud() {
           <div className={skill >= 100 ? styles.fillSkillFull : styles.fillSkill} style={{ width: `${skill}%` }} />
           <div className={styles.skillMark} />
         </div>
+        {/* Furia (solo con un potenziamento che ha il berserk): Q a barra piena. */}
+        {powerUp !== null && (
+          <div className={styles.rageBlock}>
+            <div className={styles.rageTrack}>
+              <div className={berserk ? styles.fillRageActive : styles.fillRage} style={{ width: `${rage}%` }} />
+            </div>
+            <div className={styles.rageLabel}>
+              {berserk ? (
+                <>
+                  Berserk <span className={styles.combo}>×{combo.toFixed(2)}</span>
+                </>
+              ) : rage >= 100 ? (
+                'Furia piena — premi Q'
+              ) : (
+                `Furia ${rage}`
+              )}
+            </div>
+          </div>
+        )}
         <div className={styles.heals} aria-label={`Cure rimaste: ${healsLeft}`}>
           {[0, 1, 2].map((slot) => (
             <span key={slot} className={slot < healsLeft ? styles.healFull : styles.healEmpty} />
@@ -92,7 +117,12 @@ export function ArenaHud() {
         </div>
       )}
 
+      {berserk && <div className={styles.berserkVignette} />}
+
       {flash > 0 && <div className={styles.flash} key={flash} />}
+
+      <PowerUpChoice />
+      <PowerUpIntro />
 
       {evePromptVisible && <div className={styles.evePrompt}>Premi F per richiamare Eve</div>}
     </div>

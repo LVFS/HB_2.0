@@ -10,8 +10,10 @@ import {
   damageTurret,
   hitBoss,
   hitPlayer,
+  onPlayerMeleeHit,
   parryProjectile,
-  playerHurtbox
+  playerHurtbox,
+  reflectProjectileToBoss
 } from './combat';
 import {
   ARENA_HALF_WIDTH,
@@ -20,9 +22,7 @@ import {
   DEBRIS_HALF_SIZE,
   PARRY_REACH,
   PROJECTILE_HALF_SIZE,
-  PROJECTILE_REFLECT_DAMAGE,
   PROJECTILE_REFLECT_POSTURE,
-  PROJECTILE_REFLECT_SPEED_MULTIPLIER,
   TURRET_CHARGE,
   TURRET_FIRE_INTERVAL,
   TURRET_FLIGHT,
@@ -141,15 +141,7 @@ export function ArenaThreats({ world }: { world: ArenaWorld }) {
           } else {
             // Parata a timing: lo rimanda CONTRO CHECCO (anche se era sparato da
             // una torretta, quindi in diagonale), più veloce.
-            const speed = Math.hypot(proj.vx, proj.vy ?? 0) * PROJECTILE_REFLECT_SPEED_MULTIPLIER;
-            const toBossX = world.boss.x - proj.x;
-            const toBossY = world.boss.y + 1.4 - proj.y;
-            const toBossLength = Math.hypot(toBossX, toBossY) || 1;
-            proj.owner = 'player';
-            proj.vx = (toBossX / toBossLength) * speed;
-            proj.vy = (toBossY / toBossLength) * speed;
-            proj.damage = PROJECTILE_REFLECT_DAMAGE;
-            parryProjectile(world);
+            reflectProjectileToBoss(world, proj);
           }
         } else if (aabbOverlap(box, playerHurtbox(world))) {
           if (hitPlayer(world, proj.damage) !== 'ignored') remove = true;
@@ -182,6 +174,8 @@ export function ArenaThreats({ world }: { world: ArenaWorld }) {
     // --- oggetti del Buen Camino: colpi del giocatore e di Eve ---
     for (let i = world.totems.length - 1; i >= 0; i -= 1) {
       const totem = world.totems[i];
+      // (una area del berserk può aver tolto altri oggetti durante questo giro)
+      if (!totem) continue;
       totem.flash = Math.max(0, totem.flash - delta);
       const box = { x: totem.x, y: TOTEM_HEIGHT / 2, halfWidth: TOTEM_HALF_WIDTH, halfHeight: TOTEM_HEIGHT / 2 };
       if (player.attackBox && totem.lastPlayerSwing !== player.swingId && aabbOverlap(player.attackBox, box)) {
@@ -189,6 +183,7 @@ export function ArenaThreats({ world }: { world: ArenaWorld }) {
         let damage = player.attackDamage * player.damageMultiplier;
         if (player.counterWindow > 0) damage *= COUNTER_MULTIPLIER;
         damageTotem(world, i, damage);
+        onPlayerMeleeHit(world);
         continue;
       }
       if (world.eve.attackBox && totem.lastEveSwing !== world.eve.swingId && aabbOverlap(world.eve.attackBox, box)) {
@@ -200,6 +195,7 @@ export function ArenaThreats({ world }: { world: ArenaWorld }) {
     // --- torrette: volo, tiro autonomo e colpi ricevuti ---
     for (let i = world.turrets.length - 1; i >= 0; i -= 1) {
       const turret = world.turrets[i];
+      if (!turret) continue;
       turret.flash = Math.max(0, turret.flash - delta);
 
       if (turret.state === 'flying') {
@@ -215,6 +211,7 @@ export function ArenaThreats({ world }: { world: ArenaWorld }) {
         let damage = player.attackDamage * player.damageMultiplier;
         if (player.counterWindow > 0) damage *= COUNTER_MULTIPLIER;
         damageTurret(world, i, damage);
+        onPlayerMeleeHit(world);
         continue;
       }
       if (world.eve.attackBox && turret.lastEveSwing !== world.eve.swingId && aabbOverlap(world.eve.attackBox, box)) {

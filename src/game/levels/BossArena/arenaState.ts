@@ -1,4 +1,5 @@
 import type { AABB } from '@/game/render2d/collision';
+import type { PowerUpId } from './powerUps';
 import {
   ARENA_GROUND_Y,
   ARENA_PLAYER_SPAWN_X,
@@ -54,6 +55,12 @@ export interface ArenaPlayerState {
   /** Modificatori dal risultato dell'evento speciale. */
   speedMultiplier: number;
   damageMultiplier: number;
+  /** Furia 0-100 (potenziamento con berserk): si carica con l'eccesso della barra abilità. */
+  rage: number;
+  /** Berserk in corso: più veloce/forte, gli attacchi contano anche come parata. */
+  berserk: boolean;
+  /** Moltiplicatore a catena del berserk (1 = nessuno). */
+  combo: number;
 }
 
 export interface ArenaBossState {
@@ -87,6 +94,12 @@ export interface ArenaBossState {
   vanished: boolean;
   /** Dove ricomparirà (marcatore a terra), o null. */
   teleportDestX: number | null;
+  /** Vero se sta eseguendo (o caricando) un attacco PARABILE: un colpo di
+   *  pistola/onda lo para invece di ferirlo. */
+  parryable: boolean;
+  /** Impostato da `combat.ts` quando un colpo a distanza lo para: `BossChecco`
+   *  interrompe la mossa in corso al frame successivo. */
+  interrupted: boolean;
 }
 
 export type EveStatus = 'down' | 'rising' | 'active' | 'staggered';
@@ -157,6 +170,64 @@ export interface ArenaTotem {
 }
 
 /**
+ * Colpo del giocatore che non è una spada: traccia della pistola (istantanea,
+ * solo visiva), onda celeste (viaggia fino al primo ostacolo) e onda d'urto del
+ * berserk (attraversa tutto fino al bordo dell'arena).
+ */
+export interface PlayerShot {
+  kind: 'tracer' | 'wave' | 'shock';
+  x: number;
+  y: number;
+  dir: 1 | -1;
+  /** Traccia: ascissa finale. */
+  x2?: number;
+  /** Secondi residui (traccia) o di vita massima (onde). */
+  life: number;
+  damage: number;
+  posture: number;
+  /** Onda d'urto: bersagli già colpiti (uno solo colpo ciascuno). */
+  hit?: Set<object>;
+}
+
+/** Effetto visivo a cerchio che si espande (esplosioni, ruggito, schianto). */
+export interface ArenaFx {
+  x: number;
+  y: number;
+  /** Raggio finale e durata. */
+  radius: number;
+  life: number;
+  lifeMax: number;
+  color: string;
+}
+
+/** Carica con falce (abilità a barra piena del potenziamento Bloodborne): una
+ *  sequenza guidata che comanda sia il giocatore sia il boss (vedi `finisher.ts`). */
+export interface ArenaFinisher {
+  phase: 'dash' | 'launch' | 'hang' | 'slam' | 'recover';
+  /** Secondi dall'inizio della fase corrente. */
+  t: number;
+  dir: 1 | -1;
+  startX: number;
+  startY: number;
+  /** Dove si ferma il giocatore (accanto al boss). */
+  targetX: number;
+  damage: number;
+  posture: number;
+  /** `BossChecco` ha già interrotto la mossa del boss. */
+  started: boolean;
+  /** Posizione del giocatore, scritta dalla sequenza e letta da `PlayerArena`. */
+  playerX: number;
+  playerY: number;
+}
+
+/** Scelta del potenziamento in corso: il gioco è fermo finché non si sceglie. */
+export interface ArenaChoice {
+  picked: PowerUpId | null;
+  /** Secondi residui della scritta di introduzione dopo la scelta. */
+  introT: number;
+}
+
+/**
  * Numero di danno da mostrare a schermo: `combat.ts` lo mette in coda al colpo,
  * `DamageNumbers.tsx` lo svuota ogni frame. `boost` > 1 = colpo potenziato
  * (boss barcollante, finestra dopo una parata, buff), `blocked` = scudo del
@@ -169,6 +240,8 @@ export interface DamagePopup {
   target: 'boss' | 'player' | 'object';
   boost: number;
   blocked?: boolean;
+  /** Testo al posto del numero (es. "PARATA"). */
+  label?: string;
 }
 
 /** Tutto ciò che sistemi diversi (giocatore, boss, Eve) si scambiano ad ogni
@@ -183,6 +256,15 @@ export interface ArenaWorld {
   turrets: ArenaTurret[];
   /** Coda dei numeri di danno ancora da mostrare (la svuota `DamageNumbers`). */
   popups: DamagePopup[];
+  /** Potenziamento scelto (null = equipaggiamento base). */
+  powerUp: PowerUpId | null;
+  /** Scelta del potenziamento in corso (gioco fermo), o null. */
+  choice: ArenaChoice | null;
+  /** Colpi a distanza del giocatore e relativi effetti visivi. */
+  shots: PlayerShot[];
+  fx: ArenaFx[];
+  /** Carica con falce in corso (giocatore e boss comandati dalla sequenza), o null. */
+  finisher: ArenaFinisher | null;
   /** SOLO SVILUPPO: id di una mossa che Checco userà alla prossima scelta
    *  (es. da console `__arenaWorld.forceMove = 'tempesta'`), per provarla. */
   forceMove: string | null;
@@ -220,7 +302,10 @@ export function createArenaWorld(): ArenaWorld {
       parryFlash: 0,
       counterWindow: 0,
       speedMultiplier: 1,
-      damageMultiplier: 1
+      damageMultiplier: 1,
+      rage: 0,
+      berserk: false,
+      combo: 1
     },
     boss: {
       x: BOSS_SPAWN_X,
@@ -241,7 +326,9 @@ export function createArenaWorld(): ArenaWorld {
       hopTime: 0,
       hopVx: 0,
       vanished: false,
-      teleportDestX: null
+      teleportDestX: null,
+      parryable: false,
+      interrupted: false
     },
     eve: { status: 'down', x: EVE_DOWN_X, facing: -1, attackBox: null, swingId: 0 },
     projectiles: [],
@@ -249,6 +336,11 @@ export function createArenaWorld(): ArenaWorld {
     totems: [],
     turrets: [],
     popups: [],
+    powerUp: null,
+    choice: null,
+    shots: [],
+    fx: [],
+    finisher: null,
     forceMove: null,
     clash: null,
     moveLog: [],

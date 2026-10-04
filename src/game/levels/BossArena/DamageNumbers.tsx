@@ -43,8 +43,10 @@ export function DamageNumbers({ world }: { world: ArenaWorld }) {
   return (
     <>
       {popups.map((popup) => {
-        const text = popup.blocked ? 'BLOCCATO' : String(Math.max(1, Math.round(popup.amount)));
-        const className = popup.blocked
+        const text = popup.label ?? (popup.blocked ? 'BLOCCATO' : String(Math.max(1, Math.round(popup.amount))));
+        const className = popup.label
+          ? styles.parry
+          : popup.blocked
           ? styles.blocked
           : popup.target === 'player'
             ? styles.player

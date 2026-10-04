@@ -38,6 +38,44 @@ function makeScreenTexture(kind: ArenaBackdropId): CanvasTexture {
       ctx.quadraticCurveTo(380, 160, 512, 205);
       ctx.lineTo(512, 256);
       ctx.fill();
+    } else if (kind === 'bloodborne') {
+      // Bloodborne (placeholder): notte gotica color sangue, luna enorme,
+      // guglie e lampioni in controluce. Da sostituire col video/asset veri.
+      const sky = ctx.createLinearGradient(0, 0, 0, 256);
+      sky.addColorStop(0, '#3a0d16');
+      sky.addColorStop(1, '#0b0407');
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, 512, 256);
+      const halo = ctx.createRadialGradient(330, 90, 10, 330, 90, 120);
+      halo.addColorStop(0, 'rgba(231, 201, 192, 0.55)');
+      halo.addColorStop(1, 'rgba(231, 201, 192, 0)');
+      ctx.fillStyle = halo;
+      ctx.fillRect(0, 0, 512, 256);
+      ctx.fillStyle = '#e7c9c0';
+      ctx.beginPath();
+      ctx.arc(330, 90, 46, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#050204';
+      // Skyline di guglie.
+      const spires: [number, number, number][] = [
+        [20, 70, 40], [70, 120, 28], [105, 50, 44], [160, 100, 30],
+        [215, 60, 38], [290, 130, 26], [400, 85, 40], [450, 55, 46]
+      ];
+      for (const [x, top, width] of spires) {
+        ctx.beginPath();
+        ctx.moveTo(x, 256);
+        ctx.lineTo(x, top + 30);
+        ctx.lineTo(x + width / 2, top - 30);
+        ctx.lineTo(x + width, top + 30);
+        ctx.lineTo(x + width, 256);
+        ctx.fill();
+      }
+      ctx.fillRect(0, 214, 512, 42);
+      // Lampioni.
+      ctx.fillStyle = '#f2b95e';
+      for (const x of [60, 190, 330, 470]) ctx.fillRect(x, 176, 5, 5);
+      ctx.fillStyle = '#050204';
+      for (const x of [60, 190, 330, 470]) ctx.fillRect(x + 2, 180, 1, 36);
     } else {
       // "Altro film" (placeholder): notte blu con luna e qualche stella.
       const sky = ctx.createLinearGradient(0, 0, 0, 256);
@@ -73,7 +111,8 @@ export function ArenaBackdrop() {
     () => ({
       sala: makeScreenTexture('sala'),
       buen_camino: makeScreenTexture('buen_camino'),
-      altro_film: makeScreenTexture('altro_film')
+      altro_film: makeScreenTexture('altro_film'),
+      bloodborne: makeScreenTexture('bloodborne')
     }),
     []
   );

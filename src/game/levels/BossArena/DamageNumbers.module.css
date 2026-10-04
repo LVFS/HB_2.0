@@ -37,6 +37,13 @@
   font-size: 1.1rem;
 }
 
+/* Colpo a distanza che PARA l'attacco di Checco. */
+.parry {
+  color: var(--accent-bright);
+  font-size: 1.5rem;
+  letter-spacing: var(--tracking-label);
+}
+
 /* Colpo fermato dallo scudo del Buen Camino. */
 .blocked {
   color: var(--steel);

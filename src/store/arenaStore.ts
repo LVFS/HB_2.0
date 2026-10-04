@@ -9,6 +9,7 @@ interface ArenaHudState {
   bossHp: number;
   bossHpMax: number;
   bossPosture: number;
+  bossPostureMax: number;
   healsLeft: number;
   /** Barra abilità 0-100. */
   skill: number;
@@ -27,7 +28,7 @@ interface ArenaHudState {
   evePromptVisible: boolean;
   set: (patch: Partial<Omit<ArenaHudState, 'set' | 'reset' | 'triggerFlash'>>) => void;
   triggerFlash: () => void;
-  reset: (playerHpMax: number, bossHpMax: number) => void;
+  reset: (playerHpMax: number, bossHpMax: number, bossPostureMax: number) => void;
 }
 
 /**
@@ -43,6 +44,7 @@ export const useArenaStore = create<ArenaHudState>((set) => ({
   bossHp: 100,
   bossHpMax: 100,
   bossPosture: 0,
+  bossPostureMax: 100,
   healsLeft: 3,
   skill: 0,
   totemsLeft: 0,
@@ -55,13 +57,14 @@ export const useArenaStore = create<ArenaHudState>((set) => ({
   evePromptVisible: false,
   set: (patch) => set(patch),
   triggerFlash: () => set((state) => ({ flash: state.flash + 1 })),
-  reset: (playerHpMax, bossHpMax) =>
+  reset: (playerHpMax, bossHpMax, bossPostureMax) =>
     set({
       playerHp: playerHpMax,
       playerHpMax,
       bossHp: bossHpMax,
       bossHpMax,
       bossPosture: 0,
+      bossPostureMax,
       healsLeft: 3,
       skill: 0,
       totemsLeft: 0,

@@ -1,6 +1,6 @@
 import { useArenaStore } from '@/store/arenaStore';
 import type { AABB } from '@/game/render2d/collision';
-import type { ArenaWorld } from './arenaState';
+import type { ArenaWorld, DamagePopup } from './arenaState';
 import {
   ARENA_PLAYER_HEIGHT,
   BOSS_HALF_WIDTH,
@@ -52,6 +52,11 @@ function requestHitStop(world: ArenaWorld, seconds: number) {
   world.hitStop = Math.max(world.hitStop, seconds);
 }
 
+/** Mette in coda un numero di danno (lo disegna `DamageNumbers.tsx`). */
+function pushPopup(world: ArenaWorld, popup: DamagePopup) {
+  world.popups.push(popup);
+}
+
 /**
  * Un colpo (del giocatore o di Eve) va a segno sul boss: danno, postura,
  * eventuale barcollamento. I moltiplicatori si compongono: buff del giocatore,
@@ -67,8 +72,11 @@ export function hitBoss(
 
   // Finché esiste un oggetto del Buen Camino Checco è invulnerabile: il colpo
   // viene bloccato (lampo dello scudo) e non dà danno, postura né abilità.
+  const popupX = boss.x + (Math.random() - 0.5) * 0.8;
+  const popupY = boss.y + BOSS_HEIGHT + 0.15;
   if (world.totems.length > 0) {
     boss.shieldHit = 0.15;
+    pushPopup(world, { x: popupX, y: popupY, amount: 0, target: 'boss', boost: 1, blocked: true });
     return;
   }
 
@@ -78,6 +86,18 @@ export function hitBoss(
     if (player.counterWindow > 0) damage *= COUNTER_MULTIPLIER;
   }
   if (boss.staggerTimer > 0) damage *= BOSS_STAGGER_DAMAGE_MULTIPLIER;
+
+  if (import.meta.env.DEV) {
+    const parts = [
+      `base ${hit.damage}`,
+      hit.source === 'player' && player.damageMultiplier !== 1 ? `buff ×${player.damageMultiplier}` : null,
+      hit.source === 'player' && player.counterWindow > 0 ? `parata ×${COUNTER_MULTIPLIER}` : null,
+      boss.staggerTimer > 0 ? `stordito ×${BOSS_STAGGER_DAMAGE_MULTIPLIER}` : null
+    ].filter(Boolean);
+    // eslint-disable-next-line no-console -- log di sviluppo (rimosso dalla build)
+    console.debug(`[danno boss] ${hit.source}: ${damage.toFixed(1)} (${parts.join(', ')})`);
+  }
+  pushPopup(world, { x: popupX, y: popupY, amount: damage, target: 'boss', boost: damage / hit.damage });
 
   boss.hp = Math.max(0, boss.hp - damage);
   boss.hitFlash = 0.1;
@@ -134,6 +154,7 @@ export function damageTotem(world: ArenaWorld, index: number, amount: number): v
   if (!totem) return;
   totem.hp -= amount;
   totem.flash = 0.12;
+  pushPopup(world, { x: totem.x, y: 1.4, amount, target: 'object', boost: 1 });
   world.hitStop = Math.max(world.hitStop, HITSTOP_LIGHT);
   const store = useArenaStore.getState();
   if (totem.hp <= 0) {
@@ -152,6 +173,7 @@ export function damageTurret(world: ArenaWorld, index: number, amount: number): 
   if (!turret) return;
   turret.hp -= amount;
   turret.flash = 0.12;
+  pushPopup(world, { x: turret.x, y: turret.y + 0.7, amount, target: 'object', boost: 1 });
   world.hitStop = Math.max(world.hitStop, HITSTOP_LIGHT);
   if (turret.hp <= 0) {
     world.turrets.splice(index, 1);
@@ -199,6 +221,13 @@ export function hitPlayer(
   }
 
   player.healing = false;
+  pushPopup(world, {
+    x: player.x + (Math.random() - 0.5) * 0.5,
+    y: player.y + ARENA_PLAYER_HEIGHT + 0.15,
+    amount: damage,
+    target: 'player',
+    boost: 1
+  });
   player.hp = Math.max(0, player.hp - damage);
   player.hitTimer = PLAYER_HIT_STUN;
   player.iframes = PLAYER_IFRAMES_AFTER_HIT;

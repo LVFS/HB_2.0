@@ -14,6 +14,7 @@ export function ArenaHud() {
   const bossHp = useArenaStore((s) => s.bossHp);
   const bossHpMax = useArenaStore((s) => s.bossHpMax);
   const bossPosture = useArenaStore((s) => s.bossPosture);
+  const bossPostureMax = useArenaStore((s) => s.bossPostureMax);
   const clash = useArenaStore((s) => s.clash);
   const totemsLeft = useArenaStore((s) => s.totemsLeft);
   const healsLeft = useArenaStore((s) => s.healsLeft);
@@ -35,12 +36,18 @@ export function ArenaHud() {
         </div>
         <div className={styles.track}>
           <div className={styles.fillBoss} style={{ width: pct(bossHp, bossHpMax) }} />
+          <span className={styles.trackValue}>
+            {Math.ceil(bossHp)} / {bossHpMax}
+          </span>
         </div>
         <div className={styles.trackThin}>
           <div
-            className={bossPosture >= 100 ? styles.fillPostureBroken : styles.fillPosture}
-            style={{ width: `${bossPosture}%` }}
+            className={bossPosture >= bossPostureMax ? styles.fillPostureBroken : styles.fillPosture}
+            style={{ width: pct(bossPosture, bossPostureMax) }}
           />
+        </div>
+        <div className={styles.postureValue}>
+          Postura {Math.round(bossPosture)} / {bossPostureMax}
         </div>
         {totemsLeft > 0 && (
           <div className={styles.totems}>Checco è invulnerabile — oggetti da distruggere: {totemsLeft}</div>
@@ -53,6 +60,9 @@ export function ArenaHud() {
         </div>
         <div className={styles.track}>
           <div className={styles.fillPlayer} style={{ width: pct(playerHp, playerHpMax) }} />
+          <span className={styles.trackValue}>
+            {Math.ceil(playerHp)} / {playerHpMax}
+          </span>
         </div>
         {/* Barra abilità: il segno a metà è la prima soglia, la fine la seconda. */}
         <div className={styles.skillTrack}>

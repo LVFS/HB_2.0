@@ -36,7 +36,8 @@
 }
 
 .track {
-  height: 14px;
+  position: relative;
+  height: 18px;
   background: var(--surface-control);
   border: 1px solid var(--line-strong);
   overflow: hidden;
@@ -45,6 +46,29 @@
 .trackThin {
   composes: track;
   height: 7px;
+}
+
+/* Valore numerico centrato sulla barra (es. "480 / 600"). */
+.trackValue {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--text);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+.postureValue {
+  color: var(--text);
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  text-align: right;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
 }
 
 .fill {

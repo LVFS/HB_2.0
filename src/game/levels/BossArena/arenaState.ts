@@ -156,6 +156,21 @@ export interface ArenaTotem {
   lastEveSwing: number;
 }
 
+/**
+ * Numero di danno da mostrare a schermo: `combat.ts` lo mette in coda al colpo,
+ * `DamageNumbers.tsx` lo svuota ogni frame. `boost` > 1 = colpo potenziato
+ * (boss barcollante, finestra dopo una parata, buff), `blocked` = scudo del
+ * Buen Camino (nessun danno).
+ */
+export interface DamagePopup {
+  x: number;
+  y: number;
+  amount: number;
+  target: 'boss' | 'player' | 'object';
+  boost: number;
+  blocked?: boolean;
+}
+
 /** Tutto ciò che sistemi diversi (giocatore, boss, Eve) si scambiano ad ogni
  *  frame. Un solo oggetto in un ref, mai stato React. */
 export interface ArenaWorld {
@@ -166,6 +181,8 @@ export interface ArenaWorld {
   hazards: ArenaHazard[];
   totems: ArenaTotem[];
   turrets: ArenaTurret[];
+  /** Coda dei numeri di danno ancora da mostrare (la svuota `DamageNumbers`). */
+  popups: DamagePopup[];
   /** SOLO SVILUPPO: id di una mossa che Checco userà alla prossima scelta
    *  (es. da console `__arenaWorld.forceMove = 'tempesta'`), per provarla. */
   forceMove: string | null;
@@ -231,6 +248,7 @@ export function createArenaWorld(): ArenaWorld {
     hazards: [],
     totems: [],
     turrets: [],
+    popups: [],
     forceMove: null,
     clash: null,
     moveLog: [],

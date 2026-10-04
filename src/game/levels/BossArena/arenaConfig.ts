@@ -128,8 +128,8 @@ export const SKILL_GAIN_STAGGER = 25;
 /** Soglie e mosse (segnaposto, le mosse vere si progettano insieme): la tier
  *  alta consuma tutta la barra, la bassa metà. `cost` è quanto toglie. */
 export const SKILL_TIERS = [
-  { id: 'fendente_caricato', threshold: 100, cost: 100, windup: 0.3, active: 0.2, recovery: 0.35, reach: 3.2, damage: 100, posture: 100 },
-  { id: 'affondo', threshold: 50, cost: 50, windup: 0.15, active: 0.15, recovery: 0.25, reach: 2.4, damage: 250, posture: 250 }
+  { id: 'fendente_caricato', threshold: 100, cost: 100, windup: 0.3, active: 0.2, recovery: 0.35, reach: 3.2, damage: 250, posture: 250 },
+  { id: 'affondo', threshold: 50, cost: 50, windup: 0.15, active: 0.15, recovery: 0.25, reach: 2.4, damage: 100, posture: 100 }
 ] as const;
 
 /** Dopo vittoria/sconfitta: pausa prima del passaggio successivo. */

@@ -1,0 +1,60 @@
+/* Numeri di danno sopra boss/giocatore/oggetti: salgono e svaniscono (~0.9s,
+   deve restare allineato a POPUP_LIFETIME_MS in DamageNumbers.tsx). */
+
+.number {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-shadow:
+    0 2px 0 rgba(0, 0, 0, 0.85),
+    0 0 8px rgba(0, 0, 0, 0.7);
+  animation: rise 0.9s var(--ease-out) forwards;
+}
+
+/* Colpo normale sul boss. */
+.boss {
+  color: var(--text);
+}
+
+/* Colpo potenziato (boss barcollante, dopo una parata, buff): più grande e oro. */
+.boosted {
+  color: var(--accent-bright);
+  font-size: 1.9rem;
+}
+
+/* Danno subito dal giocatore. */
+.player {
+  color: #f87171;
+  font-size: 1.5rem;
+}
+
+/* Torrette e oggetti del Buen Camino. */
+.object {
+  color: var(--steel);
+  font-size: 1.1rem;
+}
+
+/* Colpo fermato dallo scudo del Buen Camino. */
+.blocked {
+  color: var(--steel);
+  font-size: 0.85rem;
+  letter-spacing: var(--tracking-label);
+}
+
+@keyframes rise {
+  0% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.7);
+  }
+  15% {
+    opacity: 1;
+    transform: translateY(-4px) scale(1.15);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-48px) scale(1);
+  }
+}

@@ -7,6 +7,7 @@ import { useLevelStore } from '@/store/levelStore';
 import { ArenaBackdrop } from './ArenaBackdrop';
 import { ArenaThreats } from './ArenaThreats';
 import { BossChecco } from './BossChecco';
+import { DamageNumbers } from './DamageNumbers';
 import { EveArena } from './EveArena';
 import { PlayerArena } from './PlayerArena';
 import { createArenaWorld, type ArenaWorld } from './arenaState';
@@ -18,7 +19,8 @@ import {
   ARENA_CAMERA_Z,
   ARENA_CAMERA_ZOOM,
   BOSS_MAX_HP,
-  PLAYER_MAX_HP
+  PLAYER_MAX_HP,
+  POSTURE_MAX
 } from './arenaConfig';
 import styles from './SceneManagerBossArena.module.css';
 
@@ -68,7 +70,7 @@ export function SceneManagerBossArena({ onWhiteout }: SceneManagerBossArenaProps
   }, [runId]);
 
   useEffect(() => {
-    useArenaStore.getState().reset(PLAYER_MAX_HP, BOSS_MAX_HP);
+    useArenaStore.getState().reset(PLAYER_MAX_HP, BOSS_MAX_HP, POSTURE_MAX);
     // Solo in sviluppo: il mondo esposto su `window` permette di provare
     // esiti/round senza giocare un intero combattimento (es. da console
     // `__arenaWorld.boss.hp = 60`). Sparisce nella build pubblicata.
@@ -96,6 +98,7 @@ export function SceneManagerBossArena({ onWhiteout }: SceneManagerBossArenaProps
           <BossChecco key={`boss-${runId}`} world={world} onVictory={handleVictory} onDefeat={handleDefeat} />
           <ArenaThreats key={`threats-${runId}`} world={world} />
           <PlayerArena key={`player-${runId}`} world={world} />
+          <DamageNumbers key={`damage-${runId}`} world={world} />
         </Suspense>
       </Canvas>
 

@@ -94,3 +94,29 @@ FASE 8 avrà un `PlayerRunner` leggero, non il pesante `PlayerArena`. Per non co
 ## 9. Fuori scope (non farlo ora)
 
 Nuove meccaniche, bilanciamento, nuove mosse del boss, cambi grafici, `dialogo_pre_boss`, storyboard di entrata sala e intermezzo (arrivano dopo, vedi FASE 8 e note a fine documento).
+
+---
+
+## Stato di esecuzione (aggiunto a fine FASE 7)
+
+Eseguita. Verifica a ogni passo: `tsc --noEmit`, lint e `vite build` puliti + playtest automatico in
+browser (Playwright, 44 controlli: combattimento base, mosse del boss, totem/torrette, contrasto,
+evento speciale e scelta del potenziamento, pistola/onda/carica/berserk, finale con QTE riuscito e
+fallito fino al Sotterraneo) tutto verde prima e dopo ogni passo.
+
+- [x] 2. Rete di sicurezza: stato di partenza annotato (chunk `SceneManagerBossArena` 67.98 kB, gzip 21.56 kB).
+- [x] 3. Costanti e numeri magici spostati in `arenaConfig.ts` (solo letterale → costante).
+- [x] 4. `BossChecco.tsx` spezzato: 45 KB → 191 righe; moduli `boss*.ts` senza React. Un solo commit invece di
+  uno per modulo (i passaggi intermedi non compilavano da soli). Il file di resa si chiama `bossRender.ts`,
+  non `bossVisuals.ts`, per evitare il conflitto di maiuscole con `BossVisuals.tsx` su Windows.
+- [x] 5. Primitive condivise: `game/shared/usePlayerActions.ts`, `game/shared/jump.ts`; `hitPlayer` accetta
+  `sourceX` (la sua dipendenza residua dall'arena è `ArenaWorld`: `over`, `player`, `popups`, `hitStop`, e il boss per la parata).
+- [x] 6. CLAUDE.md da ~71 KB a ~29 KB; riferimenti in `docs/BOSS_ARENA_RIFERIMENTO.md`,
+  `docs/LIVELLO1_RIFERIMENTO.md`, `docs/MENU_E_SELEZIONE_LIVELLI_RIFERIMENTO.md`. Copiati anche i documenti di design
+  `FASE6`, `FASE6b` e questo. **Mancano ancora** `FASE_BOSS_CHECCO_ZALONE.md` e `FASE8_TUNNEL_INSEGUIMENTO.md`: non
+  erano nel repo né nel log della sessione, vanno copiati a mano in `docs/`.
+- [x] 7. Pulizie: `src/audio/theme.mp3` e la regola `.gitignore` su `bkp_satellite` risultavano già a posto (rimosso
+  solo il promemoria in CLAUDE.md); `transformToD1` lasciato con un commento "da usare in FASE 8".
+- [x] 8. Chiusura: chunk `SceneManagerBossArena` 70.59 kB (gzip 22.99 kB) — circa +3.8% per l'overhead dei moduli e
+  delle primitive condivise; nessun import ciclico dai moduli verso `BossChecco.tsx`; `window.__arenaWorld`,
+  `forceMove` e `moveLog` funzionano ancora (usati dal playtest).

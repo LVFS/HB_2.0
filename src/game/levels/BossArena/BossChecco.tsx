@@ -21,6 +21,34 @@ import { startFinale, updateFinale } from './finale';
 import { updateFinisher } from './finisher';
 import { POWER_UP_IDS, POWER_UPS, type PowerUpId } from './powerUps';
 import {
+  ENGAGE_CLOSE_CHANCE,
+  ENGAGE_CLOSE_DISTANCE,
+  ENGAGE_FAR_MIN,
+  ENGAGE_FAR_SPREAD,
+  ENGAGE_APPROACH_TOLERANCE,
+  ENGAGE_RETREAT_TOLERANCE,
+  ENGAGE_RETREAT_SPEED,
+  BOSS_COOLDOWN_AFTER_SPECIAL,
+  BOSS_COOLDOWN_AFTER_SUMMON,
+  BOSS_COOLDOWN_AFTER_FINISHER,
+  BOSS_COOLDOWN_AFTER_INTERRUPT,
+  BOSS_EDGE_MARGIN,
+  DEBRIS_EDGE_MARGIN,
+  TELEPORT_EDGE_MARGIN,
+  TOTEM_EDGE_MARGIN,
+  DEBRIS_JITTER,
+  PROJECTILE_SPAWN_OFFSET,
+  BOLT_ORIGIN_HEIGHT,
+  PLAYER_AIM_HEIGHT,
+  TURRET_EDGE_MARGIN,
+  TURRET_MIN_DISTANCE_FROM_PLAYER,
+  TURRET_MIN_SPACING,
+  TURRET_WALL_MIN_GAP,
+  TURRET_WALL_INSET,
+  TURRET_LAUNCH_HEIGHT,
+  TURRET_FLOOR_ATTEMPTS,
+  TURRET_WALL_ATTEMPTS,
+  TOTEM_PLACEMENT_ATTEMPTS,
   FINALE_HP_FRACTION,
   POWER_UP_INTRO_SECONDS,
   ARENA_CEILING_Y,
@@ -144,7 +172,7 @@ function totalDuration(move: CheccoMove): number {
  * uscivano mai.
  */
 function pickEngageDistance(): number {
-  return Math.random() < 0.45 ? 1.6 : 3.8 + Math.random() * 4.2;
+  return Math.random() < ENGAGE_CLOSE_CHANCE ? ENGAGE_CLOSE_DISTANCE : ENGAGE_FAR_MIN + Math.random() * ENGAGE_FAR_SPREAD;
 }
 
 /** Fine dell'ultima finestra NON parabile di una mossa (secondi dal windup): l'avviso resta fino a lì. */
@@ -332,7 +360,7 @@ export function BossChecco({ world, onVictory, onDefeat }: BossCheccoProps) {
     boss.round = 2;
     store.set({ round: 2 });
     if (kind === 'completed') store.triggerFlash();
-    r.cooldown = 1.6;
+    r.cooldown = BOSS_COOLDOWN_AFTER_SPECIAL;
     r.action = null;
     boss.attackBox = null;
   };
@@ -340,11 +368,11 @@ export function BossChecco({ world, onVictory, onDefeat }: BossCheccoProps) {
   /** Fa comparire gli oggetti del Buen Camino, lontani da Checco e fra loro. */
   const spawnTotems = (count: number) => {
     const { boss } = world;
-    const limit = ARENA_HALF_WIDTH - 1.5;
+    const limit = ARENA_HALF_WIDTH - TOTEM_EDGE_MARGIN;
     const placed: number[] = [];
     for (let n = 0; n < count; n += 1) {
       let x = 0;
-      for (let attempt = 0; attempt < 60; attempt += 1) {
+      for (let attempt = 0; attempt < TOTEM_PLACEMENT_ATTEMPTS; attempt += 1) {
         x = (Math.random() * 2 - 1) * limit;
         const farFromBoss = Math.abs(x - boss.x) >= TOTEM_MIN_DISTANCE_FROM_BOSS;
         const farFromOthers = placed.every((other) => Math.abs(x - other) >= TOTEM_MIN_SPACING);
@@ -371,19 +399,19 @@ export function BossChecco({ world, onVictory, onDefeat }: BossCheccoProps) {
     let mount: 'floor' | 'wall' = 'floor';
     if (Math.random() < TURRET_FLOOR_CHANCE) {
       y = TURRET_SIZE / 2;
-      for (let attempt = 0; attempt < 30; attempt += 1) {
-        x = (Math.random() * 2 - 1) * (ARENA_HALF_WIDTH - 1.5);
-        const farFromPlayer = Math.abs(x - player.x) >= 3;
-        const farFromOthers = world.turrets.every((other) => Math.abs(other.x - x) >= 2.5);
+      for (let attempt = 0; attempt < TURRET_FLOOR_ATTEMPTS; attempt += 1) {
+        x = (Math.random() * 2 - 1) * (ARENA_HALF_WIDTH - TURRET_EDGE_MARGIN);
+        const farFromPlayer = Math.abs(x - player.x) >= TURRET_MIN_DISTANCE_FROM_PLAYER;
+        const farFromOthers = world.turrets.every((other) => Math.abs(other.x - x) >= TURRET_MIN_SPACING);
         if (farFromPlayer && farFromOthers) break;
       }
     } else {
       mount = 'wall';
       const side = Math.random() < 0.5 ? -1 : 1;
-      x = side * (ARENA_HALF_WIDTH - TURRET_SIZE / 2 + 0.05);
-      for (let attempt = 0; attempt < 20; attempt += 1) {
+      x = side * (ARENA_HALF_WIDTH - TURRET_SIZE / 2 + TURRET_WALL_INSET);
+      for (let attempt = 0; attempt < TURRET_WALL_ATTEMPTS; attempt += 1) {
         y = TURRET_WALL_Y[0] + Math.random() * (TURRET_WALL_Y[1] - TURRET_WALL_Y[0]);
-        const clearOfOthers = world.turrets.every((other) => other.x !== x || Math.abs(other.y - y) >= 1.1);
+        const clearOfOthers = world.turrets.every((other) => other.x !== x || Math.abs(other.y - y) >= TURRET_WALL_MIN_GAP);
         if (clearOfOthers) break;
       }
     }
@@ -393,7 +421,7 @@ export function BossChecco({ world, onVictory, onDefeat }: BossCheccoProps) {
       mount,
       state: 'flying',
       fromX: boss.x,
-      fromY: boss.y + 1.6,
+      fromY: boss.y + TURRET_LAUNCH_HEIGHT,
       flyT: 0,
       hp: TURRET_HP,
       hpMax: TURRET_HP,
@@ -601,7 +629,7 @@ export function BossChecco({ world, onVictory, onDefeat }: BossCheccoProps) {
       if (updateFinisher(world, delta)) {
         world.finisher = null;
         boss.y = 0;
-        r.cooldown = 1.2;
+        r.cooldown = BOSS_COOLDOWN_AFTER_FINISHER;
         r.preferredDistance = pickEngageDistance();
       }
       g.position.set(boss.x, boss.y, 0);
@@ -619,7 +647,7 @@ export function BossChecco({ world, onVictory, onDefeat }: BossCheccoProps) {
         boss.vanished = false;
         boss.teleportDestX = null;
         boss.zoneRadius = null;
-        r.cooldown = 1.1;
+        r.cooldown = BOSS_COOLDOWN_AFTER_INTERRUPT;
         r.preferredDistance = pickEngageDistance();
       }
     }
@@ -721,7 +749,7 @@ export function BossChecco({ world, onVictory, onDefeat }: BossCheccoProps) {
       if (r.summon.t >= TOTEM_WINDUP) {
         spawnTotems(TOTEM_COUNTS[Math.min(r.totemEvents - 1, TOTEM_COUNTS.length - 1)]);
         r.summon = null;
-        r.cooldown = 0.8;
+        r.cooldown = BOSS_COOLDOWN_AFTER_SUMMON;
         useArenaStore.getState().set({
           message: 'BUEN CAMINO!',
           hint: 'Distruggi gli oggetti: finché esistono Checco è invulnerabile'
@@ -755,7 +783,7 @@ export function BossChecco({ world, onVictory, onDefeat }: BossCheccoProps) {
           a.leapStartX = boss.x;
           a.leapTargetX =
             leap.travel === 'target'
-              ? Math.min(ARENA_HALF_WIDTH - 0.4, Math.max(-ARENA_HALF_WIDTH + 0.4, a.targetX))
+              ? Math.min(ARENA_HALF_WIDTH - BOSS_EDGE_MARGIN, Math.max(-ARENA_HALF_WIDTH + BOSS_EDGE_MARGIN, a.targetX))
               : boss.x;
         }
         const airTime = leap.rise + leap.hang + leap.fall;
@@ -777,7 +805,7 @@ export function BossChecco({ world, onVictory, onDefeat }: BossCheccoProps) {
         a.projFired[i] = true;
         boss.facing = dx >= 0 ? 1 : -1;
         world.projectiles.push({
-          x: boss.x + boss.facing * 0.9,
+          x: boss.x + boss.facing * PROJECTILE_SPAWN_OFFSET,
           y: pr.y,
           vx: boss.facing * pr.speed,
           damage: pr.damage,
@@ -793,8 +821,8 @@ export function BossChecco({ world, onVictory, onDefeat }: BossCheccoProps) {
         // Ordine di caduta mescolato, così non si legge una sequenza fissa.
         const order = Array.from({ length: debris.count }, (_, i) => i).sort(() => Math.random() - 0.5);
         order.forEach((slot, n) => {
-          const offset = (slot - (debris.count - 1) / 2) * debris.spacing + (Math.random() - 0.5) * 0.5;
-          const x = Math.min(ARENA_HALF_WIDTH - 0.5, Math.max(-ARENA_HALF_WIDTH + 0.5, player.x + offset));
+          const offset = (slot - (debris.count - 1) / 2) * debris.spacing + (Math.random() - 0.5) * DEBRIS_JITTER;
+          const x = Math.min(ARENA_HALF_WIDTH - DEBRIS_EDGE_MARGIN, Math.max(-ARENA_HALF_WIDTH + DEBRIS_EDGE_MARGIN, player.x + offset));
           world.hazards.push({
             x,
             y: ARENA_CEILING_Y,
@@ -830,9 +858,9 @@ export function BossChecco({ world, onVictory, onDefeat }: BossCheccoProps) {
           while (a.boltsFired < a.boltCount && tt >= chargeEnd + a.boltsFired * storm.boltInterval) {
             a.boltsFired += 1;
             const originX = boss.x;
-            const originY = boss.y + 1.4;
+            const originY = boss.y + BOLT_ORIGIN_HEIGHT;
             const dxToPlayer = player.x - originX;
-            const dyToPlayer = player.y + 0.95 - originY;
+            const dyToPlayer = player.y + PLAYER_AIM_HEIGHT - originY;
             const length = Math.hypot(dxToPlayer, dyToPlayer) || 1;
             world.projectiles.push({
               x: originX,
@@ -855,7 +883,7 @@ export function BossChecco({ world, onVictory, onDefeat }: BossCheccoProps) {
         if (!a.teleported && boss.teleportDestX === null) {
           boss.vanished = true;
           const behind = player.x - player.facing * TELEPORT_BEHIND_DISTANCE;
-          boss.teleportDestX = Math.min(ARENA_HALF_WIDTH - 0.5, Math.max(-ARENA_HALF_WIDTH + 0.5, behind));
+          boss.teleportDestX = Math.min(ARENA_HALF_WIDTH - TELEPORT_EDGE_MARGIN, Math.max(-ARENA_HALF_WIDTH + TELEPORT_EDGE_MARGIN, behind));
         }
         if (!a.teleported && tt >= teleport.vanish) {
           a.teleported = true;
@@ -880,8 +908,8 @@ export function BossChecco({ world, onVictory, onDefeat }: BossCheccoProps) {
             // oltre di lui, nella stessa direzione, dentro i confini dell'arena.
             const travel = Math.max(Math.abs(a.targetX - boss.x), LUNGE_MIN_TRAVEL);
             a.lungeTargetX = Math.min(
-              ARENA_HALF_WIDTH - 0.4,
-              Math.max(-ARENA_HALF_WIDTH + 0.4, boss.x + boss.facing * travel)
+              ARENA_HALF_WIDTH - BOSS_EDGE_MARGIN,
+              Math.max(-ARENA_HALF_WIDTH + BOSS_EDGE_MARGIN, boss.x + boss.facing * travel)
             );
           }
           const lungeTarget = a.lungeTargetX ?? a.targetX;
@@ -962,18 +990,18 @@ export function BossChecco({ world, onVictory, onDefeat }: BossCheccoProps) {
         } else {
           boss.x += Math.sign(dx) * speed * delta;
         }
-      } else if (Math.abs(dx) > r.preferredDistance + 0.3) {
+      } else if (Math.abs(dx) > r.preferredDistance + ENGAGE_APPROACH_TOLERANCE) {
         // Raggiunge la distanza di ingaggio scelta per questo ciclo...
         boss.x += Math.sign(dx) * speed * delta;
-      } else if (Math.abs(dx) < r.preferredDistance - 0.8) {
+      } else if (Math.abs(dx) < r.preferredDistance - ENGAGE_RETREAT_TOLERANCE) {
         // ...e se il giocatore è più vicino si sposta all'indietro, più piano
         // di lui: così Checco non è sempre addosso e le cariche/i lanci a
         // distanza hanno spazio per essere scelti.
-        boss.x -= Math.sign(dx) * speed * 0.7 * delta;
+        boss.x -= Math.sign(dx) * speed * ENGAGE_RETREAT_SPEED * delta;
       }
     }
 
-    boss.x = Math.min(ARENA_HALF_WIDTH - 0.4, Math.max(-ARENA_HALF_WIDTH + 0.4, boss.x));
+    boss.x = Math.min(ARENA_HALF_WIDTH - BOSS_EDGE_MARGIN, Math.max(-ARENA_HALF_WIDTH + BOSS_EDGE_MARGIN, boss.x));
 
     // Sta eseguendo (o caricando) un attacco parabile? Un colpo a distanza lo
     // para invece di ferirlo. Mosse con sole finestre non parabili: no.

@@ -3,6 +3,7 @@ import type { AABB } from '@/game/render2d/collision';
 import type { ArenaProjectile, ArenaWorld, DamagePopup } from './arenaState';
 import {
   ARENA_PLAYER_HEIGHT,
+  PLAYER_BODY_HALF_WIDTH,
   BERSERK_AOE_DAMAGE,
   BERSERK_AOE_RADIUS,
   BERSERK_COMBO_MAX,
@@ -56,7 +57,7 @@ export function gainSkill(world: ArenaWorld, amount: number): void {
 
 /** Bersaglio dei colpi: le scatole "che possono essere colpite". */
 export function playerHurtbox(world: ArenaWorld): AABB {
-  return { x: world.player.x, y: world.player.y + ARENA_PLAYER_HEIGHT / 2, halfWidth: 0.35, halfHeight: ARENA_PLAYER_HEIGHT / 2 };
+  return { x: world.player.x, y: world.player.y + ARENA_PLAYER_HEIGHT / 2, halfWidth: PLAYER_BODY_HALF_WIDTH, halfHeight: ARENA_PLAYER_HEIGHT / 2 };
 }
 export function bossHurtbox(world: ArenaWorld): AABB {
   return { x: world.boss.x, y: world.boss.y + BOSS_HEIGHT / 2, halfWidth: BOSS_HALF_WIDTH, halfHeight: BOSS_HEIGHT / 2 };

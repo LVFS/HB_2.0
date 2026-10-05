@@ -328,6 +328,56 @@ export const SHOCK_SPEED = 16;
 export const SHOCK_DAMAGE = 140;
 export const SHOCK_POSTURE = 80;
 export const SHOCK_HALF_HEIGHT = 1.3;
+/** Altezza della hitbox d'attacco in berserk rispetto al normale (moltiplicatore). */
+export const BERSERK_ATTACK_HEIGHT_MULTIPLIER = 1.25;
+/** Attivazione del berserk: raggio e durata (s) dell'anello, hit-stop (s). */
+export const BERSERK_ACTIVATE_RING_RADIUS = 3.2;
+export const BERSERK_ACTIVATE_RING_LIFE = 0.5;
+export const BERSERK_ACTIVATE_HITSTOP = 0.2;
+
+/** Mezza larghezza del corpo del giocatore (collisione col boss e hurtbox). */
+export const PLAYER_BODY_HALF_WIDTH = 0.35;
+
+/**
+ * IA di Checco (FASE 7: spostate da `BossChecco.tsx`, valori invariati).
+ * Distanza di ingaggio: probabilità di restare vicino, distanza "vicino" e
+ * intervallo "lontano" (minimo + ampiezza) in unità; tolleranze per
+ * avvicinarsi/arretrare e velocità dell'arretramento (frazione della sua).
+ */
+export const ENGAGE_CLOSE_CHANCE = 0.45;
+export const ENGAGE_CLOSE_DISTANCE = 1.6;
+export const ENGAGE_FAR_MIN = 3.8;
+export const ENGAGE_FAR_SPREAD = 4.2;
+export const ENGAGE_APPROACH_TOLERANCE = 0.3;
+export const ENGAGE_RETREAT_TOLERANCE = 0.8;
+export const ENGAGE_RETREAT_SPEED = 0.7;
+/** Pause (s) prima della mossa successiva dopo un evento. */
+export const BOSS_COOLDOWN_AFTER_SPECIAL = 1.6;
+export const BOSS_COOLDOWN_AFTER_SUMMON = 0.8;
+export const BOSS_COOLDOWN_AFTER_FINISHER = 1.2;
+export const BOSS_COOLDOWN_AFTER_INTERRUPT = 1.1;
+/** Margini (unità) dai bordi dell'arena per boss, totem, detriti e teletrasporto. */
+export const BOSS_EDGE_MARGIN = 0.4;
+export const DEBRIS_EDGE_MARGIN = 0.5;
+export const TELEPORT_EDGE_MARGIN = 0.5;
+export const TOTEM_EDGE_MARGIN = 1.5;
+/** Detriti: scarto casuale (unità) attorno alla posizione calcolata. */
+export const DEBRIS_JITTER = 0.5;
+/** Proiettili e fulmini: distanza di partenza davanti al boss e quote di mira. */
+export const PROJECTILE_SPAWN_OFFSET = 0.9;
+export const BOLT_ORIGIN_HEIGHT = 1.4;
+export const PLAYER_AIM_HEIGHT = 0.95;
+/** Torrette: margine dai bordi, distanze minime da giocatore/altre torrette, scarto
+ *  verticale minimo sul muro, quota di lancio sopra i piedi del boss, tentativi di piazzamento. */
+export const TURRET_EDGE_MARGIN = 1.5;
+export const TURRET_MIN_DISTANCE_FROM_PLAYER = 3;
+export const TURRET_MIN_SPACING = 2.5;
+export const TURRET_WALL_MIN_GAP = 1.1;
+export const TURRET_WALL_INSET = 0.05;
+export const TURRET_LAUNCH_HEIGHT = 1.6;
+export const TURRET_FLOOR_ATTEMPTS = 30;
+export const TURRET_WALL_ATTEMPTS = 20;
+export const TOTEM_PLACEMENT_ATTEMPTS = 60;
 
 /**
  * Finale del boss: sotto questa frazione di vita il combattimento si ferma,

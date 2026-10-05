@@ -8,6 +8,11 @@ import { addRing } from './combat';
 import { createFinisher } from './finisher';
 import { fireGun, launchShock, launchWave } from './playerShots';
 import {
+  BERSERK_ACTIVATE_HITSTOP,
+  BERSERK_ACTIVATE_RING_LIFE,
+  BERSERK_ACTIVATE_RING_RADIUS,
+  BERSERK_ATTACK_HEIGHT_MULTIPLIER,
+  PLAYER_BODY_HALF_WIDTH,
   BERSERK_ATTACK_SPEED,
   BERSERK_DRAIN_PER_SECOND,
   BERSERK_JUMP,
@@ -86,7 +91,6 @@ function handleContextMenu(event: MouseEvent) {
 const SHOW_DEBUG_BOXES = import.meta.env.DEV;
 
 /** Mezza larghezza del corpo del giocatore, per la collisione col boss. */
-const PLAYER_BODY_HALF_WIDTH = 0.35;
 
 type Action = 'none' | 'attack' | 'parry' | 'dash' | 'heal' | 'skill' | 'cast';
 
@@ -314,8 +318,8 @@ export function PlayerArena({ world }: PlayerArenaProps) {
         state.berserk = true;
         state.combo = 1;
         useArenaStore.getState().set({ berserk: true, combo: 1 });
-        addRing(world, state.x, state.y + ARENA_PLAYER_HEIGHT / 2, 3.2, 0.5, '#ef4444');
-        world.hitStop = Math.max(world.hitStop, 0.2);
+        addRing(world, state.x, state.y + ARENA_PLAYER_HEIGHT / 2, BERSERK_ACTIVATE_RING_RADIUS, BERSERK_ACTIVATE_RING_LIFE, '#ef4444');
+        world.hitStop = Math.max(world.hitStop, BERSERK_ACTIVATE_HITSTOP);
       } else if (wantsParry) {
         if (bloodborne) {
           // Potenziamento Bloodborne: il tasto di parata spara.
@@ -530,7 +534,7 @@ export function PlayerArena({ world }: PlayerArenaProps) {
           x: px + (facing.current * attackReach) / 2,
           y: py + ARENA_PLAYER_HEIGHT / 2,
           halfWidth: attackReach / 2,
-          halfHeight: state.berserk ? ATTACK_HALF_HEIGHT * 1.25 : ATTACK_HALF_HEIGHT
+          halfHeight: state.berserk ? ATTACK_HALF_HEIGHT * BERSERK_ATTACK_HEIGHT_MULTIPLIER : ATTACK_HALF_HEIGHT
         }
       : null;
     state.parryActive = parryActive;

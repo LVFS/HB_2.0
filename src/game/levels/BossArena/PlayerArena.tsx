@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import type { Group, Mesh } from 'three';
 import { CharacterAnimator2D, type CharacterAnimState } from '@/game/render2d/CharacterAnimator2D';
+import { createJumpState, resetJump, stepJump, type JumpConfig } from '@/game/shared/jump';
+import { usePlayerActions } from '@/game/shared/usePlayerActions';
 import { useArenaStore } from '@/store/arenaStore';
 import type { ArenaWorld } from './arenaState';
 import { addRing } from './combat';
@@ -56,41 +58,17 @@ import {
   PARRY_TIMING
 } from './arenaConfig';
 
-// Stesso pattern di `Player2D.tsx`: i tasti premuti vivono in un Set del
-// modulo, non in stato React (un `setState` dentro `useFrame` causerebbe 60
-// render al secondo). In più, `justPressed` raccoglie le PRESSIONI (senza
-// l'auto-repeat del tasto tenuto): attacco/parata/dash sono azioni a scatto,
-// non a tasto tenuto.
-const held = new Set<string>();
-const justPressed = new Set<string>();
-
-function press(key: string, repeat = false) {
-  if (!repeat) justPressed.add(key);
-  held.add(key);
-}
-function release(key: string) {
-  held.delete(key);
-}
-function handleKeyDown(event: KeyboardEvent) {
-  press(event.key.toLowerCase(), event.repeat);
-}
-function handleKeyUp(event: KeyboardEvent) {
-  release(event.key.toLowerCase());
-}
-function handleMouseDown(event: MouseEvent) {
-  press(event.button === 2 ? 'mouse2' : 'mouse0');
-}
-function handleMouseUp(event: MouseEvent) {
-  release(event.button === 2 ? 'mouse2' : 'mouse0');
-}
-function handleContextMenu(event: MouseEvent) {
-  event.preventDefault();
-}
+/** Fisica di salto dell'arena (la funzione sta in `shared/jump.ts`). */
+const ARENA_JUMP_CONFIG: JumpConfig = {
+  gravity: ARENA_GRAVITY,
+  groundY: ARENA_GROUND_Y,
+  jumpSpeed: ARENA_JUMP_SPEED,
+  doubleJumpSpeed: ARENA_DOUBLE_JUMP_SPEED,
+  maxJumps: ARENA_MAX_JUMPS
+};
 
 /** Hitbox e finestre di parata visibili solo in sviluppo, per tararle. */
 const SHOW_DEBUG_BOXES = import.meta.env.DEV;
-
-/** Mezza larghezza del corpo del giocatore, per la collisione col boss. */
 
 type Action = 'none' | 'attack' | 'parry' | 'dash' | 'heal' | 'skill' | 'cast';
 
@@ -128,9 +106,8 @@ export function PlayerArena({ world }: PlayerArenaProps) {
   const shieldMesh = useRef<Mesh>(null);
   const healMesh = useRef<Mesh>(null);
   const skillTier = useRef<(typeof SKILL_TIERS)[number] | null>(null);
-  const velocityY = useRef(0);
-  const onGround = useRef(true);
-  const jumpsUsed = useRef(0);
+  const jump = useRef(createJumpState());
+  const actions = usePlayerActions();
   const facing = useRef<1 | -1>(1);
   const action = useRef<Action>('none');
   const actionTime = useRef(0);
@@ -159,30 +136,13 @@ export function PlayerArena({ world }: PlayerArenaProps) {
   const [animState, setAnimState] = useState<CharacterAnimState>('idle');
   const [facingState, setFacingState] = useState<1 | -1>(1);
 
-  useEffect(() => {
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-    window.addEventListener('mousedown', handleMouseDown);
-    window.addEventListener('mouseup', handleMouseUp);
-    window.addEventListener('contextmenu', handleContextMenu);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-      window.removeEventListener('mousedown', handleMouseDown);
-      window.removeEventListener('mouseup', handleMouseUp);
-      window.removeEventListener('contextmenu', handleContextMenu);
-      held.clear();
-      justPressed.clear();
-    };
-  }, []);
-
   useFrame((_, rawDelta) => {
     const g = group.current;
     if (!g) return;
     // Scelta del potenziamento: gioco fermo, l'input non si accumula (i tasti
     // premuti per scegliere non devono scattare appena si riparte).
     if (world.choice) {
-      justPressed.clear();
+      actions.consume();
       return;
     }
     // Hit-stop: il gameplay è congelato (l'input resta in coda, non si perde).
@@ -192,7 +152,7 @@ export function PlayerArena({ world }: PlayerArenaProps) {
 
     // A combattimento finito nessuno si muove più.
     if (world.over) {
-      justPressed.clear();
+      actions.consume();
       setAnimState(world.over === 'defeat' ? 'hit' : 'idle');
       return;
     }
@@ -200,10 +160,10 @@ export function PlayerArena({ world }: PlayerArenaProps) {
     // Braccio di ferro del contrasto: fermo e invulnerabile, ogni pressione di
     // attacco (J/click) fa salire la barra. L'esito lo decide `BossChecco`.
     if (world.clash) {
-      if (justPressed.has('j') || justPressed.has('mouse0')) {
+      if (actions.justPressed('attack')) {
         world.clash.progress = Math.min(1, world.clash.progress + CLASH_PRESS_GAIN);
       }
-      justPressed.clear();
+      actions.consume();
       action.current = 'none';
       actionTime.current = 0;
       state.invulnerable = true;
@@ -221,12 +181,10 @@ export function PlayerArena({ world }: PlayerArenaProps) {
     // posa comandate dalla sequenza (D guarda Checco, dal lato in cui si trova).
     if (world.finale) {
       const f = world.finale;
-      justPressed.clear();
+      actions.consume();
       g.position.set(f.playerX, f.playerY, 0);
       g.rotation.z = f.playerRot;
-      velocityY.current = 0;
-      onGround.current = f.playerY <= 0.01;
-      jumpsUsed.current = 0;
+      resetJump(jump.current, f.playerY <= 0.01);
       action.current = 'none';
       actionTime.current = 0;
       const faceBoss: 1 | -1 = f.playerSide === -1 ? 1 : -1;
@@ -247,11 +205,9 @@ export function PlayerArena({ world }: PlayerArenaProps) {
     // comanda la posizione del giocatore, che è invulnerabile.
     if (world.finisher) {
       const f = world.finisher;
-      justPressed.clear();
+      actions.consume();
       g.position.set(f.playerX, f.playerY, 0);
-      velocityY.current = 0;
-      onGround.current = f.playerY <= 0.01;
-      jumpsUsed.current = 0;
+      resetJump(jump.current, f.playerY <= 0.01);
       action.current = 'none';
       actionTime.current = 0;
       facing.current = f.dir;
@@ -287,24 +243,22 @@ export function PlayerArena({ world }: PlayerArenaProps) {
     }
 
     // --- input ---
-    let moveX = 0;
-    if (held.has('a') || held.has('arrowleft')) moveX -= 1;
-    if (held.has('d') || held.has('arrowright')) moveX += 1;
+    const moveX = actions.moveX();
     const stunned = state.hitTimer > 0;
-    const wantsAttack = !stunned && (justPressed.has('j') || justPressed.has('mouse0'));
-    const wantsParry = !stunned && (justPressed.has('k') || justPressed.has('mouse2'));
-    const wantsDash = !stunned && justPressed.has('shift');
-    const wantsJump = !stunned && (justPressed.has(' ') || justPressed.has('w') || justPressed.has('arrowup'));
-    const wantsHeal = !stunned && justPressed.has('r');
-    const wantsSkill = !stunned && justPressed.has('e');
-    const wantsRage = !stunned && justPressed.has('q');
+    const wantsAttack = !stunned && actions.justPressed('attack');
+    const wantsParry = !stunned && actions.justPressed('parry');
+    const wantsDash = !stunned && actions.justPressed('dash');
+    const wantsJump = !stunned && actions.justPressed('jump');
+    const wantsHeal = !stunned && actions.justPressed('heal');
+    const wantsSkill = !stunned && actions.justPressed('skill');
+    const wantsRage = !stunned && actions.justPressed('berserk');
 
     if (import.meta.env.DEV) {
-      if (justPressed.has('1')) debugState.current = { state: 'hit', time: 0.35 };
-      if (justPressed.has('2')) debugState.current = { state: 'stagger', time: 0.6 };
-      if (justPressed.has('3')) debugState.current = { state: 'parry', time: 0.3 };
+      if (actions.keyJustPressed('1')) debugState.current = { state: 'hit', time: 0.35 };
+      if (actions.keyJustPressed('2')) debugState.current = { state: 'stagger', time: 0.6 };
+      if (actions.keyJustPressed('3')) debugState.current = { state: 'parry', time: 0.3 };
     }
-    justPressed.clear();
+    actions.consume();
 
     // --- macchina a stati dell'azione ---
     if (action.current === 'none') {
@@ -475,35 +429,17 @@ export function PlayerArena({ world }: PlayerArenaProps) {
     const previousX = g.position.x;
     g.position.x = Math.min(ARENA_HALF_WIDTH, Math.max(-ARENA_HALF_WIDTH, previousX + vx * delta));
 
-    if (wantsJump && !locked && !dashing) {
-      const jumpMultiplier = state.berserk ? BERSERK_JUMP : 1;
-      if (onGround.current) {
-        velocityY.current = ARENA_JUMP_SPEED * jumpMultiplier;
-        onGround.current = false;
-        jumpsUsed.current = 1;
-      } else if (jumpsUsed.current < ARENA_MAX_JUMPS) {
-        // Doppio salto: un secondo impulso in aria (serve anche a raggiungere
-        // le torrette sui muri).
-        velocityY.current = ARENA_DOUBLE_JUMP_SPEED * jumpMultiplier;
-        jumpsUsed.current += 1;
-      }
-    }
-    // Spinta verso l'alto (es. dopo una parata in aria di un fulmine): conta
-    // come il primo salto, il doppio salto resta disponibile.
-    if (state.airBoost > 0) {
-      velocityY.current = state.airBoost;
-      onGround.current = false;
-      jumpsUsed.current = Math.min(jumpsUsed.current, 1);
-      state.airBoost = 0;
-    }
-    velocityY.current += ARENA_GRAVITY * delta;
-    let nextY = g.position.y + velocityY.current * delta;
-    if (nextY <= ARENA_GROUND_Y) {
-      nextY = ARENA_GROUND_Y;
-      velocityY.current = 0;
-      onGround.current = true;
-      jumpsUsed.current = 0;
-    }
+    // Salto singolo/doppio (serve anche a raggiungere le torrette sui muri) e spinta
+    // verso l'alto dopo una parata in aria: fisica in `shared/jump.ts`.
+    const airBoost = state.airBoost;
+    state.airBoost = 0;
+    const nextY = stepJump(
+      jump.current,
+      ARENA_JUMP_CONFIG,
+      { wantsJump: wantsJump && !locked && !dashing, jumpMultiplier: state.berserk ? BERSERK_JUMP : 1, airBoost },
+      g.position.y,
+      delta
+    );
     g.position.y = nextY;
 
     // --- corpo solido di Checco: non si attraversa camminando, si scavalca

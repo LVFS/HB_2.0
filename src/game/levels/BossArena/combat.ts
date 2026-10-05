@@ -230,11 +230,17 @@ export type PlayerHitResult = 'hit' | 'parried' | 'ignored';
  * Un colpo del boss raggiunge il giocatore. Dash e i-frames lo ignorano; una
  * parata a timing lo annulla, aumenta la postura del boss e apre la finestra
  * di contraccolpo; altrimenti danno, reazione e brevi i-frames.
+ *
+ * Pensata per essere riusabile da un altro modo di gioco (il tunnel): da `world`
+ * legge solo `over`, `player`, `popups`, `hitStop` e — per la parata e la
+ * direzione del contraccolpo — il boss; `sourceX` dice da dove viene il colpo
+ * (default: la posizione del boss), così un colpo senza boss non ha bisogno di
+ * un boss per essere spinto dal lato giusto.
  */
 export function hitPlayer(
   world: ArenaWorld,
   damage: number,
-  { unparryable = false }: { unparryable?: boolean } = {}
+  { unparryable = false, sourceX }: { unparryable?: boolean; sourceX?: number } = {}
 ): PlayerHitResult {
   const { player, boss } = world;
   if (world.over || player.invulnerable || player.iframes > 0) return 'ignored';
@@ -267,7 +273,7 @@ export function hitPlayer(
   player.hp = Math.max(0, player.hp - damage);
   player.hitTimer = PLAYER_HIT_STUN;
   player.iframes = PLAYER_IFRAMES_AFTER_HIT;
-  player.knockbackVx = (player.x >= boss.x ? 1 : -1) * PLAYER_KNOCKBACK;
+  player.knockbackVx = (player.x >= (sourceX ?? boss.x) ? 1 : -1) * PLAYER_KNOCKBACK;
   requestHitStop(world, HITSTOP_LIGHT);
   useArenaStore.getState().set({ playerHp: Math.round(player.hp) });
 

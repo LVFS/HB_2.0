@@ -319,12 +319,6 @@ Mappa del codice (dopo il refactor FASE 7):
 - Dettagli operativi completi, incluso il flusso di conversione assi Blender→Three
   (`export_yup=True`: `x3=xB`, `y3=zB`, `z3=-yB`), in `docs/MENU_INTRO.md`.
 
-## Piccola cosa da pulire
-
-`src/audio/theme.mp3` è un duplicato non più referenziato dal codice (l'hook
-`useBackgroundMusic.ts` usa `public/audio/theme.mp3` tramite `import.meta.env.BASE_URL`) —
-può essere cancellato.
-
 ## Stato del progetto
 
 **Fatto**: scaffolding, menu, selezione livelli, fondamenta 2D del Livello 1 + sprite/animazione

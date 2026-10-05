@@ -27,6 +27,8 @@ export type CharacterAnimState =
   | 'hit'
   | 'parry'
   | 'stagger'
+  // Non lo chiama ancora nessuno: da usare in FASE 8 (D prende la seconda spada e
+  // passa da D0 a D1). Non rimuoverlo: il crossfade `TransformCrossfade` è già pronto.
   | 'transformToD1';
 
 interface CharacterAnimator2DProps {

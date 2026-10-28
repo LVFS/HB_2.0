@@ -32,6 +32,53 @@ export interface PowerUpIntro {
   videoSrc?: string;
 }
 
+/** Un bonus del tunnel con un timer: `pct` = quanto ne resta (0-100). */
+export interface TunnelHudBuff {
+  id: string;
+  label: string;
+  pct: number;
+  /** Un malus (frenato, rallentato): la HUD lo mostra in rosso. */
+  bad?: boolean;
+}
+
+/** Il bonus nella casella del tunnel (si usa con `E`). `icon` è un'immagine già pronta (data URL). */
+export interface TunnelHudSlot {
+  id: string;
+  label: string;
+  icon: string;
+}
+
+/** Cosa mostra la HUD del tunnel oltre alla distanza: Slancio, Sfere del Drago, casella bonus, bonus attivi, tempo. */
+export interface TunnelHudStatus {
+  slancio: number;
+  slancioMax: number;
+  /** Velocità in più rispetto alla base per il livello di Slancio attuale (%). */
+  speedPct: number;
+  spheres: number;
+  spheresMax: number;
+  slot: TunnelHudSlot | null;
+  buffs: TunnelHudBuff[];
+  /** Secondi rimasti al tempo limite. */
+  timeLeft: number;
+  /** La marionetta è fuori dallo schermo: la HUD mostra l'indicatore con i metri. */
+  offscreen: boolean;
+  /** Buio (0-100, a passi del 10%) e dove sta D sullo schermo in orizzontale (%), per il cerchio di luce; abbagliamenti dei paparazzi (contatore). */
+  dark: number;
+  darkX: number;
+  blind: number;
+  /** L'onda di Checco in arrivo: quanti metri mancano e in quali vie (indici da 0 = la più lontana). Null = nessuna. */
+  threat: { meters: number; lanes: number[] } | null;
+  /** Stili permanenti avuti (etichette) e, se si può volare, la carica del volo (%, a passi del 10%). */
+  perks: string[];
+  flight: number | null;
+  /** In sella al gatto: affetto e fame (%, a passi del 5%). Null = niente gatto. */
+  cat: { affection: number; hunger: number } | null;
+  /** Desideri di Shenron: i permanenti avuti (nome breve), gli Istinti rimasti e gli Zoltraak di riserva (Q). */
+  wishes: { owned: string[]; instinct: number; reserve: number };
+  /** Modalità in corso (Buen Camino / shonen): quanto ne resta (%) e se è il finale. */
+  mode: { id: 'camino' | 'anime'; pct: number; finale: boolean } | null;
+}
+
 interface ArenaHudState {
   playerHp: number;
   playerHpMax: number;
@@ -65,8 +112,14 @@ interface ArenaHudState {
   powerUpChoice: PowerUpOption[] | null;
   powerUpPicked: string | null;
   powerUpIntro: PowerUpIntro | null;
+  /** Titolo della schermata di scelta (null = quello di default). Nel tunnel serve ai desideri di Shenron. */
+  powerUpChoiceTitle: string | null;
   /** QTE in corso (null = nessuno). */
   qte: QteView | null;
+  /** Tunnel: distanza dalla marionetta 0-100 (null = fuori dal tunnel). */
+  tunnelGap: number | null;
+  /** Tunnel: Slancio, Sfere, bonus attivi (null = fuori dal tunnel). */
+  tunnelStatus: TunnelHudStatus | null;
   set: (patch: Partial<Omit<ArenaHudState, 'set' | 'reset' | 'triggerFlash'>>) => void;
   triggerFlash: () => void;
   reset: (playerHpMax: number, bossHpMax: number, bossPostureMax: number) => void;
@@ -103,7 +156,10 @@ export const useArenaStore = create<ArenaHudState>((set) => ({
   powerUpChoice: null,
   powerUpPicked: null,
   powerUpIntro: null,
+  powerUpChoiceTitle: null,
   qte: null,
+  tunnelGap: null,
+  tunnelStatus: null,
   set: (patch) => set(patch),
   triggerFlash: () => set((state) => ({ flash: state.flash + 1 })),
   reset: (playerHpMax, bossHpMax, bossPostureMax) =>
@@ -130,6 +186,9 @@ export const useArenaStore = create<ArenaHudState>((set) => ({
       powerUpChoice: null,
       powerUpPicked: null,
       powerUpIntro: null,
-      qte: null
+      powerUpChoiceTitle: null,
+      qte: null,
+      tunnelGap: null,
+      tunnelStatus: null
     })
 }));

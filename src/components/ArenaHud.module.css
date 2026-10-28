@@ -91,6 +91,36 @@
   background: linear-gradient(90deg, var(--accent), var(--accent-bright));
 }
 
+/* --- tunnel: distanza dalla marionetta --- */
+.fillGap {
+  composes: fill;
+  background: linear-gradient(90deg, #0e7490, #67e8f9);
+}
+
+.fillGapDanger {
+  composes: fill;
+  background: linear-gradient(90deg, #b45309, #f87171);
+}
+
+.gapMark {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 3px;
+  background: var(--text);
+  transform: translateX(-50%);
+}
+
+.gapScale {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text);
+  font-size: 0.65rem;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
 .playerBar {
   position: absolute;
   top: var(--space-4);
@@ -206,6 +236,468 @@
   }
 }
 
+/* --- tunnel: Slancio, Sfere del Drago, Zoltraak, bonus a tempo --- */
+.bonusBlock {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.25rem;
+}
+
+.bonusLabel {
+  min-width: 3.2rem;
+  color: var(--text);
+  font-size: 0.65rem;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.slancio,
+.spheres {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.slancioPip,
+.slancioPipOn {
+  width: 18px;
+  height: 8px;
+  transform: skewX(-20deg);
+  border: 1px solid var(--line-strong);
+  background: var(--surface-control);
+}
+
+.slancioPipOn {
+  border-color: #fde047;
+  background: linear-gradient(90deg, #f59e0b, #fde047);
+  box-shadow: 0 0 8px #f59e0b;
+}
+
+.slancioValue {
+  margin-left: 0.2rem;
+  color: #fde047;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+.sphereOff,
+.sphereOn {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid #ea580c;
+}
+
+.sphereOff {
+  background: transparent;
+  opacity: 0.45;
+}
+
+.sphereOn {
+  background: radial-gradient(circle at 35% 35%, #fff3c4, #fb923c 55%, #c2410c);
+  box-shadow: 0 0 6px #fb923c;
+}
+
+/* Gatto: due barre (coccole, pappa) che si svuotano da sole. */
+.cat {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.15rem 0.5rem;
+}
+
+.catLabel {
+  color: #fbbf24;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.catBars {
+  display: grid;
+  gap: 3px;
+}
+
+.catBar {
+  display: block;
+  height: 6px;
+  background: var(--surface-control);
+  border: 1px solid var(--line-strong);
+}
+
+.catFill,
+.catFillLow {
+  display: block;
+  height: 100%;
+  transition: width 150ms linear;
+}
+
+.catFill {
+  background: linear-gradient(90deg, #f59e0b, #fde047);
+}
+
+.catFillLow {
+  background: #f87171;
+}
+
+.catKeys {
+  grid-column: 1 / -1;
+  color: var(--text);
+  font-size: 0.62rem;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+/* Desideri di Shenron: etichette dei permanenti (dorate) e dei contatori a usi (viola). */
+.wishes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.wishChip,
+.wishChipUse {
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.wishChip {
+  border: 1px solid #fde047;
+  color: #fde047;
+  background: rgba(120, 53, 15, 0.45);
+}
+
+/* Stili permanenti lasciati dagli ospiti. */
+.perkChip {
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  border: 1px solid #5eead4;
+  color: #99f6e4;
+  background: rgba(19, 78, 74, 0.5);
+}
+
+.wishChipUse {
+  border: 1px solid #c4b5fd;
+  color: #ddd6fe;
+  background: rgba(76, 29, 149, 0.45);
+}
+
+/* Casella bonus: icona + nome + tasto. Vuota è spenta. */
+.slotFull,
+.slotEmpty {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.2rem 0.4rem;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-control);
+}
+
+.slotFull {
+  border-color: var(--accent-bright);
+  box-shadow: 0 0 10px rgba(250, 204, 21, 0.35);
+}
+
+.slotEmpty {
+  opacity: 0.55;
+}
+
+.slotIcon {
+  width: 26px;
+  height: 26px;
+  image-rendering: auto;
+}
+
+.slotName {
+  color: var(--text);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.slotKey {
+  margin-left: auto;
+  padding: 0 0.4rem;
+  border: 1px solid var(--accent-bright);
+  border-radius: 3px;
+  color: var(--accent-bright);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.timer {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.timerValue,
+.timerLow {
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+.timerValue {
+  color: var(--text);
+}
+
+.timerLow {
+  color: #f87171;
+  animation: berserkPulse 0.5s ease-in-out infinite alternate;
+}
+
+/* Buio: lo schermo si spegne e resta un cerchio di luce attorno a D (in --dark-x orizzontale; --dark-a = quanto è buio). */
+.darkness {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at var(--dark-x, 25%) 66%,
+    rgba(0, 0, 0, 0) 0,
+    rgba(0, 0, 0, 0) 26vw,
+    rgba(0, 0, 0, calc(0.93 * var(--dark-a, 1))) 40vw
+  );
+}
+
+/* Abbaglio dei paparazzi: lampo bianco che sbiadisce piano (si riavvia a ogni nuovo abbaglio). */
+.blinded {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: #ffffff;
+  animation: blindFade 1.4s ease-out forwards;
+}
+
+@keyframes blindFade {
+  from {
+    opacity: 0.95;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* L'onda di Checco: titolo, metri che mancano e le tre vie con quelle coperte accese. */
+.threat {
+  position: absolute;
+  top: 11rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.35rem 0.9rem;
+  border: 2px solid #e879f9;
+  background: rgba(46, 16, 101, 0.78);
+  color: #f5d0fe;
+  font-weight: 700;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  animation: berserkPulse 0.35s ease-in-out infinite alternate;
+}
+
+.threatTitle {
+  font-size: 0.75rem;
+}
+
+.threatMeters {
+  min-width: 3.5rem;
+  color: #ffffff;
+  font-size: 1.5rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.threatLanes {
+  display: grid;
+  gap: 3px;
+}
+
+.threatLane,
+.threatLaneOn {
+  display: block;
+  width: 26px;
+  height: 7px;
+  border: 1px solid #e879f9;
+  transform: skewX(-20deg);
+}
+
+.threatLane {
+  opacity: 0.35;
+}
+
+.threatLaneOn {
+  background: #e879f9;
+  box-shadow: 0 0 8px #e879f9;
+}
+
+/* Modalità in corso: etichetta e barra del tempo rimasto, in basso al centro. */
+.modeCamino,
+.modeAnime {
+  position: absolute;
+  bottom: var(--space-4);
+  left: 50%;
+  transform: translateX(-50%);
+  display: grid;
+  gap: 0.3rem;
+  min-width: 14rem;
+  padding: 0.35rem 0.8rem;
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+.modeCamino {
+  border: 2px solid #f59e0b;
+  background: rgba(67, 34, 8, 0.78);
+  color: #fcd34d;
+}
+
+.modeAnime {
+  border: 2px solid #f472b6;
+  background: rgba(76, 29, 149, 0.78);
+  color: #fbcfe8;
+}
+
+.modeTrack {
+  display: block;
+  height: 5px;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.modeFill {
+  display: block;
+  height: 100%;
+  background: currentColor;
+  transition: width 200ms linear;
+}
+
+/* Buen Camino: caldo, seppia, ai bordi. Shonen: raggi di velocità che girano dal centro. */
+.caminoTint {
+  position: absolute;
+  inset: 0;
+  background: rgba(180, 83, 9, 0.1);
+  box-shadow: inset 0 0 160px 20px rgba(146, 64, 14, 0.5);
+}
+
+.animeRays {
+  position: absolute;
+  inset: 0;
+  background: repeating-conic-gradient(from 0deg at 50% 50%, rgba(244, 114, 182, 0.14) 0deg 4deg, transparent 4deg 12deg);
+  mask-image: radial-gradient(circle at 50% 50%, transparent 30%, #000 85%);
+  animation: animeSpin 6s linear infinite;
+}
+
+@keyframes animeSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Checco fuori schermo: indicatore sul bordo destro, sotto la finestra su Checco e sopra gli avvisi delle vie. */
+.offscreen {
+  position: absolute;
+  right: var(--space-4);
+  top: 33%;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--accent-bright);
+  background: rgba(0, 0, 0, 0.55);
+  color: var(--accent-bright);
+  font-weight: 700;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  animation: berserkPulse 0.9s ease-in-out infinite alternate;
+}
+
+.offscreenName {
+  font-size: 0.7rem;
+}
+
+.offscreenMeters {
+  color: var(--text);
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.offscreenArrow {
+  font-size: 0.8rem;
+}
+
+.buff {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.buffLabel {
+  color: var(--accent-bright);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+/* Un malus (frenato, rallentato): etichetta e barra rosse. */
+.malus .buffLabel {
+  color: #f87171;
+}
+
+.malus .buffFill {
+  background: linear-gradient(90deg, #b91c1c, #f87171);
+}
+
+.buffTrack {
+  display: block;
+  height: 5px;
+  background: var(--surface-control);
+  border: 1px solid var(--line-strong);
+}
+
+.buffFill {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #f59e0b, #fde047);
+  transition: width 200ms linear;
+}
+
+/* Aura dorata ai bordi (Super Saiyan) e tinta color seppia (Ciak!). */
+.saiyanGlow {
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 0 110px 8px rgba(250, 204, 21, 0.5);
+  animation: berserkPulse 0.35s ease-in-out infinite alternate;
+}
+
+.ciakTint {
+  position: absolute;
+  inset: 0;
+  background: rgba(30, 64, 175, 0.16);
+  box-shadow: inset 0 0 140px 10px rgba(30, 64, 175, 0.45);
+}
+
 .healFull,
 .healEmpty {
   width: 14px;
@@ -232,6 +724,35 @@
   transform: translateX(-50%);
   text-align: center;
   animation: messageIn var(--dur) var(--ease-out);
+}
+
+/* Messaggio compatto del tunnel: una battuta sotto le barre, mai sopra l'azione. */
+.bark {
+  position: absolute;
+  top: 5.2rem;
+  left: 50%;
+  max-width: min(90vw, 640px);
+  transform: translateX(-50%);
+  text-align: center;
+  color: var(--accent-bright);
+  font-size: clamp(0.95rem, 2.4vw, 1.35rem);
+  font-weight: 700;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9);
+  animation: messageIn var(--dur) var(--ease-out);
+}
+
+.bark .messageTitle {
+  font-size: inherit;
+  letter-spacing: inherit;
+  text-shadow: inherit;
+}
+
+.bark .messageHint {
+  margin-top: 0.2rem;
+  font-size: 0.8rem;
+  font-weight: 400;
 }
 
 .messageTitle {

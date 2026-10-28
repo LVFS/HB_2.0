@@ -18,10 +18,12 @@ export function useDevBossShortcut(): void {
     if (!import.meta.env.DEV) return;
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'F9' && event.key !== 'F8') return;
+      if (event.key !== 'F9' && event.key !== 'F8' && event.key !== 'F7') return;
       event.preventDefault();
       useGameStore.getState().setScreen('game');
-      useLevelStore.getState().setPhase(event.key === 'F9' ? 'boss_fase1' : 'cammino_libero_ariston');
+      // F9 arena del boss, F7 tunnel dell'inseguimento, F8 fuori dall'Ariston.
+      const target = event.key === 'F9' ? 'boss_fase1' : event.key === 'F7' ? 'boss_fase2_tunnel' : 'cammino_libero_ariston';
+      useLevelStore.getState().setPhase(target);
     };
 
     window.addEventListener('keydown', onKeyDown);

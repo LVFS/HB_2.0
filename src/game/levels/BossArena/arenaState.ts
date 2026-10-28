@@ -127,6 +127,18 @@ export interface ArenaProjectile {
   /** Fulmine a ricerca: sterza verso il bersaglio (giocatore, o Checco se rimandato). */
   homing?: boolean;
   kind?: 'bolt';
+  /** Non parabile (si schiva o si salta): usato dal tunnel per i lanci "rossi" della marionetta. */
+  unparryable?: boolean;
+  /** Via in cui viaggia (solo tunnel, 0 = la più lontana): colpisce e si para solo chi è nella stessa via. */
+  lane?: number;
+  /** Nota del karaoke di Checco (solo tunnel): si disegna come una nota musicale. */
+  note?: boolean;
+  /** Chi l'ha scoccato (id di un nemico del tunnel): rimandato, torna a lui e lo spezza. */
+  source?: number;
+  /** Colpo a distanza di un nemico (balestriere, torrette): lo smoking a velocità massima lo ignora. */
+  ranged?: boolean;
+  /** Dardo che appesantisce (solo tunnel): chi lo prende non accelera per un po'. */
+  brake?: boolean;
 }
 
 /** Detrito dal soffitto: prima un marcatore a terra (`warn` secondi), poi cade. */
@@ -258,6 +270,8 @@ export interface ArenaFinale {
   strikeTimer: number;
   /** Checco è già diventato una marionetta. */
   marionette: boolean;
+  /** Secondi al prossimo detrito di scena che cade (il "crollo" della trasformazione e dello scaraventamento). */
+  debrisTimer: number;
 }
 
 /** Scelta del potenziamento in corso: il gioco è fermo finché non si sceglie. */
@@ -282,6 +296,8 @@ export interface DamagePopup {
   blocked?: boolean;
   /** Testo al posto del numero (es. "PARATA"). */
   label?: string;
+  /** Profondità (solo tunnel: la via in cui è successo). Default 2. */
+  z?: number;
 }
 
 /** Tutto ciò che sistemi diversi (giocatore, boss, Eve) si scambiano ad ogni

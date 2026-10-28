@@ -19,6 +19,11 @@ const WARNING_STYLES: Record<CheccoWarning, { color: string; lines: string[] }> 
 
 function makeWarningTexture(kind: CheccoWarning): CanvasTexture {
   const { color, lines } = WARNING_STYLES[kind];
+  return drawWarningTexture(color, lines);
+}
+
+/** Triangolo d'avviso con "!" e le righe di testo date, nel colore dato (anche per altre scene, es. il tunnel). */
+export function drawWarningTexture(color: string, lines: string[]): CanvasTexture {
   const canvas = document.createElement('canvas');
   canvas.width = 320;
   canvas.height = 250;

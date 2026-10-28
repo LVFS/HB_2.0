@@ -25,6 +25,14 @@ export type LevelPhase =
 
 const INITIAL_PHASE: LevelPhase = 'intro_dialogo';
 
+/** Esito del tunnel (`boss_fase2_tunnel` + `combo_doppia_spada_qte`): letto dalle fasi successive. */
+export interface TunnelResult {
+  /** Distanza da Checco a fine corsa (0 = raggiunto, 100 = sparito). */
+  gapEnd: number;
+  /** Quanto è riuscita la raffica a doppia spada, da 0 a 1. */
+  barrageScore: number;
+}
+
 interface LevelState {
   phase: LevelPhase;
   setPhase: (next: LevelPhase) => void;
@@ -42,6 +50,9 @@ interface LevelState {
    *  `boss_fase2_tunnel`, un piccolo bonus/malus di partenza. */
   finalQteSuccess: boolean | null;
   setFinalQteSuccess: (success: boolean | null) => void;
+  /** Esito del tunnel (distanza finale dalla marionetta e punteggio della raffica), o null. */
+  tunnelResult: TunnelResult | null;
+  setTunnelResult: (result: TunnelResult | null) => void;
 }
 
 const INITIAL_LATERAL_SPAWN_X: number = LEVEL1_TRIGGERS_PLACEHOLDER.eveArrivalX;
@@ -59,7 +70,9 @@ export const useLevelStore = create<LevelState>((set) => ({
   lateralSpawnX: INITIAL_LATERAL_SPAWN_X,
   setLateralSpawnX: (x) => set({ lateralSpawnX: x }),
   finalQteSuccess: null,
-  setFinalQteSuccess: (success) => set({ finalQteSuccess: success })
+  setFinalQteSuccess: (success) => set({ finalQteSuccess: success }),
+  tunnelResult: null,
+  setTunnelResult: (result) => set({ tunnelResult: result })
 }));
 
 /**
@@ -72,6 +85,7 @@ export function resetLevel(): void {
   useLevelStore.setState({
     phase: INITIAL_PHASE,
     lateralSpawnX: INITIAL_LATERAL_SPAWN_X,
-    finalQteSuccess: null
+    finalQteSuccess: null,
+    tunnelResult: null
   });
 }

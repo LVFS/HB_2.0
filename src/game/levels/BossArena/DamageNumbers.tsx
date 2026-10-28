@@ -58,7 +58,7 @@ export function DamageNumbers({ world }: { world: ArenaWorld }) {
         return (
           <Html
             key={popup.id}
-            position={[popup.x, popup.y, 2]}
+            position={[popup.x, popup.y, popup.z ?? 2]}
             center
             zIndexRange={[30, 20]}
             style={{ pointerEvents: 'none' }}

@@ -1,6 +1,8 @@
 import { useArenaStore, type QteView } from '@/store/arenaStore';
 import type { ArenaFinale, ArenaWorld } from './arenaState';
 import {
+  ARENA_CEILING_Y,
+  DEBRIS_FALL_SPEED,
   ARENA_HALF_WIDTH,
   FINALE_EVE_WALK_DELAY,
   FINALE_FLING,
@@ -35,6 +37,30 @@ const STRIKE_DURATION = 0.3;
 export interface FinaleHooks {
   /** Messaggio grande al centro (titolo, riga di aiuto, secondi). */
   message: (title: string, hint: string | null, seconds?: number) => void;
+}
+
+/** Ogni quanto (s) cade un detrito di scena durante il crollo, e quanti al massimo in volo. */
+const COLLAPSE_DEBRIS_INTERVAL = 0.2;
+const COLLAPSE_DEBRIS_MAX = 10;
+
+/**
+ * Il "crollo" della sala durante la trasformazione e lo scaraventamento: pezzi
+ * di soffitto che cadono qua e là. Solo scena (danno 0: D ed Eve sono
+ * invulnerabili nel finale) — è ciò che il dialogo del Sotterraneo racconta
+ * ("il crollo ha diviso la sala, pezzi di sala"), così non arriva dal nulla.
+ */
+function tickCollapse(world: ArenaWorld, f: ArenaFinale, delta: number): void {
+  f.debrisTimer -= delta;
+  if (f.debrisTimer > 0 || world.hazards.length >= COLLAPSE_DEBRIS_MAX) return;
+  f.debrisTimer = COLLAPSE_DEBRIS_INTERVAL;
+  world.hazards.push({
+    x: (Math.random() * 2 - 1) * (ARENA_HALF_WIDTH - 1),
+    y: ARENA_CEILING_Y,
+    vy: -DEBRIS_FALL_SPEED,
+    warn: 0,
+    damage: 0,
+    state: 'fall'
+  });
 }
 
 const ease = (u: number) => u * u * (3 - 2 * u);
@@ -83,7 +109,8 @@ export function startFinale(world: ArenaWorld): ArenaFinale {
     pressed: [],
     qteSuccess: null,
     strikeTimer: 0,
-    marionette: false
+    marionette: false,
+    debrisTimer: 0
   };
 }
 
@@ -189,6 +216,7 @@ export function updateFinale(world: ArenaWorld, delta: number, hooks: FinaleHook
       }
       boss.y = f.marionette ? 0.7 * ease(clamp01((f.t - 0.5) / 0.6)) : 0;
       f.playerAnim = f.eveAnim = f.marionette ? 'stagger' : 'idle';
+      if (f.marionette) tickCollapse(world, f, delta);
       if (f.t >= FINALE_TRANSFORM) {
         f.phase = 'fling';
         f.t = 0;
@@ -204,6 +232,7 @@ export function updateFinale(world: ArenaWorld, delta: number, hooks: FinaleHook
       const out = 1 - (1 - u) * (1 - u);
       const arc = Math.sin(Math.PI * u);
       boss.y = 0.7 + 0.08 * Math.sin(f.t * 12);
+      tickCollapse(world, f, delta);
       f.playerX = side * (sideX + FINALE_FLING_DISTANCE * out);
       f.playerY = 0.3 + 3 * arc * (1 - 0.3 * u);
       f.playerRot = -side * (Math.PI / 2 + 2 * Math.PI) * out;

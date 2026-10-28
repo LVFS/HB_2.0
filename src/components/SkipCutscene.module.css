@@ -1,0 +1,44 @@
+/* "Tieni premuto per saltare": angolo in basso a destra, discreto ma sempre leggibile. */
+
+.button {
+  position: absolute;
+  right: var(--space-4);
+  bottom: var(--space-4);
+  display: grid;
+  gap: 0.35rem;
+  min-width: 12rem;
+  padding: 0.5rem 0.8rem;
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 0.78rem;
+  text-align: left;
+  background: rgba(8, 10, 18, 0.7);
+  border: 1px solid var(--line-strong);
+  cursor: pointer;
+  user-select: none;
+  touch-action: none;
+  opacity: 0.8;
+  transition: opacity 140ms var(--ease-out);
+}
+
+.button:hover,
+.button:focus-visible {
+  opacity: 1;
+}
+
+.label {
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.track {
+  display: block;
+  height: 4px;
+  background: var(--surface-control);
+}
+
+.fill {
+  display: block;
+  height: 100%;
+  background: var(--accent-bright);
+}

@@ -11,6 +11,7 @@ import styles from './PowerUpChoice.module.css';
  */
 export function PowerUpChoice() {
   const options = useArenaStore((s) => s.powerUpChoice);
+  const title = useArenaStore((s) => s.powerUpChoiceTitle);
   const [selected, setSelected] = useState(0);
 
   useEffect(() => {
@@ -42,7 +43,7 @@ export function PowerUpChoice() {
 
   return (
     <div className={styles.overlay} role="dialog" aria-label="Scegli un potenziamento">
-      <div className={styles.title}>Scegli il potenziamento</div>
+      <div className={styles.title}>{title ?? 'Scegli il potenziamento'}</div>
       <div className={styles.cards}>
         {options.map((option, index) => (
           <button

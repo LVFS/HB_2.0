@@ -4,6 +4,7 @@ import { OrthographicCamera } from '@react-three/drei';
 import gsap from 'gsap';
 import type { Group } from 'three';
 import { DialogueBox } from '@/components/DialogueBox';
+import { SkipCutscene } from '@/components/SkipCutscene';
 import { CharacterAnimator2D, type CharacterAnimState } from '@/game/render2d/CharacterAnimator2D';
 import { getSecondSwordDialogue } from '@/data/dialogues/level1_sotterraneo';
 import { useDialogue } from '@/hooks/useDialogue';
@@ -71,9 +72,19 @@ export function SceneManagerSotterraneo() {
 
   const { currentLine, isDone } = useDialogue(lines, { enabled: listening });
 
+  // Stato finale della scena: si passa al tunnel. IDEMPOTENTE (scatta una volta sola), così
+  // vale sia a dialogo finito sia saltando la scena (vedi `useCutsceneSkip`).
+  const finished = useRef(false);
+  const applyFinalState = () => {
+    if (finished.current) return;
+    finished.current = true;
+    useLevelStore.getState().setPhase('boss_fase2_tunnel');
+  };
+
   // A dialogo finito si passa al tunnel (da un effect, mai dal render).
   useEffect(() => {
-    if (isDone) useLevelStore.getState().setPhase('boss_fase2_tunnel');
+    if (isDone) applyFinalState();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- applyFinalState usa solo ref e lo store
   }, [isDone]);
 
   return (
@@ -121,6 +132,8 @@ export function SceneManagerSotterraneo() {
       </Canvas>
 
       {currentLine && <DialogueBox line={currentLine} />}
+      {/* Tenere premuto Esc/Invio (o il bottone) salta il dialogo: vedi `applyFinalState`. */}
+      <SkipCutscene onSkip={applyFinalState} />
     </div>
   );
 }

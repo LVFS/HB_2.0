@@ -35,7 +35,10 @@ toccare un'area, leggi il suo documento:
 | l'interno isometrico dell'Ariston (LDtk) | `docs/FASE5_INTERNO_ISOMETRICO.md`, `docs/FASE4b_ATTIVITA_E_PREBOSS.md` |
 | il menu iniziale o la selezione livelli | `docs/MENU_E_SELEZIONE_LIVELLI_RIFERIMENTO.md`, `docs/MENU_INTRO.md` |
 | sprite/animazione dei personaggi | `docs/FASE3_RIG_PERSONAGGI.md` |
-| il refactor dell'arena e le primitive per il tunnel | `docs/FASE7_PULIZIA_REFACTOR.md` |
+| il tunnel dell'inseguimento (`game/levels/Tunnel/`), `SkipCutscene` | `docs/FASE8_TUNNEL_INSEGUIMENTO.md` (in fondo: stato di esecuzione e scostamenti) |
+| Slancio, bonus, eventi e finestra sulla marionetta del tunnel | `docs/FASE9_TUNNEL_POTENZIAMENTI.md` |
+| distanza fisica, casella bonus, inquadratura fissa, tempo limite, tre vie, onde di Checco e modalità, desideri di Shenron | `docs/FASE10_TUNNEL_DISTANZA_VIE_EVENTI.md` |
+| il refactor dell'arena e le primitive condivise | `docs/FASE7_PULIZIA_REFACTOR.md` |
 | una panoramica dell'app | `docs/APP_EXPLAINER.md` |
 
 ## Struttura del progetto
@@ -56,20 +59,22 @@ src/
                           boss*.ts senza React, PlayerArena, EveArena, ArenaThreats, finale.ts,
                           finisher.ts, qte.ts, combat.ts, arenaConfig.ts, arenaState.ts
       Sotterraneo/        scena scriptata dopo il finale del boss (`transizione_seconda_spada`)
+      Tunnel/             inseguimento (`boss_fase2_tunnel` → `combo_doppia_spada_qte` → `fuga_checco`):
+                          UNA scena (SceneManagerTunnel) + moduli `tunnel*.ts` senza React
     render2d/             fondamenta 2D riusabili: Sprite2D, ParallaxLayer, useFollowCameraX,
                           collision.ts + useOverlap.ts (AABB a mano), useXTrigger, Character2D +
                           CharacterAnimator2D (D0/D1/Eve a swap di pose)
     shared/               primitive condivise per i modi di gioco con giocatore in tempo reale:
                           usePlayerActions.ts (input a azioni), jump.ts (stepJump)
   components/             HUD/overlay HTML: DialogueBox, SettingsBar, ArenaHud, QteChallenge,
-                          PowerUpChoice, PowerUpIntro, LoadingScreen…
+                          PowerUpChoice, PowerUpIntro, SkipCutscene, LoadingScreen…
   data/                   contenuto statico, NON nello store: levels.ts, level1/triggers.ts,
                           dialogues/ (level1_intro, level1_sotterraneo)
   store/                  gameStore (fase/schermata), levelStore (macchina a stati DEL livello),
                           arenaStore (copie per la HUD dell'arena), settingsStore e progressStore
                           (persistiti; completedLevelIds è un Set di id, mai un contatore)
   hooks/                  useBackgroundMusic, useSfx, useAnyInput ("premi qualcosa" unificato),
-                          useDialogue, useDevBossShortcut (solo dev)…
+                          useDialogue, useCutsceneSkip, useDevBossShortcut (solo dev)…
   styles/                 tokens.css (colori/spazi/font/tempi — nessun colore letterale nei module)
                           + global.css + ui.module.css (primitivi) + *.module.css per componente
 public/                   audio/, models/ (GLB), sprites/, maps/ (immagini statiche generate),
@@ -234,6 +239,58 @@ Mappa del codice (dopo il refactor FASE 7):
   (salta all'arena / ne esce, `hooks/useDevBossShortcut.ts`) e la mappa dei tasti in
   "Due entrate PROVVISORIE" del documento di riferimento (da rimuovere quando ci sarà la selezione dei boss).
 
+## Tunnel dell'inseguimento (`boss_fase2_tunnel` e seguenti) (riassunto)
+
+Corsa laterale semi-automatica sotto il Cinema (`game/levels/Tunnel/`, design in
+`docs/FASE8_TUNNEL_INSEGUIMENTO.md`): D corre da solo a `TUNNEL_RUN_SPEED`, il giocatore salta
+(anche doppio), schiva con i-frame (`Shift`), para (`K`: rimanda i colpi PARABILI contro la
+marionetta e recupera terreno), attacca (`J`: rompe le casse), si cura (`R`) e si sposta di poco
+(`A`/`D` avanti e indietro, `W`/`S` cambiano via). `App.tsx` monta `SceneManagerTunnel` per le tre fasi (`TUNNEL_PHASES`) SENZA
+rimontarlo; dentro, la corsa e la raffica vivono nel mondo (`TunnelWorld`) e `SceneManagerTunnel`
+collega i passaggi alle fasi di `levelStore` (`tunnelResult`). Regole da non violare:
+
+- Un solo `useFrame` di simulazione (`tunnelDriver.updateTunnel`): l'ordine è deciso lì (hit-stop →
+  tempo → distanza → giocatore → minacce → marionetta/proiettili → direttore). Niente numeri
+  magici fuori da `tunnelConfig.ts`; il copione (`tunnelDirector.TUNNEL_SCRIPT`) è dati puri,
+  controllato da `validateScript()` (leggibilità ≥ 0.7 s, spaziatura).
+- Le minacce sono definite dal secondo in cui D ci ARRIVA: la corsa è a velocità costante, quindi
+  `x = startX + t·velocità` e telegrafi/raggi si sincronizzano sul tempo. Dash e parata hanno
+  finestre più larghe di quelle dell'arena (`TUNNEL_DASH_DURATION`, `TUNNEL_PARRY`): a 9 u/s il
+  contatto dura ~0.14 s.
+- Il tunnel riusa `createArenaWorld()` per giocatore/proiettili/numeri di danno e le regole di
+  `combat.ts` (`hitPlayer`, parata), `qte.ts`/`QteChallenge`, `ArenaHud` (`mode="tunnel"`) e
+  `arenaStore`; la distanza dalla marionetta è `world.gap` (0 = raggiunta, 100 = sfuggita; a 100
+  si perde e si riparte dall'INIZIO DELLA SEZIONE). Il gap iniziale dipende da
+  `levelStore.finalQteSuccess` (35/45/55).
+- Convenzione degli avvisi del tunnel: ROSSO "PARA" = parabile (arancio, si rimanda), GIALLO
+  "SALTA" = non parabile e basso — la stessa dell'arena (il documento FASE 8 la scriveva al contrario).
+- Cutscene saltabili: `components/SkipCutscene` + `hooks/useCutsceneSkip` (tenere premuto Esc/Invio
+  o il bottone ~0.6 s, mai un tap). Ogni cutscene ha un `applyFinalState()` IDEMPOTENTE e saltare =
+  timeline alla fine + `applyFinalState()` (esempi: `EscapeCutscene`, `SceneManagerSotterraneo`).
+- **FASE 9 (`docs/FASE9_TUNNEL_POTENZIAMENTI.md`)**: lo **Slancio** (`tunnelSlancio.ts`) accelera il tempo
+  del MONDO (`world.tempo`, 1 → 1.3) ogni 8 s senza danni; salto/dash/parata/timer del giocatore restano
+  in tempo REALE (quindi nel driver si usa `worldDt` per minacce e proiettili, `delta` per il giocatore).
+  Gli **eventi** (`tunnelEvents.ts`: «Checco si stacca» con guardie e finestra `PuppetWindow`, «Il masso»)
+  sono dati in `tunnelConfig.ts`; un evento sta dentro UNA sezione (il checkpoint lo ripropone intero);
+  `validateScript()` lo controlla anche al tempo massimo.
+- **FASE 10 (`docs/FASE10_TUNNEL_DISTANZA_VIE_EVENTI.md`, tappe 1-5 eseguite)**: la **distanza è fisica**:
+  `world.gap` è in METRI e la marionetta sta a `TUNNEL_PUPPET_DIST_MIN + gap` unità davanti a D (fuori
+  schermo finché è lontana; la HUD mostra un indicatore con i metri). `addGap()` NON modifica `gap`: accumula
+  in `gapPending`, che `updateGap` versa con `TUNNEL_GAP_SMOOTH` (mai scatti). I lanci sono sincronizzati
+  sull'ARRIVO (`launch = arrivo − distanza/avvicinamento`). L'inquadratura è fissa in altezza
+  (`TUNNEL_VIEW_HEIGHT`, zoom derivato dalla finestra) e le minacce nascono oltre il bordo destro REALE
+  (`world.view.ahead`, scritto dal rig della camera). Gli oggetti sono Sfere, freccia gialla e **scatola**
+  che riempie la **casella** (`world.slot`, `tunnelItems.ts`, uso con `E`; contenuto in base alla distanza);
+  i colpi su Checco hanno valori fissi in metri, anche fuori schermo (Zoltraak lo prende sempre). Tempo
+  limite 5 min reali: scaduto o con Checco oltre 100 m si rifà tutto da capo, a vita zero si riparte
+  dalla sezione; il copione ripete l'ultimo tratto (`TUNNEL_LOOP_*`) finché non lo raggiungi.
+  **Tre vie**: ogni minaccia/oggetto/proiettile ha una `lane` (0 = lontana); D la cambia con W/S (`world.lane.pos` continuo; il salto nel tunnel è
+  solo Spazio) e le collisioni passano da `inPlayerLane`. La camera è ortografica ma INCLINATA (`TUNNEL_CAMERA_PITCH`): le quote dello sfondo si
+  danno come altezza-schermo e si convertono con `worldY`. **Checco altera la realtà** (`tunnelReality.ts`): onda a contatore in metri, esiti preso →
+  Buen Camino (torrette volanti) / deviato → shonen (Frieren, Kamehameha) / schivato; corsa a 200 s in 6 sezioni. **Desideri di Shenron** (`tunnelWishes.ts`, 7 Sfere →
+  scelta di tre: permanente / a usi / a tempo): solo quel modulo legge i desideri, e `tryInstinct` va chiamata prima di OGNI `hitPlayer` del tunnel. **Tappa 5**: avvisi per via sul bordo destro (`TunnelAlerts`, uno per via, onda > schiva > para); bonus **Nuvola Speedy** e **gatto** (`tunnelCat.ts`, `CatMount`); **ospite** unico della modalità shonen (un personaggio o una squadra) che esce da un portale e aiuta a modo suo (`help`: lane / wide / lost / shield; `src/data/tunnelCameos.ts`, `CameoCast`, voci `todo` con battute generiche da sostituire; Eve nella seconda onda); eventi bivio, paparazzi, Botafumeiro, karaoke (note ♪) e buio. **Tappa 7**: onda unica su TUTTE le vie; stili permanenti lasciati dall'ospite dopo la parata (`tunnelPerks.ts`: Super Saiyan con volo, Dio del tuono con fulmine in caduta, smoking «Vai uomo» e immunità ai colpi a distanza a velocità massima, Gear 5 + Zoro in scorta, ecc.; `resetPerks` PRIMA di `jumpToTime(0)`); Eve resta per tutta la corsa; masso a distanza fissa che finisce schiantandosi su un muro; niente cure con R; ombre sul binario (`LaneShadows`). **Tappa 6**: nemici del Cammino (`tunnelEnemies.ts`: pellegrino fanatico a contatto, balestriere a distanza i cui dardi parati tornano a lui), resti che rallentano, malus (frenato/rallentato, tolti dalla modalità shonen e dal Senzu), fagiolo curativo e difficoltà alzata (`TUNNEL_GAP_DRIFT_PER_SEC`, penalità e danni). Nei test automatici la scelta del desiderio blocca il gioco (`hitStop = Infinity`): il bot deve scegliere.
+- Solo in sviluppo: `F7` salta al tunnel, `window.__tunnelWorld`, `tunnelDirector.jumpToTime(world, t)`.
+
 ## Bundle/performance
 
 - Code splitting via `rolldownOptions.output.codeSplitting` in `vite.config.ts`: un solo
@@ -331,8 +388,14 @@ tunnel (`game/shared/`), CLAUDE.md snellito con i riferimenti in `docs/`; audio 
 (`useBackgroundMusic`, `useSfx`), impostazioni persistenti, CSS Modules, code splitting,
 ESLint configurato, alias `@/`, base path GitHub Pages.
 
-**Prossimo: FASE 8** — il tunnel infinito dell'inseguimento (`boss_fase2_tunnel`), che riusa
-`qte.ts`, `usePlayerActions` e `stepJump` (vedi `docs/FASE7_PULIZIA_REFACTOR.md`, sezione 5).
+**FASE 8 eseguita**: tunnel dell'inseguimento (corsa a 4 sezioni con distanza dalla marionetta,
+raffica a doppia spada con QTE, cutscene di fuga), `SkipCutscene` e continuità del "crollo" nel
+finale dell'arena. **FASE 9**: Slancio (velocità reale), bonus a tema anime/videogiochi, eventi
+(Checco si stacca + guardie, il masso) e finestra sulla marionetta nel tunnel. **FASE 10 (tappe 1-7)**: distanza
+fisica in metri, oggetti che entrano da fuori schermo, inquadratura fissa, casella bonus, tempo limite,
+tre vie, attacchi di Checco a contatore con modalità Buen Camino/shonen e desideri di Shenron
+(prossime: battute vere per i cameo, taratura giocando). Prossimo: `inseguimento_spaziale_cutscene` e le fasi successive, `dialogo_pre_boss`,
+le due cutscene da storyboard (ingresso sala boss, intermezzo) e la variante D2 (doppia spada).
 
 Il **menu iniziale** (`game/menu/`) è un'ambientazione Blender vera ("Ingresso a Oristano": strada,
 cartello, case, distributore ESSO, binari, muro stile Attack on Titan con portone) con muro

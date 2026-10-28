@@ -14,9 +14,22 @@ import { useEffect, useRef } from 'react';
  * dialogo/una scelta per non accumulare tasti).
  */
 
-export type PlayerAction = 'attack' | 'parry' | 'dash' | 'jump' | 'heal' | 'skill' | 'berserk' | 'summon';
+export type PlayerAction =
+  | 'attack'
+  | 'parry'
+  | 'dash'
+  | 'jump'
+  | 'heal'
+  | 'skill'
+  | 'berserk'
+  | 'summon'
+  | 'laneUp'
+  | 'laneDown';
 
-/** Binding: tasti (minuscoli, come `event.key`) e `mouse0`/`mouse2` (click sinistro/destro). */
+/**
+ * Binding: tasti (minuscoli, come `event.key`) e `mouse0`/`mouse2` (click sinistro/destro).
+ * `laneUp`/`laneDown` (cambio di via) li legge solo il tunnel, dove `jump` è sovrascritto a solo Spazio.
+ */
 const BINDINGS: Record<PlayerAction, readonly string[]> = {
   attack: ['j', 'mouse0'],
   parry: ['k', 'mouse2'],
@@ -25,8 +38,13 @@ const BINDINGS: Record<PlayerAction, readonly string[]> = {
   heal: ['r'],
   skill: ['e'],
   berserk: ['q'],
-  summon: ['f']
+  summon: ['f'],
+  laneUp: ['w', 'arrowup'],
+  laneDown: ['s', 'arrowdown']
 };
+
+/** Binding che un modo di gioco può sostituire a quelli di default (es. il tunnel: salto solo con Spazio). */
+export type BindingOverrides = Partial<Record<PlayerAction, readonly string[]>>;
 const LEFT_KEYS = ['a', 'arrowleft'] as const;
 const RIGHT_KEYS = ['d', 'arrowright'] as const;
 
@@ -43,7 +61,8 @@ export interface PlayerActions {
   consume: () => void;
 }
 
-function createPlayerActions(): PlayerActions & { _held: Set<string>; _pressed: Set<string> } {
+function createPlayerActions(overrides: BindingOverrides): PlayerActions & { _held: Set<string>; _pressed: Set<string> } {
+  const bindings: Record<PlayerAction, readonly string[]> = { ...BINDINGS, ...overrides };
   const held = new Set<string>();
   const pressed = new Set<string>();
   const anyOf = (set: Set<string>, keys: readonly string[]) => keys.some((key) => set.has(key));
@@ -56,8 +75,8 @@ function createPlayerActions(): PlayerActions & { _held: Set<string>; _pressed: 
       if (anyOf(held, RIGHT_KEYS)) x += 1;
       return x as -1 | 0 | 1;
     },
-    isHeld: (action) => anyOf(held, BINDINGS[action]),
-    justPressed: (action) => anyOf(pressed, BINDINGS[action]),
+    isHeld: (action) => anyOf(held, bindings[action]),
+    justPressed: (action) => anyOf(pressed, bindings[action]),
     keyJustPressed: (key) => pressed.has(key),
     consume: () => pressed.clear()
   };
@@ -67,9 +86,9 @@ function createPlayerActions(): PlayerActions & { _held: Set<string>; _pressed: 
  * Registra i listener della finestra finché il componente è montato e
  * restituisce un oggetto STABILE (letto dentro `useFrame`, mai in render).
  */
-export function usePlayerActions(): PlayerActions {
+export function usePlayerActions(overrides: BindingOverrides = {}): PlayerActions {
   const ref = useRef<ReturnType<typeof createPlayerActions> | null>(null);
-  if (!ref.current) ref.current = createPlayerActions();
+  if (!ref.current) ref.current = createPlayerActions(overrides);
   const actions = ref.current;
 
   useEffect(() => {

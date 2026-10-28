@@ -42,6 +42,10 @@ function ArenaCameraRig({ world }: { world: ArenaWorld }) {
     const limit = ARENA_HALF_WIDTH + ARENA_CAMERA_EDGE_MARGIN - halfView;
     const target = limit > 0 ? Math.min(limit, Math.max(-limit, midpoint)) : 0;
     camera.position.x += (target - camera.position.x) * ARENA_CAMERA_SMOOTHING;
+    // Il crollo del finale (marionetta, scaraventamento): la sala trema.
+    const finale = world.finale;
+    const shake = finale ? (finale.phase === 'fling' ? 0.16 : finale.marionette ? 0.07 : 0) : 0;
+    camera.position.y = ARENA_CAMERA_EYE_Y + (shake > 0 ? (Math.random() - 0.5) * 2 * shake : 0);
   });
   return null;
 }

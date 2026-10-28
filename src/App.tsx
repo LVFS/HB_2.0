@@ -45,6 +45,18 @@ const SceneManagerSotterraneo = lazy(() =>
   }))
 );
 
+// Tunnel dell'inseguimento (`boss_fase2_tunnel` → `combo_doppia_spada_qte` →
+// `fuga_checco`, vedi docs/FASE8_TUNNEL_INSEGUIMENTO.md): UNA scena per tutte e tre
+// le fasi, con una piccola macchina a stati interna, così il passaggio fra fasi non
+// la rimonta.
+const SceneManagerTunnel = lazy(() =>
+  import('@/game/levels/Tunnel/SceneManagerTunnel').then((module) => ({
+    default: module.SceneManagerTunnel
+  }))
+);
+
+const TUNNEL_PHASES = ['boss_fase2_tunnel', 'combo_doppia_spada_qte', 'fuga_checco'];
+
 // App è il componente principale dell'app React.
 // Decide quale schermo mostrare in base allo stato globale del gioco.
 function App() {
@@ -108,10 +120,12 @@ function App() {
         )}
         {screen === 'game' && levelPhase === 'boss_fase1' && <SceneManagerBossArena onWhiteout={setWhiteout} />}
         {screen === 'game' && levelPhase === 'transizione_seconda_spada' && <SceneManagerSotterraneo />}
+        {screen === 'game' && TUNNEL_PHASES.includes(levelPhase) && <SceneManagerTunnel onWhiteout={setWhiteout} />}
         {screen === 'game' &&
           levelPhase !== 'attivita_stupide' &&
           levelPhase !== 'boss_fase1' &&
-          levelPhase !== 'transizione_seconda_spada' && <SceneManager2D onWhiteout={setWhiteout} />}
+          levelPhase !== 'transizione_seconda_spada' &&
+          !TUNNEL_PHASES.includes(levelPhase) && <SceneManager2D onWhiteout={setWhiteout} />}
       </Suspense>
 
       <div className={`${styles.whiteout} ${whiteout ? styles.whiteoutActive : ''}`} />

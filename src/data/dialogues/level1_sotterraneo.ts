@@ -31,6 +31,8 @@ export function getSecondSwordDialogue(qteSuccess: boolean | null): DialogueLine
     { speaker: 'Eve', text: 'Prendi questa. Seconda lama, calibrata sulla tua. Ti servirà.' },
     { speaker: 'narratore', text: 'Una spada scivola giù dal varco. D la afferra al volo.' },
     { speaker: 'D', text: 'Un\'altra spada. Perfetto. Fra poco apro una collezione.' },
-    { speaker: 'Eve', text: 'Vai. E, D: non farti ammazzare. Sei ancora l\'unico compatibile.' }
+    { speaker: 'Eve', text: 'Vai. E, D: non farti ammazzare. Sei ancora l\'unico compatibile.' },
+    { speaker: 'narratore', text: 'In fondo al buio, un tunnel di servizio. Lontano, un rumore di snodi di legno che scappano.' },
+    { speaker: 'D', text: 'Un tunnel, al buio, dietro a un burattino. Una serata tranquilla, insomma. Si corre.' }
   ];
 }

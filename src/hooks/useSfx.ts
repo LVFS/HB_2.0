@@ -19,10 +19,21 @@ import { useSettingsStore } from '@/store/settingsStore';
 const SFX_SOURCES = {
   impact: 'audio/sfx/wall-impact.mp3',
   rubble: 'audio/sfx/rubble.mp3',
-  warp: 'audio/sfx/level-select-warp.wav'
+  warp: 'audio/sfx/level-select-warp.wav',
+  // Cutscene da storyboard (FASE 11): i file non ci sono ancora, restano silenziose (vedi sopra).
+  crash: 'audio/sfx/cutscene-crash.mp3',
+  whoosh: 'audio/sfx/cutscene-whoosh.mp3',
+  crack: 'audio/sfx/cutscene-crack.mp3',
+  thud: 'audio/sfx/cutscene-thud.mp3'
 } as const;
 
 export type SfxName = keyof typeof SFX_SOURCES;
+
+/** Vero se 
+ame è un effetto noto (le cutscene hanno gli id come semplici stringhe nei dati). */
+export function isSfxName(name: string): name is SfxName {
+  return name in SFX_SOURCES;
+}
 
 /**
  * Suoni brevi e ripetibili, distinti dalla musica di sottofondo.

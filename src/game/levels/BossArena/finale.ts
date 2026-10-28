@@ -110,6 +110,7 @@ export function startFinale(world: ArenaWorld): ArenaFinale {
     qteSuccess: null,
     strikeTimer: 0,
     marionette: false,
+    intermezzoDone: false,
     debrisTimer: 0
   };
 }
@@ -198,10 +199,27 @@ export function updateFinale(world: ArenaWorld, delta: number, hooks: FinaleHook
       f.playerAnim = f.eveAnim = 'idle';
       if (f.t >= QTE_HUD_LINGER && useArenaStore.getState().qte) useArenaStore.getState().set({ qte: null });
       if (f.t >= FINALE_LAND) {
-        f.phase = 'transform';
+        // Checco è a terra: parte l'intermezzo a fumetti (FASE 11), che il mondo aspetta.
+        f.phase = 'intermezzo';
         f.t = 0;
         f.qte = null;
-        useArenaStore.getState().set({ qte: null });
+        useArenaStore.getState().set({ qte: null, intermezzo: true });
+      }
+      break;
+    }
+
+    case 'intermezzo': {
+      // Il mondo sta fermo (la sequenza è scriptata, gli input sono già ignorati) finché `SceneManagerBossArena` non
+      // segna l'intermezzo come finito o saltato. Poi la trasformazione parte con la marionetta GIÀ svelata: l'hanno
+      // raccontata i disegni, quindi niente «tell» di 0.5 s né messaggio. `fling` e il crollo restano com'erano.
+      boss.y = 0;
+      f.playerAnim = f.eveAnim = 'idle';
+      if (f.intermezzoDone) {
+        f.phase = 'transform';
+        f.t = 0;
+        f.marionette = true;
+        addRing(world, boss.x, 1.4, 2.4, 0.5, '#c4b5fd');
+        world.hitStop = Math.max(world.hitStop, 0.1);
       }
       break;
     }

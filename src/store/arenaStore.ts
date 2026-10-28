@@ -116,6 +116,8 @@ interface ArenaHudState {
   powerUpChoiceTitle: string | null;
   /** QTE in corso (null = nessuno). */
   qte: QteView | null;
+  /** Intermezzo a fumetti del finale in corso (FASE 11): l'arena mostra la cutscene sopra tutto e nasconde la HUD. */
+  intermezzo: boolean;
   /** Tunnel: distanza dalla marionetta 0-100 (null = fuori dal tunnel). */
   tunnelGap: number | null;
   /** Tunnel: Slancio, Sfere, bonus attivi (null = fuori dal tunnel). */
@@ -158,6 +160,7 @@ export const useArenaStore = create<ArenaHudState>((set) => ({
   powerUpIntro: null,
   powerUpChoiceTitle: null,
   qte: null,
+  intermezzo: false,
   tunnelGap: null,
   tunnelStatus: null,
   set: (patch) => set(patch),
@@ -188,6 +191,7 @@ export const useArenaStore = create<ArenaHudState>((set) => ({
       powerUpIntro: null,
       powerUpChoiceTitle: null,
       qte: null,
+      intermezzo: false,
       tunnelGap: null,
       tunnelStatus: null
     })

@@ -165,12 +165,12 @@ export function SceneManager2DIso({ onWhiteout }: SceneManager2DIsoProps) {
     window.setTimeout(() => useLevelStore.getState().setPhase('cammino_libero_ariston'), 550);
   };
 
-  // Entrare in `Sala_boss` non mostra più la stanza isometrica: avvia il
-  // combattimento (`boss_fase1`, arena laterale). Per ora salta il dialogo
-  // pre-boss, che quando esisterà va inserito davanti a questo passaggio.
+  // Entrare in `Sala_boss` non mostra più la stanza isometrica: parte la cutscene
+  // pre-boss (`dialogo_pre_boss`, i disegni dello storyboard) che a sua volta, a fine
+  // o saltata, avvia il combattimento (`boss_fase1`, arena laterale).
   const handleEnterBossArena = () => {
     onWhiteout(true);
-    window.setTimeout(() => useLevelStore.getState().setPhase('boss_fase1'), 550);
+    window.setTimeout(() => useLevelStore.getState().setPhase('dialogo_pre_boss'), 550);
   };
 
   const handleDoorEnter = (targetLevel: string) => {

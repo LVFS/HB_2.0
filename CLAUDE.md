@@ -38,6 +38,7 @@ toccare un'area, leggi il suo documento:
 | il tunnel dell'inseguimento (`game/levels/Tunnel/`), `SkipCutscene` | `docs/FASE8_TUNNEL_INSEGUIMENTO.md` (in fondo: stato di esecuzione e scostamenti) |
 | Slancio, bonus, eventi e finestra sulla marionetta del tunnel | `docs/FASE9_TUNNEL_POTENZIAMENTI.md` |
 | distanza fisica, casella bonus, inquadratura fissa, tempo limite, tre vie, onde di Checco e modalità, desideri di Shenron | `docs/FASE10_TUNNEL_DISTANZA_VIE_EVENTI.md` |
+| le cutscene da storyboard (pre-boss `dialogo_pre_boss`, intermezzo del finale dell'arena, `game/cutscenes/`, `data/cutscenes/`) | `docs/FASE11_CUTSCENE_STORYBOARD.md` |
 | il refactor dell'arena e le primitive condivise | `docs/FASE7_PULIZIA_REFACTOR.md` |
 | una panoramica dell'app | `docs/APP_EXPLAINER.md` |
 
@@ -239,6 +240,20 @@ Mappa del codice (dopo il refactor FASE 7):
   (salta all'arena / ne esce, `hooks/useDevBossShortcut.ts`) e la mappa dei tasti in
   "Due entrate PROVVISORIE" del documento di riferimento (da rimuovere quando ci sarà la selezione dei boss).
 
+## Cutscene da storyboard (riassunto)
+
+Il pre-boss (`dialogo_pre_boss`) e l'intermezzo del finale dell'arena sono «motion comic»: i disegni di `docs/storyboard/` (convertiti in
+`public/cutscenes/` da `scripts/prepare-cutscene-frames.mjs`) a tutto schermo con camera GSAP, effetti e battute. Dettaglio in
+**`docs/FASE11_CUTSCENE_STORYBOARD.md`**. Regole:
+
+- Sono dati: `data/cutscenes/` (beat, battute, camere, registro); le fasi montano `CutscenePlayer` (punto di sostituzione con il video), mai
+  `StoryboardCutscene` direttamente. HTML/CSS, non Canvas.
+- `applyFinalState()` idempotente + `SkipCutscene`, precarico con tempo massimo e nessun soft-lock, percorsi con `BASE_URL`, immagini scaricate
+  solo a cutscene avviata.
+- L'intermezzo è la fase `intermezzo` di `finale.ts` (fra `land` e `transform`): il mondo aspetta `intermezzoDone`, che scrive
+  `SceneManagerBossArena` a fine o salto. I test automatici che attraversano il finale devono saltarlo (Esc tenuto).
+- Solo in sviluppo: `F6` salta alla cutscene pre-boss.
+
 ## Tunnel dell'inseguimento (`boss_fase2_tunnel` e seguenti) (riassunto)
 
 Corsa laterale semi-automatica sotto il Cinema (`game/levels/Tunnel/`, design in
@@ -399,8 +414,8 @@ finale dell'arena. **FASE 9**: Slancio (velocità reale), bonus a tema anime/vid
 (Checco si stacca + guardie, il masso) e finestra sulla marionetta nel tunnel. **FASE 10 (tappe 1-7)**: distanza
 fisica in metri, oggetti che entrano da fuori schermo, inquadratura fissa, casella bonus, tempo limite,
 tre vie, attacchi di Checco a contatore con modalità Buen Camino/shonen e desideri di Shenron
-(prossime: battute vere per i cameo, taratura giocando). Prossimo: `inseguimento_spaziale_cutscene` e le fasi successive, `dialogo_pre_boss`,
-le due cutscene da storyboard (ingresso sala boss, intermezzo) e la variante D2 (doppia spada).
+(prossime: battute vere per i cameo, taratura giocando). **FASE 11**: cutscene da storyboard (pre-boss `dialogo_pre_boss` e intermezzo del finale dell'arena). Prossimo: `inseguimento_spaziale_cutscene` e le fasi successive,
+la variante D2 (doppia spada) e il finale nello spazio (FASE 12).
 
 Il **menu iniziale** (`game/menu/`) è un'ambientazione Blender vera ("Ingresso a Oristano": strada,
 cartello, case, distributore ESSO, binari, muro stile Attack on Titan con portone) con muro
@@ -439,7 +454,7 @@ ma va sistemato prima che il livello sia "finito".
 
 **Da fare**: le fasi della macchina a stati oltre arena e Sotterraneo — tunnel infinito
 (`boss_fase2_tunnel`, FASE 8), combo a doppia spada QTE, fuga/inseguimento/cannone, dialogo
-finale, punteggio — oggi solo placeholder; `dialogo_pre_boss` e la selezione dei boss (poi si
+finale, punteggio — oggi solo placeholder; la selezione dei boss (poi si
 tolgono le due entrate provvisorie all'arena); pipeline LDtk anche per il livello laterale
 (sostituirà i trigger `TODO_LDTK` di `data/level1/triggers.ts`); un vero rig a pezzi dei
 personaggi (richiede arte prodotta apposta; la Fase 3a a swap di pose basta per ora, e per

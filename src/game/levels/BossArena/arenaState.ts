@@ -242,7 +242,7 @@ export interface ArenaFinisher {
  * avanzare e `PlayerArena`/`EveArena` leggono le posizioni qui scritte.
  */
 export interface ArenaFinale {
-  phase: 'gather' | 'qte' | 'land' | 'transform' | 'fling' | 'fade';
+  phase: 'gather' | 'qte' | 'land' | 'intermezzo' | 'transform' | 'fling' | 'fade';
   /** Secondi dall'inizio della fase corrente. */
   t: number;
   /** Lato del giocatore rispetto a Checco (-1 = a sinistra); Eve sta dall'altro. */
@@ -270,6 +270,8 @@ export interface ArenaFinale {
   strikeTimer: number;
   /** Checco è già diventato una marionetta. */
   marionette: boolean;
+  /** L'intermezzo a fumetti (fra `land` e `transform`) è finito o saltato: lo scrive `SceneManagerBossArena`, lo legge `finale.ts`. */
+  intermezzoDone: boolean;
   /** Secondi al prossimo detrito di scena che cade (il "crollo" della trasformazione e dello scaraventamento). */
   debrisTimer: number;
 }

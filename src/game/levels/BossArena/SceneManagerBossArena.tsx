@@ -2,6 +2,7 @@ import { Suspense, useEffect, useMemo, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrthographicCamera } from '@react-three/drei';
 import { ArenaHud } from '@/components/ArenaHud';
+import { CutscenePlayer } from '@/game/cutscenes/CutscenePlayer';
 import { useArenaStore } from '@/store/arenaStore';
 import { useLevelStore } from '@/store/levelStore';
 import { ArenaBackdrop } from './ArenaBackdrop';
@@ -92,6 +93,14 @@ export function SceneManagerBossArena({ onWhiteout }: SceneManagerBossArenaProps
   };
   const handleDefeat = () => setRunId((id) => id + 1);
   const powerUp = useArenaStore((state) => state.powerUp);
+  const intermezzo = useArenaStore((state) => state.intermezzo);
+
+  // L'intermezzo a fumetti (FASE 11) è finito o saltato: l'arena riprende e il finale passa alla trasformazione.
+  // IDEMPOTENTE: CutscenePlayer lo chiama una volta sola e qui basta scrivere due flag.
+  const handleIntermezzoFinished = () => {
+    useArenaStore.getState().set({ intermezzo: false });
+    if (world.finale) world.finale.intermezzoDone = true;
+  };
 
   return (
     <div className="scene-shell">
@@ -113,15 +122,23 @@ export function SceneManagerBossArena({ onWhiteout }: SceneManagerBossArenaProps
         </Suspense>
       </Canvas>
 
-      <ArenaHud />
+      {/* L'intermezzo copre tutto (opaco, sopra la HUD): in quel momento HUD e comandi non servono. */}
+      {intermezzo && (
+        <div className={styles.cutsceneLayer}>
+          <CutscenePlayer id="postboss" onFinished={handleIntermezzoFinished} />
+        </div>
+      )}
+      {!intermezzo && <ArenaHud />}
 
-      <div className={styles.hint}>
-        <span className={styles.hintPill}>
-          A/D muovi · Spazio salta (anche doppio) · J attacca · {powerUp ? 'K spara (para)' : 'K para'} · Shift schiva · R cura
-          · E abilità{powerUp ? ' · Q berserk (furia piena)' : ''} · F richiama Eve
-          {import.meta.env.DEV ? ' · 1/2/3 anteprima colpo/barcollo/parata' : ''}
-        </span>
-      </div>
+      {!intermezzo && (
+        <div className={styles.hint}>
+          <span className={styles.hintPill}>
+            A/D muovi · Spazio salta (anche doppio) · J attacca · {powerUp ? 'K spara (para)' : 'K para'} · Shift schiva · R cura
+            · E abilità{powerUp ? ' · Q berserk (furia piena)' : ''} · F richiama Eve
+            {import.meta.env.DEV ? ' · 1/2/3 anteprima colpo/barcollo/parata' : ''}
+          </span>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,3 +1,10 @@
+/* L'intermezzo a fumetti del finale: a tutto schermo, opaco, sopra Canvas e HUD. */
+.cutsceneLayer {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+}
+
 .hint {
   composes: panelOverlay from '../../../styles/ui.module.css';
   top: auto;

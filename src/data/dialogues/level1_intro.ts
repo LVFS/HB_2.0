@@ -5,7 +5,7 @@
 // situazione con fastidio e ironia, non urla eroicamente; Eve resta seria/
 // quasi burocratica per contrasto comico.
 
-export type DialogueSpeaker = 'D' | 'Eve' | 'narratore';
+export type DialogueSpeaker = 'D' | 'Eve' | 'Checco' | 'narratore';
 
 export interface DialogueLine {
   speaker: DialogueSpeaker;

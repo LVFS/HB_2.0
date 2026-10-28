@@ -55,7 +55,15 @@ const SceneManagerTunnel = lazy(() =>
   }))
 );
 
-const TUNNEL_PHASES = ['boss_fase2_tunnel', 'combo_doppia_spada_qte', 'fuga_checco'];
+// Cutscene pre-boss (`dialogo_pre_boss`, FASE 11): i disegni dello storyboard fra la porta
+// della Sala boss e l'arena.
+const SceneManagerPreBoss = lazy(() =>
+  import('@/game/levels/BossArena/SceneManagerPreBoss').then((module) => ({
+    default: module.SceneManagerPreBoss
+  }))
+);
+
+const TUNNEL_PHASES =['boss_fase2_tunnel', 'combo_doppia_spada_qte', 'fuga_checco'];
 
 // App è il componente principale dell'app React.
 // Decide quale schermo mostrare in base allo stato globale del gioco.
@@ -118,11 +126,13 @@ function App() {
         {screen === 'game' && levelPhase === 'attivita_stupide' && (
           <SceneManager2DIso onWhiteout={setWhiteout} />
         )}
+        {screen === 'game' && levelPhase === 'dialogo_pre_boss' && <SceneManagerPreBoss onWhiteout={setWhiteout} />}
         {screen === 'game' && levelPhase === 'boss_fase1' && <SceneManagerBossArena onWhiteout={setWhiteout} />}
         {screen === 'game' && levelPhase === 'transizione_seconda_spada' && <SceneManagerSotterraneo />}
         {screen === 'game' && TUNNEL_PHASES.includes(levelPhase) && <SceneManagerTunnel onWhiteout={setWhiteout} />}
         {screen === 'game' &&
           levelPhase !== 'attivita_stupide' &&
+          levelPhase !== 'dialogo_pre_boss' &&
           levelPhase !== 'boss_fase1' &&
           levelPhase !== 'transizione_seconda_spada' &&
           !TUNNEL_PHASES.includes(levelPhase) && <SceneManager2D onWhiteout={setWhiteout} />}

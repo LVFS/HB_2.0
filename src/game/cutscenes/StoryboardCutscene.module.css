@@ -1,0 +1,81 @@
+/* Cutscene a fumetto: disegno a tutto schermo con camera (pan/zoom), lampi e battute sopra.
+   Il contenitore è `absolute` perché DialogueBox e SkipCutscene si ancorano al loro genitore posizionato. */
+
+.root {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--cutscene-ink);
+}
+
+.shake {
+  position: absolute;
+  inset: 0;
+}
+
+/* La camera: GSAP muove e ingrandisce questo livello (xPercent/yPercent/scale), mai le immagini. */
+.camera {
+  position: absolute;
+  inset: 0;
+  will-change: transform;
+}
+
+.frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  user-select: none;
+  pointer-events: none;
+}
+
+.contain {
+  object-fit: contain;
+}
+
+/* Dalla vignetta precedente alla successiva: una dissolvenza brevissima (i tagli secchi non l'hanno). */
+.fadeIn {
+  animation: frameFade 280ms ease-out both;
+}
+
+@keyframes frameFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Scurisce il disegno per tutto il beat. */
+.dim {
+  position: absolute;
+  inset: 0;
+  background: var(--cutscene-ink);
+  opacity: 0;
+  transition: opacity 500ms ease-out;
+  pointer-events: none;
+}
+
+.dimOn {
+  opacity: 0.42;
+}
+
+/* Lampo bianco e dissolvenza al bianco (opacità animata da GSAP). */
+.flash {
+  position: absolute;
+  inset: 0;
+  background: var(--cutscene-flash);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Nero iniziale: si schiarisce quando i disegni sono pronti. */
+.curtain {
+  position: absolute;
+  inset: 0;
+  background: var(--cutscene-ink);
+  opacity: 1;
+  pointer-events: none;
+}

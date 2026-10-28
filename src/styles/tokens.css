@@ -32,6 +32,10 @@
   --surface-control: rgba(10, 14, 22, 0.82);
   --surface-control-hover: rgba(16, 22, 33, 0.92);
 
+  /* Cutscene a fumetto (FASE 11): il nero e il bianco dei tagli, dei lampi e della dissolvenza. */
+  --cutscene-ink: #000000;
+  --cutscene-flash: #ffffff;
+
   /* ---------- Bordi ---------- */
   --line: rgba(255, 255, 255, 0.1);
   --line-strong: rgba(255, 255, 255, 0.2);

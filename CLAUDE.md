@@ -244,7 +244,7 @@ Mappa del codice (dopo il refactor FASE 7):
 Corsa laterale semi-automatica sotto il Cinema (`game/levels/Tunnel/`, design in
 `docs/FASE8_TUNNEL_INSEGUIMENTO.md`): D corre da solo a `TUNNEL_RUN_SPEED`, il giocatore salta
 (anche doppio), schiva con i-frame (`Shift`), para (`K`: rimanda i colpi PARABILI contro la
-marionetta e recupera terreno), attacca (`J`: rompe le casse), si cura (`R`) e si sposta di poco
+marionetta e recupera terreno), attacca (`J`: rompe le casse; in aria, con lo stile del Dio del tuono, è un fulmine ad area) e si sposta di poco
 (`A`/`D` avanti e indietro, `W`/`S` cambiano via). `App.tsx` monta `SceneManagerTunnel` per le tre fasi (`TUNNEL_PHASES`) SENZA
 rimontarlo; dentro, la corsa e la raffica vivono nel mondo (`TunnelWorld`) e `SceneManagerTunnel`
 collega i passaggi alle fasi di `levelStore` (`tunnelResult`). Regole da non violare:
@@ -377,6 +377,11 @@ collega i passaggi alle fasi di `levelStore` (`tunnelResult`). Regole da non vio
   (`export_yup=True`: `x3=xB`, `y3=zB`, `z3=-yB`), in `docs/MENU_INTRO.md`.
 
 ## Stato del progetto
+
+**Punto sicuro**: il tag `v0.9-tunnel` è il segnalibro prima di completare il Livello 1 (intro, interno Ariston,
+arena del boss completa, Sotterraneo e tunnel dell'inseguimento fino alla fuga di Checco). Gli altri livelli sono in
+pausa (nella selezione si metterà «prossimamente»). Per tornarci: `git switch --detach v0.9-tunnel`; cosa è cambiato
+dopo: `git diff v0.9-tunnel..HEAD --stat`. Un tag pubblicato non si sposta mai: se serve un nuovo punto sicuro se ne fa un altro.
 
 **Fatto**: scaffolding, menu, selezione livelli, fondamenta 2D del Livello 1 + sprite/animazione
 di D0/D1/Eve + macchina a stati con la prima scena giocabile per intero (Fasi 1, 3a e 4 del

@@ -1,0 +1,68 @@
+/* HUD HTML dello spazio: il cannone da caricare. Overlay sopra il Canvas, non intercetta il mouse (i click contano come pressioni
+   e li ascolta la finestra). */
+
+.cannon {
+  position: absolute;
+  left: 50%;
+  bottom: 14%;
+  width: min(34rem, 86vw);
+  transform: translateX(-50%);
+  display: grid;
+  justify-items: center;
+  gap: 0.7rem;
+  pointer-events: none;
+  font-family: var(--font-display);
+}
+
+.cannonTitle {
+  color: var(--accent-bright);
+  font-size: clamp(1.3rem, 4vw, 2.2rem);
+  font-weight: 700;
+  letter-spacing: var(--tracking-title);
+  text-transform: uppercase;
+  text-shadow: 0 4px 14px rgba(0, 0, 0, 0.85);
+}
+
+.cannonHint {
+  margin-top: -0.3rem;
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 0.9rem;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.85);
+}
+
+.track {
+  position: relative;
+  width: 100%;
+  height: 1.3rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--surface-control);
+  overflow: hidden;
+}
+
+.fill {
+  height: 100%;
+  width: 0;
+  background: var(--accent);
+}
+
+.fillFull {
+  background: var(--accent-bright);
+}
+
+/* La soglia sotto la quale, a tempo scaduto, il cannone parte con carica forzata (raggio più sottile). */
+.threshold {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--steel);
+}
+
+.clock {
+  color: var(--text-dim);
+  font-family: var(--font-ui);
+  font-size: 0.85rem;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.85);
+}

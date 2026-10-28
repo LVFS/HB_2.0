@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useGameStore } from '@/store/gameStore';
-import { useLevelStore } from '@/store/levelStore';
+import { useLevelStore, type LevelPhase } from '@/store/levelStore';
+import { useRunStatsStore } from '@/store/runStatsStore';
 
 /**
  * SCORCIATOIA SOLO PER SVILUPPO (`import.meta.env.DEV`: sparisce nella build
@@ -13,17 +14,39 @@ import { useLevelStore } from '@/store/levelStore';
  * selezione dei boss dal menu, va tolta (vedi la sezione "Boss arena" di
  * CLAUDE.md). Il flusso vero è: camminare dentro `Sala_boss`.
  */
+const DEV_TARGETS: Record<string, LevelPhase> = {
+  F9: 'boss_fase1', // arena del boss
+  F8: 'cammino_libero_ariston', // fuori dall'Ariston
+  F7: 'boss_fase2_tunnel', // tunnel dell'inseguimento
+  F6: 'dialogo_pre_boss', // cutscene pre-boss
+  F2: 'inseguimento_spaziale_cutscene', // spazio (apertura → supporto → cannone → distruzione)
+  F3: 'dialogo_finale', // finale a terra
+  F4: 'schermata_punteggio' // punteggio e titoli di coda, con statistiche d'esempio
+};
+
+/** Statistiche di una run verosimile (17 min, qualche colpo, QTE così così) per provare la schermata del punteggio. */
+const SAMPLE_RUN_STATS = () => ({
+  startedAt: Date.now() - 17 * 60 * 1000,
+  finishedAt: null,
+  hitsTaken: 9,
+  qte: { bossCoop: true, barrage: 0.78, support: 0.9, cannon: 0.85 },
+  curiosities: ['wish:cuore', 'cameo:eve', 'cat', 'pickup:bean'],
+  activities: []
+});
+
 export function useDevBossShortcut(): void {
   useEffect(() => {
     if (!import.meta.env.DEV) return;
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'F9' && event.key !== 'F8' && event.key !== 'F7' && event.key !== 'F6') return;
+      const target = DEV_TARGETS[event.key];
+      if (!target) return;
       event.preventDefault();
       useGameStore.getState().setScreen('game');
-      // F9 arena del boss, F7 tunnel dell'inseguimento, F6 cutscene pre-boss, F8 fuori dall'Ariston.
-      const target =
-        event.key === 'F9' ? 'boss_fase1' : event.key === 'F7' ? 'boss_fase2_tunnel' : event.key === 'F6' ? 'dialogo_pre_boss' : 'cammino_libero_ariston';
+      // F4 (punteggio): riempie le statistiche con valori d'esempio, per vedere la schermata senza giocare tutto.
+      if (event.key === 'F4') useRunStatsStore.setState(SAMPLE_RUN_STATS());
+      // F3 (finale a terra): senza l'esito dello spazio il dialogo prende le righe «di ripiego».
+      if (event.key === 'F3') useLevelStore.getState().setSpaceResult({ support: 0.8, cannon: 1 });
       useLevelStore.getState().setPhase(target);
     };
 

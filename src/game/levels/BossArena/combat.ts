@@ -1,4 +1,5 @@
 import { useArenaStore } from '@/store/arenaStore';
+import { recordHit } from '@/store/runStatsStore';
 import type { AABB } from '@/game/render2d/collision';
 import type { ArenaProjectile, ArenaWorld, DamagePopup } from './arenaState';
 import {
@@ -271,6 +272,8 @@ export function hitPlayer(
     boost: 1
   });
   player.hp = Math.max(0, player.hp - damage);
+  // Punto UNICO dei colpi subiti per il punteggio (anche il tunnel passa da qui; i colpi annullati sono già usciti sopra).
+  recordHit();
   player.hitTimer = PLAYER_HIT_STUN;
   player.iframes = PLAYER_IFRAMES_AFTER_HIT;
   player.knockbackVx = (player.x >= (sourceX ?? boss.x) ? 1 : -1) * PLAYER_KNOCKBACK;

@@ -194,12 +194,6 @@ export function SceneManager2D({ onWhiteout }: SceneManager2DProps) {
           <span className={styles.hintPill}>WASD / frecce per muoverti · Spazio per saltare</span>
         </div>
       )}
-
-      {phase !== 'intro_dialogo' && phase !== 'cammino_libero_ariston' && (
-        <div className={styles.hint}>
-          <span className={styles.hintPill}>Fase &quot;{phase}&quot; non ancora implementata</span>
-        </div>
-      )}
     </div>
   );
 }

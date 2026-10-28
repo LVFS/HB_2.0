@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { LEVEL1_TRIGGERS_PLACEHOLDER } from '@/data/level1/triggers';
+import { useRunStatsStore } from './runStatsStore';
 
 // Macchina a stati del Livello 1 (Fase 4 del piano, vedi
 // docs/PIANO_LIVELLO1_2D.md) — stessa lista già concordata nel piano
@@ -33,6 +34,14 @@ export interface TunnelResult {
   barrageScore: number;
 }
 
+/** Esito dello spazio (`qte_supporto_eve` + `carica_cannone_qte`), entrambi da 0 a 1: cambia due righe del dialogo finale. */
+export interface SpaceResult {
+  /** Quanti tasti del supporto a Eve sono riusciti. */
+  support: number;
+  /** Carica del cannone raggiunta (a tempo scaduto sale comunque al minimo, ma qui resta il valore vero). */
+  cannon: number;
+}
+
 interface LevelState {
   phase: LevelPhase;
   setPhase: (next: LevelPhase) => void;
@@ -53,6 +62,9 @@ interface LevelState {
   /** Esito del tunnel (distanza finale dalla marionetta e punteggio della raffica), o null. */
   tunnelResult: TunnelResult | null;
   setTunnelResult: (result: TunnelResult | null) => void;
+  /** Esito dello spazio (supporto a Eve e cannone), o null. */
+  spaceResult: SpaceResult | null;
+  setSpaceResult: (result: SpaceResult | null) => void;
 }
 
 const INITIAL_LATERAL_SPAWN_X: number = LEVEL1_TRIGGERS_PLACEHOLDER.eveArrivalX;
@@ -72,7 +84,9 @@ export const useLevelStore = create<LevelState>((set) => ({
   finalQteSuccess: null,
   setFinalQteSuccess: (success) => set({ finalQteSuccess: success }),
   tunnelResult: null,
-  setTunnelResult: (result) => set({ tunnelResult: result })
+  setTunnelResult: (result) => set({ tunnelResult: result }),
+  spaceResult: null,
+  setSpaceResult: (result) => set({ spaceResult: result })
 }));
 
 /**
@@ -86,6 +100,9 @@ export function resetLevel(): void {
     phase: INITIAL_PHASE,
     lateralSpawnX: INITIAL_LATERAL_SPAWN_X,
     finalQteSuccess: null,
-    tunnelResult: null
+    tunnelResult: null,
+    spaceResult: null
   });
+  // Nuova run: statistiche del punteggio azzerate e cronometro riavviato.
+  useRunStatsStore.getState().reset();
 }

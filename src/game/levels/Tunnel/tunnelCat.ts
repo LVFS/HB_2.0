@@ -1,4 +1,5 @@
 import type { BossMessenger } from '../BossArena/bossMessages';
+import { addCuriosity } from '@/store/runStatsStore';
 import { addRing } from '../BossArena/combat';
 import { GATTO } from './tunnelConfig';
 import type { TunnelWorld } from './tunnelState';
@@ -30,6 +31,7 @@ export function catClosingBonus(world: TunnelWorld): number {
 export function startCat(world: TunnelWorld, messenger: BossMessenger): void {
   const cat = world.cat;
   cat.active = true;
+  addCuriosity('cat');
   cat.t = 0;
   cat.grow = 0;
   cat.affection = GATTO.start;

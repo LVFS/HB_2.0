@@ -1,5 +1,6 @@
 import { cameoById, cameoPerks, pickCameo } from '@/data/tunnelCameos';
 import { aabbOverlap } from '@/game/render2d/collision';
+import { addCuriosity } from '@/store/runStatsStore';
 import type { BossMessenger } from '../BossArena/bossMessages';
 import { ARENA_PLAYER_HEIGHT, HITSTOP_LIGHT } from '../BossArena/arenaConfig';
 import { addRing, hitPlayer, parryProjectile, playerHurtbox } from '../BossArena/combat';
@@ -173,12 +174,14 @@ function enterHelper(world: TunnelWorld, messenger: BossMessenger): void {
     mode.eveTimer = EVE_HELP.arrive + EVE_HELP.firstHelp;
     mode.eveFlash = 0;
     grantPerk(world, 'eve');
+    addCuriosity('cameo:eve');
     return;
   }
   const cameo = pickCameo(mode.recentCameos);
   mode.cameoCursor += 1;
   mode.recentCameos = [...mode.recentCameos, cameo.id].slice(-12);
   mode.cameoId = cameo.id;
+  addCuriosity(`cameo:${cameo.id}`);
   mode.allyTimer = CAMEO_CAST.firstHelp;
   // Lo stile permanente che l'ospite ti lascia (cambia anche l'aspetto di D).
   grantPerks(world, cameoPerks(cameo), messenger);

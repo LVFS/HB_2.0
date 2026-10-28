@@ -39,6 +39,7 @@ toccare un'area, leggi il suo documento:
 | Slancio, bonus, eventi e finestra sulla marionetta del tunnel | `docs/FASE9_TUNNEL_POTENZIAMENTI.md` |
 | distanza fisica, casella bonus, inquadratura fissa, tempo limite, tre vie, onde di Checco e modalità, desideri di Shenron | `docs/FASE10_TUNNEL_DISTANZA_VIE_EVENTI.md` |
 | le cutscene da storyboard (pre-boss `dialogo_pre_boss`, intermezzo del finale dell'arena, `game/cutscenes/`, `data/cutscenes/`) | `docs/FASE11_CUTSCENE_STORYBOARD.md` |
+| lo spazio (inseguimento, QTE di supporto, cannone), il finale a terra, il punteggio e i titoli di coda (`game/levels/Spazio/`, `game/levels/Finale/`, `game/score/`, `runStatsStore`) | `docs/FASE12_FUGA_SPAZIO_FINALE_PUNTEGGIO.md` (in fondo: stato di esecuzione) |
 | il refactor dell'arena e le primitive condivise | `docs/FASE7_PULIZIA_REFACTOR.md` |
 | una panoramica dell'app | `docs/APP_EXPLAINER.md` |
 
@@ -254,6 +255,28 @@ Il pre-boss (`dialogo_pre_boss`) e l'intermezzo del finale dell'arena sono «mot
   `SceneManagerBossArena` a fine o salto. I test automatici che attraversano il finale devono saltarlo (Esc tenuto).
 - Solo in sviluppo: `F6` salta alla cutscene pre-boss.
 
+## Spazio, finale e punteggio (`inseguimento_spaziale_cutscene` → `schermata_punteggio`) (riassunto)
+
+Chiude il Livello 1 (dettaglio in **`docs/FASE12_FUGA_SPAZIO_FINALE_PUNTEGGIO.md`**). Dopo questa fase NESSUNA `LevelPhase` è senza scena:
+`SceneManager2D` serve solo `intro_dialogo` e `cammino_libero_ariston` (`App.tsx`: `OWN_SCENE_PHASES`).
+
+- **Spazio** (`game/levels/Spazio/`): UNA scena (`SceneManagerSpazio`) per `inseguimento_spaziale_cutscene`, `qte_supporto_eve` e
+  `carica_cannone_qte`, con tappe interne (`opening` → `support` → `supportAfter` → `cannon` → `destruction`); tutto in `SpazioWorld`
+  (un ref, un solo `useFrame`: `spazioDriver.ts`), costanti solo in `spazioConfig.ts` (senza alias `@/`: lo legge Node nei test).
+  Apertura e distruzione sono timeline GSAP con `applyFinalState()` idempotente e `SkipCutscene` (due istanze con `key`: ognuna scatta una
+  volta). I QTE non sono saltabili né fallibili: l'esito va in `runStatsStore` e `levelStore.spaceResult` e cambia solo il punteggio e due
+  righe del finale. Il QTE riusa `qte.ts` + `QteChallenge` (via `arenaStore.qte`); la carica del cannone è `chargeMeter.ts` (PURO, testato).
+- **Finale a terra** (`game/levels/Finale/SceneManagerFinale.tsx`, dati in `data/dialogues/level1_finale.ts`) e **punteggio + titoli**
+  (`SceneManagerPunteggio.tsx`, dedica in `data/credits.ts`: **segnaposto da scrivere a mano**, evidenziato a schermo). A fine titoli:
+  `completeLevel('oristano-ariston')` e menu. Il punteggio NON si salva.
+- **Statistiche** (`store/runStatsStore.ts`, non persistito, azzerato da `resetLevel()`): colpi subiti, esiti dei QTE (`null` = non giocato,
+  non vale zero), curiosità e attività per id univoco. Un punto di aggancio per fonte: i colpi SOLO in `hitPlayer` (`combat.ts`); curiosità
+  in `applyWish`, `enterHelper`, `startCat`, `applyPickup`. `computeScore()` (`game/score/`) è pura e testata; pesi e soglie in `scoreConfig.ts`;
+  una componente senza dato cede il peso alle altre (es. attività: aggiungere un'attività = definizione in `ACTIVITY_DEFINITIONS` +
+  `completeActivity('id')`).
+- **Test**: `npm test` (Node, `tests/*.test.mjs`, carica i `.ts` puri con type stripping: i file testati importano con estensione `.ts` e senza alias).
+- Solo in sviluppo: `F2` spazio, `F3` finale a terra, `F4` punteggio con statistiche d'esempio; `window.__spazioWorld`.
+
 ## Tunnel dell'inseguimento (`boss_fase2_tunnel` e seguenti) (riassunto)
 
 Corsa laterale semi-automatica sotto il Cinema (`game/levels/Tunnel/`, design in
@@ -414,8 +437,9 @@ finale dell'arena. **FASE 9**: Slancio (velocità reale), bonus a tema anime/vid
 (Checco si stacca + guardie, il masso) e finestra sulla marionetta nel tunnel. **FASE 10 (tappe 1-7)**: distanza
 fisica in metri, oggetti che entrano da fuori schermo, inquadratura fissa, casella bonus, tempo limite,
 tre vie, attacchi di Checco a contatore con modalità Buen Camino/shonen e desideri di Shenron
-(prossime: battute vere per i cameo, taratura giocando). **FASE 11**: cutscene da storyboard (pre-boss `dialogo_pre_boss` e intermezzo del finale dell'arena). Prossimo: `inseguimento_spaziale_cutscene` e le fasi successive,
-la variante D2 (doppia spada) e il finale nello spazio (FASE 12).
+(prossime: battute vere per i cameo, taratura giocando). **FASE 11**: cutscene da storyboard (pre-boss `dialogo_pre_boss` e intermezzo del finale dell'arena). **FASE 12**: spazio (inseguimento, QTE di supporto a Eve,
+cannone), finale a terra, punteggio e titoli di coda: il Livello 1 si gioca da cima a fondo (tag `v1.0-livello1`). Prossimo: rifiniture (asset veri, sfx e musica,
+battute, taratura), la variante D2 (doppia spada), la dedica dei titoli, i livelli successivi.
 
 Il **menu iniziale** (`game/menu/`) è un'ambientazione Blender vera ("Ingresso a Oristano": strada,
 cartello, case, distributore ESSO, binari, muro stile Attack on Titan con portone) con muro
@@ -452,9 +476,8 @@ onesto ("Cagliari" / "nome da confermare") in attesa di sapere cosa rappresenta 
 quel punto per l'utente — non blocca nient'altro (mappa/marker/gioco funzionano comunque),
 ma va sistemato prima che il livello sia "finito".
 
-**Da fare**: le fasi della macchina a stati oltre arena e Sotterraneo — tunnel infinito
-(`boss_fase2_tunnel`, FASE 8), combo a doppia spada QTE, fuga/inseguimento/cannone, dialogo
-finale, punteggio — oggi solo placeholder; la selezione dei boss (poi si
+**Da fare**: la dedica dei titoli di coda (`data/credits.ts`, segnaposto), le attività secondarie nel cinema
+(biglietti e popcorn: oggi `ACTIVITY_DEFINITIONS` è vuoto), i livelli oltre il primo; la selezione dei boss (poi si
 tolgono le due entrate provvisorie all'arena); pipeline LDtk anche per il livello laterale
 (sostituirà i trigger `TODO_LDTK` di `data/level1/triggers.ts`); un vero rig a pezzi dei
 personaggi (richiede arte prodotta apposta; la Fase 3a a swap di pose basta per ora, e per

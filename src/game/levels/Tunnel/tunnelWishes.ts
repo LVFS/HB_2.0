@@ -1,4 +1,5 @@
 import { useArenaStore } from '@/store/arenaStore';
+import { addCuriosity } from '@/store/runStatsStore';
 import type { BossMessenger } from '../BossArena/bossMessages';
 import { PLAYER_MAX_HP } from '../BossArena/arenaConfig';
 import { addRing } from '../BossArena/combat';
@@ -158,6 +159,7 @@ export function applyWish(world: TunnelWorld, id: WishId): void {
   const { player } = world.arena;
   const store = useArenaStore.getState();
   if (WISHES[id].kind === 'permanente') world.wishes.owned.push(id);
+  addCuriosity(`wish:${id}`);
   switch (id) {
     case 'cuore':
       world.maxHp += WISH_NUMBERS.heartBonus;

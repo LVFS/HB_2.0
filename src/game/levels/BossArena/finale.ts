@@ -1,4 +1,5 @@
 import { useArenaStore, type QteView } from '@/store/arenaStore';
+import { useRunStatsStore } from '@/store/runStatsStore';
 import type { ArenaFinale, ArenaWorld } from './arenaState';
 import {
   ARENA_CEILING_Y,
@@ -180,6 +181,7 @@ export function updateFinale(world: ArenaWorld, delta: number, hooks: FinaleHook
 
       if (isQteFinished(qte) && qte.gapLeft === 0) {
         f.qteSuccess = countMisses(qte) <= QTE_MAX_MISSES;
+        useRunStatsStore.getState().setQte({ bossCoop: f.qteSuccess });
         f.phase = 'land';
         f.t = 0;
         // Resta la striscia dei risultati a schermo ancora un istante.

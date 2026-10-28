@@ -8,6 +8,8 @@ export interface DialogueBoxLine {
 
 interface DialogueBoxProps {
   line: DialogueBoxLine;
+  /** `false` per le didascalie a tempo (cutscene che avanzano da sole): niente invito a premere un tasto. */
+  showHint?: boolean;
 }
 
 // Il narratore non ha un "nome parlante" da mostrare: solo il testo, in
@@ -21,7 +23,7 @@ const NARRATOR_SPEAKERS = new Set(['narratore', 'narrator']);
  * dalla schermata quando la fase corrente è "di dialogo". Non sa nulla di
  * `useDialogue`/da dove viene `line`: si limita a disegnarla.
  */
-export function DialogueBox({ line }: DialogueBoxProps) {
+export function DialogueBox({ line, showHint = true }: DialogueBoxProps) {
   const isNarrator = NARRATOR_SPEAKERS.has(line.speaker.toLowerCase());
 
   return (
@@ -29,7 +31,7 @@ export function DialogueBox({ line }: DialogueBoxProps) {
       <div className={`${ui.panel} ${styles.box}`}>
         {!isNarrator && <div className={ui.label}>{line.speaker}</div>}
         <p className={isNarrator ? styles.narratorText : styles.text}>{line.text}</p>
-        <div className={styles.hint}>premi un tasto per continuare</div>
+        {showHint && <div className={styles.hint}>premi un tasto per continuare</div>}
       </div>
     </div>
   );

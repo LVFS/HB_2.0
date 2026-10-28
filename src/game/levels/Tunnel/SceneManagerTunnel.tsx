@@ -8,6 +8,7 @@ import { createJumpState } from '@/game/shared/jump';
 import { usePlayerActions } from '@/game/shared/usePlayerActions';
 import { useArenaStore } from '@/store/arenaStore';
 import { useLevelStore } from '@/store/levelStore';
+import { useRunStatsStore } from '@/store/runStatsStore';
 import { ARENA_CAMERA_Z, BOSS_MAX_HP, PLAYER_MAX_HP, POSTURE_MAX } from '../BossArena/arenaConfig';
 import { createBossMessenger } from '../BossArena/bossMessages';
 import { DamageNumbers } from '../BossArena/DamageNumbers';
@@ -124,6 +125,7 @@ export function SceneManagerTunnel({ onWhiteout }: SceneManagerTunnelProps) {
       // Raffica finita (riuscita o no, la storia non cambia): si salva l'esito e parte la fuga.
       onBarrageFinished: (barrage: BarrageState) => {
         useLevelStore.getState().setTunnelResult({ gapEnd: world.gap, barrageScore: barrage.score ?? 0 });
+        useRunStatsStore.getState().setQte({ barrage: barrage.score ?? 0 });
         useLevelStore.getState().setPhase('fuga_checco');
         setEscaping(true);
       }

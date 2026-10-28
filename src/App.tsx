@@ -1,6 +1,6 @@
 import { Suspense, lazy, useEffect, useState } from 'react';
 import { useGameStore } from '@/store/gameStore';
-import { useLevelStore } from '@/store/levelStore';
+import { useLevelStore, type LevelPhase } from '@/store/levelStore';
 import { useBackgroundMusic } from '@/hooks/useBackgroundMusic';
 import { useDevBossShortcut } from '@/hooks/useDevBossShortcut';
 import { useAudioUnlockHint } from '@/hooks/useAudioUnlockHint';
@@ -63,7 +63,39 @@ const SceneManagerPreBoss = lazy(() =>
   }))
 );
 
-const TUNNEL_PHASES =['boss_fase2_tunnel', 'combo_doppia_spada_qte', 'fuga_checco'];
+// Lo spazio (`inseguimento_spaziale_cutscene` → `qte_supporto_eve` → `carica_cannone_qte`, FASE 12): UNA scena per le tre
+// fasi, come il tunnel.
+const SceneManagerSpazio = lazy(() =>
+  import('@/game/levels/Spazio/SceneManagerSpazio').then((module) => ({
+    default: module.SceneManagerSpazio
+  }))
+);
+
+// Finale a terra (`dialogo_finale`) e riepilogo con punteggio e titoli di coda (`schermata_punteggio`), FASE 12.
+const SceneManagerFinale = lazy(() =>
+  import('@/game/levels/Finale/SceneManagerFinale').then((module) => ({
+    default: module.SceneManagerFinale
+  }))
+);
+const SceneManagerPunteggio = lazy(() =>
+  import('@/game/levels/Finale/SceneManagerPunteggio').then((module) => ({
+    default: module.SceneManagerPunteggio
+  }))
+);
+
+const TUNNEL_PHASES: LevelPhase[] = ['boss_fase2_tunnel', 'combo_doppia_spada_qte', 'fuga_checco'];
+const SPACE_PHASES: LevelPhase[] = ['inseguimento_spaziale_cutscene', 'qte_supporto_eve', 'carica_cannone_qte'];
+// Le fasi che hanno una scena tutta loro: tutte le altre (intro e cammino fuori dall'Ariston) restano a `SceneManager2D`.
+const OWN_SCENE_PHASES: LevelPhase[] = [
+  'attivita_stupide',
+  'dialogo_pre_boss',
+  'boss_fase1',
+  'transizione_seconda_spada',
+  ...TUNNEL_PHASES,
+  ...SPACE_PHASES,
+  'dialogo_finale',
+  'schermata_punteggio'
+];
 
 // App è il componente principale dell'app React.
 // Decide quale schermo mostrare in base allo stato globale del gioco.
@@ -130,12 +162,10 @@ function App() {
         {screen === 'game' && levelPhase === 'boss_fase1' && <SceneManagerBossArena onWhiteout={setWhiteout} />}
         {screen === 'game' && levelPhase === 'transizione_seconda_spada' && <SceneManagerSotterraneo />}
         {screen === 'game' && TUNNEL_PHASES.includes(levelPhase) && <SceneManagerTunnel onWhiteout={setWhiteout} />}
-        {screen === 'game' &&
-          levelPhase !== 'attivita_stupide' &&
-          levelPhase !== 'dialogo_pre_boss' &&
-          levelPhase !== 'boss_fase1' &&
-          levelPhase !== 'transizione_seconda_spada' &&
-          !TUNNEL_PHASES.includes(levelPhase) && <SceneManager2D onWhiteout={setWhiteout} />}
+        {screen === 'game' && SPACE_PHASES.includes(levelPhase) && <SceneManagerSpazio onWhiteout={setWhiteout} />}
+        {screen === 'game' && levelPhase === 'dialogo_finale' && <SceneManagerFinale onWhiteout={setWhiteout} />}
+        {screen === 'game' && levelPhase === 'schermata_punteggio' && <SceneManagerPunteggio />}
+        {screen === 'game' && !OWN_SCENE_PHASES.includes(levelPhase) && <SceneManager2D onWhiteout={setWhiteout} />}
       </Suspense>
 
       <div className={`${styles.whiteout} ${whiteout ? styles.whiteoutActive : ''}`} />

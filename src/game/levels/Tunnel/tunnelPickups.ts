@@ -1,5 +1,6 @@
 import { aabbOverlap } from '@/game/render2d/collision';
 import { useArenaStore } from '@/store/arenaStore';
+import { addCuriosity } from '@/store/runStatsStore';
 import { playerHurtbox } from '../BossArena/combat';
 import {
   ARROW_BOOST,
@@ -72,11 +73,13 @@ function applyPickup(world: TunnelWorld, pickup: TunnelPickup, onSeven: () => vo
     }
     case 'arrow':
       world.runner.boost = ARROW_BOOST;
+      addCuriosity('pickup:arrow');
       sayAbovePlayer(world, 'ULTREIA!', 1.2);
       break;
     case 'bean':
       {
         const heal = hasWish(world, 'respiro') ? Math.round(BEAN.heal * 1.5) : BEAN.heal;
+        addCuriosity('pickup:bean');
         setPlayerHp(world, world.arena.player.hp + heal);
         sayAbovePlayer(world, `+${heal} VITA`, 1.6);
       }

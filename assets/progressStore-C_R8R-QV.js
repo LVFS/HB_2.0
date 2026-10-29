@@ -1,0 +1,1 @@
+import{n as e,r as t}from"./vendor~index~SceneManagerPreBoss~SceneManagerPunteggio~MenuScene~CharacterIntro~SceneManage~iqklq74s-Be-45Ss4.js";var n=t()(e(e=>({completedLevelIds:[],completeLevel:t=>e(e=>e.completedLevelIds.includes(t)?e:{completedLevelIds:[...e.completedLevelIds,t]})}),{name:`epic-birthday-progress`}));export{n as t};

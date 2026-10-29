@@ -1,0 +1,66 @@
+/* Icone dei comandi: disegnate a mano (SVG, un solo colore, `currentColor`) per tutte le famiglie, così lo stile è uno solo. */
+
+.glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  height: 1.5em;
+  min-width: 1.5em;
+  color: inherit;
+}
+
+.svg {
+  height: 100%;
+  width: auto;
+  display: block;
+  overflow: visible;
+}
+
+/* Tasto di tastiera (e riserva testuale se un'icona non si può disegnare). */
+.cap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5em;
+  height: 1.5em;
+  padding: 0 0.4em;
+  border: 1.5px solid currentColor;
+  border-radius: 0.4em;
+  font-family: var(--font-display);
+  font-size: 0.8em;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.bareText {
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.label {
+  margin-left: 0.35em;
+}
+
+.row {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35em 0.2em;
+  max-width: 100%;
+}
+
+.item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  white-space: nowrap;
+}
+
+.sep {
+  opacity: 0.45;
+  margin: 0 0.35em;
+}

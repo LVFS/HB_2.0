@@ -1,4 +1,5 @@
 import ui from '@/styles/ui.module.css';
+import { ActionGlyph } from './ActionGlyph';
 import styles from './DialogueBox.module.css';
 
 export interface DialogueBoxLine {
@@ -31,7 +32,11 @@ export function DialogueBox({ line, showHint = true }: DialogueBoxProps) {
       <div className={`${ui.panel} ${styles.box}`}>
         {!isNarrator && <div className={ui.label}>{line.speaker}</div>}
         <p className={isNarrator ? styles.narratorText : styles.text}>{line.text}</p>
-        {showHint && <div className={styles.hint}>premi un tasto per continuare</div>}
+        {showHint && (
+          <div className={styles.hint}>
+            premi <ActionGlyph action="confirm" /> o un tasto qualsiasi per continuare
+          </div>
+        )}
       </div>
     </div>
   );

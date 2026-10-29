@@ -22,7 +22,7 @@ export const SPACE_STAR_SPEEDS = [0.35, 0.9, 2.2] as const;
 export const SPACE_STAR_COUNTS = [70, 40, 18] as const;
 
 // ---------- QTE di supporto a Eve ----------
-export const SUPPORT_QTE_KEYS = ['j', 'k', 'e', 'r', 'space'] as const;
+export const SUPPORT_QTE_KEYS = ['attack', 'parry', 'skill', 'heal', 'jump'] as const; // azioni (FASE 14)
 export const SUPPORT_QTE_COUNT = 10;
 /** Finestra del primo e dell'ultimo prompt (secondi): le intermedie scendono in modo lineare. */
 export const SUPPORT_QTE_WINDOW_FIRST = 1.2;
@@ -39,8 +39,7 @@ export const SPACE_BOLT_SECONDS = 0.28;
 export const SPACE_DODGE_DISTANCE = 1.5;
 
 // ---------- Carica del cannone ----------
-/** Tasti che caricano (più click/tap). */
-export const CANNON_KEYS = ['j', 'k', 'space'] as const;
+/** Carica con qualunque tasto frontale (attacco, parata, salto, scatto) o con un click/tap: vedi `isCannonToken` in `src/input/`. */
 /** Carica per pressione (0-1). A ~6 pressioni al secondo la barra si riempie in ~7.5 s. */
 export const CANNON_GAIN_PER_TAP = 0.022;
 /** Moltiplicatore se la pressione è su un tasto DIVERSO dalla precedente (alternare J e K rende un po' di più). */

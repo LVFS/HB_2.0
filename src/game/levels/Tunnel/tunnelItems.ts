@@ -45,7 +45,7 @@ export function collectBox(world: TunnelWorld, messenger: BossMessenger, item?: 
   if (world.slot !== null) return false;
   world.slot = item ?? rollItem(world);
   sayAbovePlayer(world, ITEM_LABEL[world.slot].toUpperCase() + '!');
-  messenger.flash(`Bonus: ${ITEM_LABEL[world.slot]}`, 'Premi E per usarlo', 1.8);
+  messenger.flash(`Bonus: ${ITEM_LABEL[world.slot]}`, 'Premi {skill} per usarlo', 1.8);
   return true;
 }
 
@@ -61,7 +61,7 @@ export function consumeSlotItem(world: TunnelWorld, messenger: BossMessenger): b
     case 'gomu':
       buffs.gomu = GOMU.duration;
       sayAbovePlayer(world, 'GOMU GOMU!');
-      messenger.flash('GOMU GOMU NO… PUGNO!', `${GOMU.duration} s: J allunga il braccio e rimanda tutto`, 2.4);
+      messenger.flash('GOMU GOMU NO… PUGNO!', `${GOMU.duration} s: {attack} allunga il braccio e rimanda tutto`, 2.4);
       break;
     case 'saiyan':
       buffs.saiyan = SAIYAN.duration;
@@ -82,7 +82,7 @@ export function consumeSlotItem(world: TunnelWorld, messenger: BossMessenger): b
     case 'nuvola':
       buffs.nuvola = NUVOLA.duration;
       sayAbovePlayer(world, 'NUVOLA SPEEDY!');
-      messenger.flash('NUVOLA SPEEDY!', 'Tieni premuto Spazio per salire, rilascia per scendere', 2.6);
+      messenger.flash('NUVOLA SPEEDY!', 'Tieni premuto {jump} per salire, rilascia per scendere', 2.6);
       break;
     case 'gatto':
       startCat(world, messenger);

@@ -1,24 +1,14 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import type { MutableRefObject } from 'react';
 import { useFrame } from '@react-three/fiber';
 import type { Group } from 'three';
+import { usePlayerActions } from '@/game/shared/usePlayerActions';
 import { CharacterAnimator2D } from '@/game/render2d/CharacterAnimator2D';
 import { PLAYER_HEIGHT } from '@/game/levels/Level1/level1Config';
 import { ISO_CAMERA_AZIMUTH, ISO_PLAYER_SPEED } from './interiorConfig';
 
-// Stesso pattern di `Player2D.tsx` (Set globale del modulo per i tasti
-// premuti, non stato React — un `setState` dentro `useFrame` causerebbe 60
-// render al secondo). Set separato apposta: questo componente e `Player2D`
-// non sono mai montati insieme (modo laterale ed isometrico si escludono a
-// vicenda), duplicare qui è più semplice che condividerlo fra due scene che
-// non coesistono mai.
-const keys = new Set<string>();
-function handleKeyDown(event: KeyboardEvent) {
-  keys.add(event.key.toLowerCase());
-}
-function handleKeyUp(event: KeyboardEvent) {
-  keys.delete(event.key.toLowerCase());
-}
+// Stesso pattern di `Player2D.tsx`: dalla FASE 14 i tasti li legge `usePlayerActions` (gestore unico `src/input/`, tastiera e
+// controller), mai stato React — un `setState` dentro `useFrame` causerebbe 60 render al secondo.
 
 /** Posizione del giocatore sul pavimento (Y sempre 0: niente salto in
  *  questo modo, vedi FASE5_INTERNO_ISOMETRICO.md). */
@@ -57,25 +47,15 @@ export function PlayerIso({ positionRef, isFloorCell, initialX, initialZ }: Play
   const [facing, setFacing] = useState<1 | -1>(1);
   const [walking, setWalking] = useState(false);
 
-  useEffect(() => {
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-      keys.clear();
-    };
-  }, []);
+  const actions = usePlayerActions({}, { blockContextMenu: false });
 
   useFrame((_, delta) => {
     if (!group.current) return;
 
-    let moveX = 0;
+    let moveX: number = actions.moveX();
     let moveZ = 0;
-    if (keys.has('a') || keys.has('arrowleft')) moveX -= 1;
-    if (keys.has('d') || keys.has('arrowright')) moveX += 1;
-    if (keys.has('w') || keys.has('arrowup')) moveZ -= 1;
-    if (keys.has('s') || keys.has('arrowdown')) moveZ += 1;
+    if (actions.isHeld('laneUp')) moveZ -= 1;
+    if (actions.isHeld('laneDown')) moveZ += 1;
 
     const length = Math.hypot(moveX, moveZ);
     if (length > 0) {

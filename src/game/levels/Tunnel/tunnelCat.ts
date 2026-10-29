@@ -40,7 +40,7 @@ export function startCat(world: TunnelWorld, messenger: BossMessenger): void {
   cat.feedFlash = 0;
   cat.petCooldown = 0;
   cat.feedCooldown = 0;
-  messenger.flash('Un gatto spelacchiato ti guarda con l’unico occhio buono…', 'J: coccola · R: dagli da mangiare. Se si offende, se ne va', 3.2);
+  messenger.flash('Un gatto spelacchiato ti guarda con l’unico occhio buono…', '{attack}: coccola · {heal}: dagli da mangiare. Se si offende, se ne va', 3.2);
   addRing(world.arena, world.arena.player.x + 1, 0.6, 2, 0.5, '#fbbf24');
 }
 

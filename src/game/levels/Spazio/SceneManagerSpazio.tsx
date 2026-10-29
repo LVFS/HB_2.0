@@ -3,12 +3,15 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrthographicCamera } from '@react-three/drei';
 import gsap from 'gsap';
 import type { OrthographicCamera as OrthographicCameraImpl } from 'three';
+import { ActionGlyph } from '@/components/ActionGlyph';
 import { DialogueBox } from '@/components/DialogueBox';
 import { QteChallenge } from '@/components/QteChallenge';
 import { SkipCutscene } from '@/components/SkipCutscene';
 import type { DialogueLine } from '@/data/dialogues/level1_intro';
 import { SPACE_AFTER_SUPPORT, SPACE_DESTRUCTION_CUES, SPACE_OPENING_CUES, type CaptionCue } from '@/data/dialogues/level1_spazio';
 import { useDialogue } from '@/hooks/useDialogue';
+import { inputManager } from '@/input/inputManager';
+import { isCannonToken, qteActionForToken } from '@/input/tokenActions';
 import { useArenaStore } from '@/store/arenaStore';
 import { useLevelStore } from '@/store/levelStore';
 import { useRunStatsStore } from '@/store/runStatsStore';
@@ -17,7 +20,6 @@ import { CannonBeam, CheccoRocket, EveShip, MotherShip, SpaceFx } from './SpaceS
 import styles from './SceneManagerSpazio.module.css';
 import {
   CANNON_FORCED_MIN,
-  CANNON_KEYS,
   CANNON_TIME_LIMIT,
   SPACE_BEAM_WIDTH_MAX,
   SPACE_BEAM_WIDTH_MIN,
@@ -31,8 +33,7 @@ import {
   SPACE_VIEW_HEIGHT,
   SPACE_VIEW_WIDTH,
   SPACE_WHITEOUT_LEAD,
-  SPACE_WHITEOUT_TO_PHASE_MS,
-  SUPPORT_QTE_KEYS
+  SPACE_WHITEOUT_TO_PHASE_MS
 } from './spazioConfig';
 import { addRing, startCannon, startSupport, supportScore, updateCannon, updateEffects, updateSupport, type SpazioHooks } from './spazioDriver';
 import { createSpazioWorld, type SpazioStage, type SpazioWorld } from './spazioState';
@@ -95,7 +96,9 @@ function CannonHud({ world }: { world: SpazioWorld }) {
   return (
     <div className={styles.cannon} role="status" aria-label="Carica del cannone">
       <div className={styles.cannonTitle}>Carica il cannone!</div>
-      <div className={styles.cannonHint}>Martella J, K o Spazio (o clicca): alternare J e K carica un po’ di più</div>
+      <div className={styles.cannonHint}>
+        Martella <ActionGlyph action="attack" /> <ActionGlyph action="parry" /> <ActionGlyph action="jump" /> (o clicca): alternare i tasti carica un po’ di più
+      </div>
       <div className={styles.track}>
         <div ref={fill} className={styles.fill} />
         <div className={styles.threshold} style={{ left: `${CANNON_FORCED_MIN * 100}%` }} />
@@ -296,30 +299,31 @@ export function SceneManagerSpazio({ onWhiteout }: SceneManagerSpazioProps) {
 
   // ---------- Input dei QTE: stessa via del tunnel (`keydown` sulla finestra), più click/tap per il cannone ----------
 
+  // Tastiera e controller passano dal gestore unico (le AZIONI del QTE); il click/tap resta qui, solo per il cannone.
   useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.repeat) return;
-      const key = event.key === ' ' ? 'space' : event.key.toLowerCase();
+    const unsubscribe = inputManager.subscribeTokens((token, down) => {
+      if (!down) return;
       if (world.stage === 'support' && world.support.phase === 'qte') {
-        if ((SUPPORT_QTE_KEYS as readonly string[]).includes(key)) {
-          world.pressed.push(key);
-          if (key === 'space') event.preventDefault();
-        }
+        const action = qteActionForToken(token);
+        if (action) world.pressed.push(action);
       } else if (world.stage === 'cannon') {
-        if ((CANNON_KEYS as readonly string[]).includes(key)) {
-          world.cannon.taps.push(key);
-          if (key === 'space') event.preventDefault();
-        }
+        // I click del mouse arrivano anche da `pointerdown` (che copre pure il tocco): qui si ignorano per non contarli due volte.
+        if (!token.startsWith('mouse') && isCannonToken(token)) world.cannon.taps.push(token);
       }
-    };
+    });
     const onPointerDown = () => {
       if (world.stage === 'cannon') world.cannon.taps.push('pointer');
     };
-    window.addEventListener('keydown', onKeyDown);
+    // Spazio durante un QTE non deve scorrere la pagina.
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === ' ' && (world.stage === 'support' || world.stage === 'cannon')) event.preventDefault();
+    };
     window.addEventListener('pointerdown', onPointerDown);
+    window.addEventListener('keydown', onKeyDown);
     return () => {
-      window.removeEventListener('keydown', onKeyDown);
+      unsubscribe();
       window.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('keydown', onKeyDown);
     };
   }, [world]);
 

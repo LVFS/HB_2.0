@@ -1,4 +1,5 @@
 import { useArenaStore } from '@/store/arenaStore';
+import { rumble } from '@/input/rumble';
 import { recordHit } from '@/store/runStatsStore';
 import type { AABB } from '@/game/render2d/collision';
 import type { ArenaProjectile, ArenaWorld, DamagePopup } from './arenaState';
@@ -153,6 +154,7 @@ export function addPosture(world: ArenaWorld, amount: number, byPlayer = false):
   if (boss.posture >= POSTURE_MAX) {
     boss.staggerTimer = BOSS_STAGGER_DURATION;
     if (byPlayer) gainSkill(world, SKILL_GAIN_STAGGER);
+    rumble('stagger');
   }
   useArenaStore.getState().set({ bossPosture: Math.round(boss.posture) });
 }
@@ -251,6 +253,7 @@ export function hitPlayer(
   if (player.parryActive && !unparryable) {
     player.parryFlash = 0.25;
     player.counterWindow = COUNTER_WINDOW;
+    rumble('parry');
     requestHitStop(world, HITSTOP_PARRY);
     gainSkill(world, SKILL_GAIN_PARRY);
     addPosture(world, PARRY_POSTURE_GAIN, true);
@@ -274,6 +277,7 @@ export function hitPlayer(
   player.hp = Math.max(0, player.hp - damage);
   // Punto UNICO dei colpi subiti per il punteggio (anche il tunnel passa da qui; i colpi annullati sono già usciti sopra).
   recordHit();
+  rumble('hit');
   player.hitTimer = PLAYER_HIT_STUN;
   player.iframes = PLAYER_IFRAMES_AFTER_HIT;
   player.knockbackVx = (player.x >= (sourceX ?? boss.x) ? 1 : -1) * PLAYER_KNOCKBACK;

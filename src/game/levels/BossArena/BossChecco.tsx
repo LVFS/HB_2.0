@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
+import { inputManager } from '@/input/inputManager';
+import { qteActionForToken } from '@/input/tokenActions';
 import { useArenaStore } from '@/store/arenaStore';
 import { useLevelStore } from '@/store/levelStore';
 import type { ArenaWorld } from './arenaState';
@@ -62,16 +64,17 @@ export function BossChecco({ world, onVictory, onDefeat }: BossCheccoProps) {
   const ctx = ctxRef.current;
   useEffect(() => () => messenger.dispose(), [messenger]);
 
-  // Tasti del QTE del finale: si accodano nel mondo e li legge `updateFinale`.
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      const finale = world.finale;
-      if (!finale || !finale.qte || event.repeat) return;
-      finale.pressed.push(event.key === ' ' ? 'space' : event.key.toLowerCase());
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [world]);
+  // Azioni del QTE del finale (da tastiera o da pad): si accodano nel mondo e le legge `updateFinale`.
+  useEffect(
+    () =>
+      inputManager.subscribeTokens((token, down) => {
+        const finale = world.finale;
+        if (!down || !finale || !finale.qte) return;
+        const action = qteActionForToken(token);
+        if (action) finale.pressed.push(action);
+      }),
+    [world]
+  );
 
   useFrame((_, rawDelta) => {
     if (!refs.group.current) return;

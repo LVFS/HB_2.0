@@ -39,6 +39,7 @@ toccare un'area, leggi il suo documento:
 | Slancio, bonus, eventi e finestra sulla marionetta del tunnel | `docs/FASE9_TUNNEL_POTENZIAMENTI.md` |
 | distanza fisica, casella bonus, inquadratura fissa, tempo limite, tre vie, onde di Checco e modalità, desideri di Shenron | `docs/FASE10_TUNNEL_DISTANZA_VIE_EVENTI.md` |
 | le cutscene da storyboard (pre-boss `dialogo_pre_boss`, intermezzo del finale dell'arena, `game/cutscenes/`, `data/cutscenes/`) | `docs/FASE11_CUTSCENE_STORYBOARD.md` |
+| l'input (tastiera/mouse/controller), le icone dei comandi, i QTE ad azioni, i testi con i tasti, la vibrazione (`src/input/`, `components/ActionGlyph`, `usePlayerActions`) | `docs/FASE14_CONTROLLER.md` |
 | lo spazio (inseguimento, QTE di supporto, cannone), il finale a terra, il punteggio e i titoli di coda (`game/levels/Spazio/`, `game/levels/Finale/`, `game/score/`, `runStatsStore`) | `docs/FASE12_FUGA_SPAZIO_FINALE_PUNTEGGIO.md` (in fondo: stato di esecuzione) |
 | il refactor dell'arena e le primitive condivise | `docs/FASE7_PULIZIA_REFACTOR.md` |
 | una panoramica dell'app | `docs/APP_EXPLAINER.md` |
@@ -67,7 +68,7 @@ src/
                           collision.ts + useOverlap.ts (AABB a mano), useXTrigger, Character2D +
                           CharacterAnimator2D (D0/D1/Eve a swap di pose)
     shared/               primitive condivise per i modi di gioco con giocatore in tempo reale:
-                          usePlayerActions.ts (input a azioni), jump.ts (stepJump)
+                          usePlayerActions.ts (adattatore sul gestore di `src/input/`), jump.ts (stepJump)
   components/             HUD/overlay HTML: DialogueBox, SettingsBar, ArenaHud, QteChallenge,
                           PowerUpChoice, PowerUpIntro, SkipCutscene, LoadingScreen…
   data/                   contenuto statico, NON nello store: levels.ts, level1/triggers.ts,
@@ -277,6 +278,18 @@ Chiude il Livello 1 (dettaglio in **`docs/FASE12_FUGA_SPAZIO_FINALE_PUNTEGGIO.md
 - **Test**: `npm test` (Node, `tests/*.test.mjs`, carica i `.ts` puri con type stripping: i file testati importano con estensione `.ts` e senza alias).
 - Solo in sviluppo: `F2` spazio, `F3` finale a terra, `F4` punteggio con statistiche d'esempio; `window.__spazioWorld`.
 
+## Input e controller (riassunto, FASE 14)
+
+Tastiera, mouse e controller passano da UN gestore (`src/input/inputManager.ts`, non React) che li traduce in AZIONI (`attack`, `parry`, `dash`, `jump`, `heal`, `skill`,
+`berserk`, `summon`, `left/right`, `laneUp/laneDown`, `confirm`, `back`, `skip`); dettaglio, mappatura e inventario in **`docs/FASE14_CONTROLLER.md`**. Regole:
+
+- **Mai `event.key`/`keydown` per il gameplay**: si legge un'azione. `usePlayerActions` (canale con la sua coda), `useActionPress`/`useActionEvents` (UI) o `inputManager.subscribeTokens` +
+  `qteActionForToken` (QTE). I binding stanno SOLO in `keyboardBindings.ts` e `gamepadBindings.ts`; i moduli puri di `src/input/` non usano l'alias `@/` (li carica Node nei test).
+- **I QTE parlano in azioni** (`QTE_KEYS`, `BARRAGE_KEYS`, `SUPPORT_QTE_KEYS`), mai in lettere; `QteChallenge` mostra `ActionGlyph`. Il cannone accetta attacco/parata/salto/scatto.
+- **Nessun nome di tasto scritto a mano in un testo**: usare `ActionGlyph`/`ControlsHint` nei componenti, e il segnaposto `{attack}`, `{skill}`… nei testi dei messaggi (`formatActionText`
+  li sostituisce in `ArenaHud` e `PowerUpChoice`). Le icone seguono l'ULTIMO dispositivo usato (impostazione `glyphs` per forzarle), sono SVG disegnati nel gioco e non dipendono da file.
+- Nell'UI a mouse il controller si aggiunge con `useActionPress(..., { padOnly: true })`, lasciando intatta la tastiera. La vibrazione è `rumble('hit' | 'parry' | 'stagger' | 'slam')`, dietro `settingsStore.rumble`.
+
 ## Tunnel dell'inseguimento (`boss_fase2_tunnel` e seguenti) (riassunto)
 
 Corsa laterale semi-automatica sotto il Cinema (`game/levels/Tunnel/`, design in
@@ -445,7 +458,7 @@ finale dell'arena. **FASE 9**: Slancio (velocità reale), bonus a tema anime/vid
 fisica in metri, oggetti che entrano da fuori schermo, inquadratura fissa, casella bonus, tempo limite,
 tre vie, attacchi di Checco a contatore con modalità Buen Camino/shonen e desideri di Shenron
 (prossime: battute vere per i cameo, taratura giocando). **FASE 11**: cutscene da storyboard (pre-boss `dialogo_pre_boss` e intermezzo del finale dell'arena). **FASE 12**: spazio (inseguimento, QTE di supporto a Eve,
-cannone), finale a terra, punteggio e titoli di coda: il Livello 1 si gioca da cima a fondo (tag `v1.0-livello1`). Prossimo: rifiniture (asset veri, sfx e musica,
+cannone), finale a terra, punteggio e titoli di coda: il Livello 1 si gioca da cima a fondo (tag `v1.0-livello1`). **FASE 14**: controller con icone Xbox/PlayStation/Switch (gestore unico `src/input/`, QTE ad azioni, vibrazione opzionale; da provare con pad veri). Prossimo: rifiniture (asset veri, sfx e musica,
 battute, taratura), la variante D2 (doppia spada), la dedica dei titoli, i livelli successivi.
 
 Il **menu iniziale** (`game/menu/`) è un'ambientazione Blender vera ("Ingresso a Oristano": strada,

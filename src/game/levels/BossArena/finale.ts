@@ -1,4 +1,5 @@
 import { useArenaStore, type QteView } from '@/store/arenaStore';
+import { rumble } from '@/input/rumble';
 import { useRunStatsStore } from '@/store/runStatsStore';
 import type { ArenaFinale, ArenaWorld } from './arenaState';
 import {
@@ -239,6 +240,7 @@ export function updateFinale(world: ArenaWorld, delta: number, hooks: FinaleHook
       if (f.marionette) tickCollapse(world, f, delta);
       if (f.t >= FINALE_TRANSFORM) {
         f.phase = 'fling';
+        rumble('slam');
         f.t = 0;
         addRing(world, boss.x, 1.2, 4, 0.5, '#c4b5fd');
         world.hitStop = Math.max(world.hitStop, 0.12);

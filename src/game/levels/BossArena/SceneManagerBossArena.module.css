@@ -12,6 +12,13 @@
   left: var(--space-4);
 }
 
+/* Specificità doppia: restare in basso non deve dipendere dall'ordine con cui il CSS viene iniettato (l'hint ora contiene icone e va a capo). */
+.hint.hint {
+  top: auto;
+  bottom: var(--space-4);
+  left: var(--space-4);
+}
+
 .hintPill {
   composes: pill from '../../../styles/ui.module.css';
   pointer-events: auto;

@@ -1,12 +1,7 @@
+import type { GameAction } from '@/input/inputActions';
 import { useArenaStore } from '@/store/arenaStore';
+import { ActionGlyph } from './ActionGlyph';
 import styles from './QteChallenge.module.css';
-
-/** Tasto della logica → etichetta mostrata. */
-function keyLabel(key: string): string {
-  if (key === 'space') return 'SPAZIO';
-  if (key === 'shift') return 'MAIUSC';
-  return key.toUpperCase();
-}
 
 /**
  * Sequenza di prompt a tempo (QTE): una fila di tasti, quello corrente
@@ -32,7 +27,7 @@ export function QteChallenge() {
           const className = result === 'hit' ? styles.hit : result === 'miss' ? styles.miss : isCurrent ? styles.current : styles.key;
           return (
             <div key={`${index}-${key}`} className={className}>
-              {keyLabel(key)}
+              <ActionGlyph action={key as GameAction} bare />
             </div>
           );
         })}

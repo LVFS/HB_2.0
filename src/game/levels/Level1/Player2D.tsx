@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import type { MutableRefObject } from 'react';
 import { useFrame } from '@react-three/fiber';
 import type { Group } from 'three';
+import { usePlayerActions } from '@/game/shared/usePlayerActions';
 import { CharacterAnimator2D } from '@/game/render2d/CharacterAnimator2D';
 import {
   GRAVITY,
@@ -12,16 +13,8 @@ import {
   WORLD_HALF_WIDTH
 } from './level1Config';
 
-// Stesso pattern del `Player.tsx` 3D che questo file sostituisce: i tasti
-// premuti vivono in un Set globale del modulo, non in stato React (uno
-// setState dentro `useFrame` causerebbe 60 render al secondo).
-const keys = new Set<string>();
-function handleKeyDown(event: KeyboardEvent) {
-  keys.add(event.key.toLowerCase());
-}
-function handleKeyUp(event: KeyboardEvent) {
-  keys.delete(event.key.toLowerCase());
-}
+// Dalla FASE 14 i tasti non si leggono più qui: `usePlayerActions` (gestore unico `src/input/`) li traduce in AZIONI per tastiera E
+// controller; restano fuori dallo stato React (uno setState dentro `useFrame` causerebbe 60 render al secondo).
 
 /** Posizione "piedi" del giocatore: y = GROUND_Y quando è a terra. */
 export interface PlayerPosition {
@@ -59,24 +52,13 @@ export function Player2D({ positionRef, initialX = 0 }: Player2DProps) {
   const [facing, setFacing] = useState<1 | -1>(1);
   const [walking, setWalking] = useState(false);
 
-  useEffect(() => {
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-      // Senza questo, un tasto premuto durante l'unmount resterebbe
-      // "premuto" per sempre nel Set globale.
-      keys.clear();
-    };
-  }, []);
+  // Il click destro qui non ha significato di gioco: il menu del browser resta com'è.
+  const actions = usePlayerActions({}, { blockContextMenu: false });
 
   useFrame((_, delta) => {
     if (!group.current) return;
 
-    let moveX = 0;
-    if (keys.has('a') || keys.has('arrowleft')) moveX -= 1;
-    if (keys.has('d') || keys.has('arrowright')) moveX += 1;
+    const moveX = actions.moveX();
     if (moveX !== 0 && moveX < 0 !== facingLeft.current) {
       facingLeft.current = moveX < 0;
       setFacing(facingLeft.current ? -1 : 1);
@@ -90,7 +72,7 @@ export function Player2D({ positionRef, initialX = 0 }: Player2DProps) {
     group.current.position.x = Math.min(WORLD_HALF_WIDTH, Math.max(-WORLD_HALF_WIDTH, nextX));
 
     // Salto solo se il giocatore è a terra.
-    if ((keys.has(' ') || keys.has('w') || keys.has('arrowup')) && onGround.current) {
+    if (actions.isHeld('jump') && onGround.current) {
       velocityY.current = PLAYER_JUMP_SPEED;
       onGround.current = false;
     }

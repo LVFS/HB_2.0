@@ -174,7 +174,7 @@ export const WISHES: Record<WishId, WishDef> = {
   magnete: { kind: 'permanente', label: 'Dragon Radar', short: 'Radar', description: 'Raccogli anche gli oggetti delle vie vicine.' },
   slancio: { kind: 'permanente', label: 'Kaioken passivo', short: 'Kaioken+', description: 'Lo Slancio sale molto più in fretta (ogni 5 s invece di 8).' },
   istinto: { kind: 'a usi', label: 'Istinto Superiore', short: 'Istinto', description: 'Schivi da solo i prossimi 2 colpi che subiresti.' },
-  riserva: { kind: 'a usi', label: 'Riserva di Frieren', short: 'Zoltraak', description: '3 Zoltraak in più, da lanciare con Q quando vuoi.' },
+  riserva: { kind: 'a usi', label: 'Riserva di Frieren', short: 'Zoltraak', description: '3 Zoltraak in più, da lanciare con {berserk} quando vuoi.' },
   kaioken: { kind: 'a tempo', label: 'Kaioken ×10', short: 'Kaioken', description: '25 s di Slancio al massimo e Checco si avvicina il doppio.' },
   ultreia: { kind: 'a tempo', label: 'Ultreia!', short: 'Ultreia', description: '30 s di scatto senza attesa: puoi scattare di continuo.' }
 };
@@ -281,7 +281,7 @@ export const TUNNEL_EVENTS: readonly TunnelEventDef[] = [
     id: 'karaoke',
     start: 100,
     end: 110,
-    bark: ['KARAOKE! Checco prende il microfono: «Una canzone per il mio pubblico!»', 'Arancio = para (K), giallo = salta. Nessuna nota addosso e il pubblico applaude'],
+    bark: ['KARAOKE! Checco prende il microfono: «Una canzone per il mio pubblico!»', 'Arancio = para ({parry}), giallo = salta. Nessuna nota addosso e il pubblico applaude'],
     endBark: ['Il pubblico è in delirio!', null]
   },
   {
@@ -360,7 +360,7 @@ export const TUNNEL_REALITY: readonly RealityDef[] = [
     id: 'onda1',
     arriveT: 130,
     lanes: ALL_LANES,
-    bark: ['CHECCO USA I SUOI POTERI PER ALTERARE LA REALTÀ!', 'L’onda copre TUTTE le vie: para (K) a tempo, salta o scatta. Se ti prende…']
+    bark: ['CHECCO USA I SUOI POTERI PER ALTERARE LA REALTÀ!', 'L’onda copre TUTTE le vie: para ({parry}) a tempo, salta o scatta. Se ti prende…']
   },
   {
     id: 'onda2',
@@ -444,15 +444,15 @@ export interface PerkDef {
   outfit: boolean;
 }
 export const PERKS: Record<PerkId, PerkDef> = {
-  saiyan: { label: 'Super Saiyan', description: 'Aura dorata: voli (tieni Spazio) e travolgi ciò che sta a terra.', outfit: true },
-  thor: { label: 'Dio del tuono', description: 'Un attacco (J) in aria ti fa schiantare a terra con un fulmine ad area.', outfit: true },
+  saiyan: { label: 'Super Saiyan', description: 'Aura dorata: voli (tieni {jump}) e travolgi ciò che sta a terra.', outfit: true },
+  thor: { label: 'Dio del tuono', description: 'Un attacco ({attack}) in aria ti fa schiantare a terra con un fulmine ad area.', outfit: true },
   gentleman: { label: 'Smoking', description: '«Vai uomo!» quando acceleri; a velocità massima i colpi a distanza dei nemici non ti toccano.', outfit: true },
   gear5: { label: 'Gear 5', description: 'Pugno a gomma sempre attivo: più portata, e rimandi anche ciò che non si può parare.', outfit: true },
   zoro: { label: 'Zoro in scorta', description: 'Zoro spazza via ciò che trova… finché non perde l’orientamento.', outfit: false },
   hero: { label: 'Cuore da eroe', description: '+30 di vita massima (e subito +30).', outfit: false },
   magic: { label: 'Magia in appoggio', description: 'Ogni tot secondi parte da solo uno Zoltraak.', outfit: false },
   speed: { label: 'Passo veloce', description: 'Lo Slancio parte almeno dal livello 2.', outfit: false },
-  fly: { label: 'Volo', description: 'Tieni premuto Spazio per volare.', outfit: false },
+  fly: { label: 'Volo', description: 'Tieni premuto {jump} per volare.', outfit: false },
   calm: { label: 'Scudo amico', description: 'Ogni tot secondi ti protegge per un attimo.', outfit: false },
   eve: { label: 'Eve al tuo fianco', description: 'Resta con te e ripulisce la tua via.', outfit: false }
 };
@@ -538,7 +538,7 @@ export const TUNNEL_THROW = {
 } as const;
 
 // --- raffica a doppia spada (`combo_doppia_spada_qte`) ------------------------
-export const BARRAGE_KEYS = ['j', 'k', 'e', 'r', 'space'] as const;
+export const BARRAGE_KEYS = ['attack', 'parry', 'skill', 'heal', 'jump'] as const; // azioni (FASE 14)
 /** Finestre dei prompt (s): da larga a stretta. Il numero dei prompt è la lunghezza dell'array. */
 export const BARRAGE_WINDOWS = [1.0, 1.0, 0.9, 0.9, 0.8, 0.8, 0.7, 0.65, 0.6];
 export const BARRAGE_GAP = 0.3;

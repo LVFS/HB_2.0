@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useActionEvents } from '@/input/useInputHooks';
 
 /** Per quanto (ms) si tiene premuto per saltare: abbastanza da non scattare per sbaglio. */
 export const CUTSCENE_SKIP_HOLD_MS = 600;
-const SKIP_KEYS = new Set(['Escape', 'Enter']);
 
 interface UseCutsceneSkipOptions {
   /** Ascolta solo quando `true` (es. non durante il caricamento). */
@@ -60,22 +60,22 @@ export function useCutsceneSkip(onSkip: () => void, { enabled = true, holdMs = C
     raf.current = requestAnimationFrame(tick);
   }, [enabled, tick]);
 
-  useEffect(() => {
-    if (!enabled) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (SKIP_KEYS.has(event.key) && !event.repeat) start();
-    };
-    const onKeyUp = (event: KeyboardEvent) => {
-      if (SKIP_KEYS.has(event.key) && !fired.current) stop();
-    };
-    window.addEventListener('keydown', onKeyDown);
-    window.addEventListener('keyup', onKeyUp);
-    return () => {
-      window.removeEventListener('keydown', onKeyDown);
-      window.removeEventListener('keyup', onKeyUp);
+  // Esc / Invio (tastiera) o Start (controller) TENUTI: l'azione `skip` del gestore unico dell'input.
+  useActionEvents(
+    (action, down) => {
+      if (action !== 'skip') return;
+      if (down) start();
+      else if (!fired.current) stop();
+    },
+    { enabled }
+  );
+
+  useEffect(
+    () => () => {
       if (raf.current !== undefined) cancelAnimationFrame(raf.current);
-    };
-  }, [enabled, start, stop]);
+    },
+    []
+  );
 
   return {
     progress,

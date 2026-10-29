@@ -24,6 +24,7 @@ import {
   PLAYER_MAX_HP,
   POSTURE_MAX
 } from './arenaConfig';
+import { ControlsHint } from '@/components/ActionGlyph';
 import styles from './SceneManagerBossArena.module.css';
 
 /**
@@ -133,8 +134,19 @@ export function SceneManagerBossArena({ onWhiteout }: SceneManagerBossArenaProps
       {!intermezzo && (
         <div className={styles.hint}>
           <span className={styles.hintPill}>
-            A/D muovi · Spazio salta (anche doppio) · J attacca · {powerUp ? 'K spara (para)' : 'K para'} · Shift schiva · R cura
-            · E abilità{powerUp ? ' · Q berserk (furia piena)' : ''} · F richiama Eve
+            <ControlsHint
+              items={[
+                { actions: ['left', 'right'], label: 'muovi' },
+                { actions: ['jump'], label: 'salta (anche doppio)' },
+                { actions: ['attack'], label: 'attacca' },
+                { actions: ['parry'], label: powerUp ? 'spara (para)' : 'para' },
+                { actions: ['dash'], label: 'schiva' },
+                { actions: ['heal'], label: 'cura' },
+                { actions: ['skill'], label: 'abilità' },
+                ...(powerUp ? [{ actions: ['berserk'] as const, label: 'berserk (furia piena)' }] : []),
+                { actions: ['summon'], label: 'richiama Eve' }
+              ]}
+            />
             {import.meta.env.DEV ? ' · 1/2/3 anteprima colpo/barcollo/parata' : ''}
           </span>
         </div>

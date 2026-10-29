@@ -6,6 +6,8 @@ import { ArenaHud } from '@/components/ArenaHud';
 import { SkipCutscene } from '@/components/SkipCutscene';
 import { createJumpState } from '@/game/shared/jump';
 import { usePlayerActions } from '@/game/shared/usePlayerActions';
+import { inputManager } from '@/input/inputManager';
+import { qteActionForToken } from '@/input/tokenActions';
 import { useArenaStore } from '@/store/arenaStore';
 import { useLevelStore } from '@/store/levelStore';
 import { useRunStatsStore } from '@/store/runStatsStore';
@@ -42,6 +44,7 @@ import {
   TUNNEL_VIEW_HEIGHT,
   TUNNEL_VIEW_MAX_WIDTH
 } from './tunnelConfig';
+import { ControlsHint } from '@/components/ActionGlyph';
 import { startBarrage, updateTunnel, type TunnelContext } from './tunnelDriver';
 import { createTunnelWorld, gapStartFor, type BarrageState, type TunnelWorld } from './tunnelState';
 
@@ -133,16 +136,17 @@ export function SceneManagerTunnel({ onWhiteout }: SceneManagerTunnelProps) {
     [world, actions, messenger]
   );
 
-  // Tasti del QTE della raffica: si accodano nel mondo e li legge `updateBarrage`.
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      const barrage = world.barrage;
-      if (!barrage || barrage.phase !== 'qte' || event.repeat) return;
-      barrage.pressed.push(event.key === ' ' ? 'space' : event.key.toLowerCase());
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [world]);
+  // Azioni del QTE della raffica (da tastiera o da pad): si accodano nel mondo e le legge `updateBarrage`.
+  useEffect(
+    () =>
+      inputManager.subscribeTokens((token, down) => {
+        const barrage = world.barrage;
+        if (!down || !barrage || barrage.phase !== 'qte') return;
+        const action = qteActionForToken(token);
+        if (action) barrage.pressed.push(action);
+      }),
+    [world]
+  );
 
   useEffect(() => {
     // La HUD riusa lo store dell'arena (vita, cure, messaggi): si azzera all'ingresso.
@@ -193,7 +197,17 @@ export function SceneManagerTunnel({ onWhiteout }: SceneManagerTunnelProps) {
       {running && (
         <div className={styles.hint}>
           <span className={styles.hintPill}>
-            Spazio salta (anche doppio) · Shift schiva · K para (rimanda i colpi arancioni) · J attacca · E usa il bonus · A/D avanti e indietro · W/S cambia via
+            <ControlsHint
+              items={[
+                { actions: ['jump'], label: 'salta (anche doppio)' },
+                { actions: ['dash'], label: 'schiva' },
+                { actions: ['parry'], label: 'para (rimanda i colpi arancioni)' },
+                { actions: ['attack'], label: 'attacca' },
+                { actions: ['skill'], label: 'usa il bonus' },
+                { actions: ['left', 'right'], label: 'avanti e indietro' },
+                { actions: ['laneUp', 'laneDown'], label: 'cambia via' }
+              ]}
+            />
           </span>
         </div>
       )}

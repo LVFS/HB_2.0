@@ -20,6 +20,7 @@ import {
   ISO_PLAYER_HALF_SIZE,
   WORLD_UNIT_PER_CELL
 } from './interiorConfig';
+import { ControlsHint } from '@/components/ActionGlyph';
 import styles from './SceneManager2DIso.module.css';
 
 /** Livello LDtk in cui si entra sempre venendo da fuori (le tre porte con
@@ -209,7 +210,9 @@ export function SceneManager2DIso({ onWhiteout }: SceneManager2DIsoProps) {
       </Canvas>
 
       <div className={styles.hint}>
-        <span className={styles.hintPill}>WASD / frecce per muoverti</span>
+        <span className={styles.hintPill}>
+          <ControlsHint items={[{ actions: ['left', 'right', 'laneUp', 'laneDown'], label: 'muoviti' }]} />
+        </span>
       </div>
     </div>
   );

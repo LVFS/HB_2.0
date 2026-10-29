@@ -3,6 +3,7 @@ import { HomeButton } from '@/components/HomeButton';
 import { SettingsBar } from '@/components/SettingsBar';
 import { getWorldLevel, isLevelPlayable, levels } from '@/data/levels';
 import { useSfx } from '@/hooks/useSfx';
+import { useActionPress } from '@/input/useInputHooks';
 import { useGameStore } from '@/store/gameStore';
 import { useProgressStore } from '@/store/progressStore';
 import ui from '@/styles/ui.module.css';
@@ -165,6 +166,19 @@ export function LevelSelectScene({ onWhiteout }: LevelSelectSceneProps) {
     setLaunching(true);
     setLaunchTrigger((n) => n + 1);
   }, [launching, displayedLevel, completedLevelIds]);
+
+  // Controller (FASE 14): nella vista a fuoco A avvia il livello (se è giocabile) e B torna all'elenco; nell'elenco B torna al menu.
+  // (L1/R1 e A per scegliere un livello dall'elenco restano in `LevelListOverlay`.) Solo i token del pad: la tastiera ha già i suoi pulsanti.
+  useActionPress(
+    (action) => {
+      if (action === 'confirm' && focused) handleStartLevel();
+      else if (action === 'back') {
+        if (focused) setFocused(false);
+        else setScreen('menu');
+      }
+    },
+    { enabled: !launching, padOnly: true }
+  );
 
   const handleImpactFlash = useCallback(() => {
     setFlashActive(true);

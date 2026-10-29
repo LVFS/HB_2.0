@@ -393,7 +393,7 @@ export const FINALE_SIDE_DISTANCE = 1.7;
 export const FINALE_EVE_WALK_DELAY = 0.7;
 /** QTE: numero di prompt, tasti possibili, finestra per ciascuno (secondi) e
  *  pausa fra l'uno e il successivo. Riuscito se i mancati sono al massimo `QTE_MAX_MISSES`. */
-export const QTE_KEYS = ['j', 'k', 'e', 'r', 'space'] as const;
+export const QTE_KEYS = ['attack', 'parry', 'skill', 'heal', 'jump'] as const; // azioni (FASE 14): il tasto dipende dal dispositivo
 export const QTE_WINDOWS = [1.3, 1.2, 1.1, 1.0, 0.9];
 export const QTE_GAP = 0.35;
 export const QTE_MAX_MISSES = 1;

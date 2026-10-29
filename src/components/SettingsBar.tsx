@@ -1,7 +1,15 @@
 import { useState } from 'react';
-import { useSettingsStore } from '@/store/settingsStore';
+import { GLYPH_SETTINGS, useSettingsStore, type GlyphSetting } from '@/store/settingsStore';
 import ui from '@/styles/ui.module.css';
 import styles from './SettingsBar.module.css';
+
+const GLYPH_LABELS: Record<GlyphSetting, string> = {
+  auto: 'Auto',
+  xbox: 'Xbox',
+  playstation: 'PlayStation',
+  switch: 'Switch',
+  keyboard: 'Tastiera'
+};
 
 /**
  * Icona impostazioni sempre presente in un angolo + pannellino a comparsa,
@@ -29,6 +37,11 @@ export function SettingsBar() {
   const toggleSfx = useSettingsStore((state) => state.toggleSfx);
   const setVolume = useSettingsStore((state) => state.setVolume);
   const volume = useSettingsStore((state) => state.volume);
+  const glyphs = useSettingsStore((state) => state.glyphs);
+  const setGlyphs = useSettingsStore((state) => state.setGlyphs);
+  const rumble = useSettingsStore((state) => state.rumble);
+  const toggleRumble = useSettingsStore((state) => state.toggleRumble);
+  const cycleGlyphs = () => setGlyphs(GLYPH_SETTINGS[(GLYPH_SETTINGS.indexOf(glyphs) + 1) % GLYPH_SETTINGS.length]);
 
   return (
     <div
@@ -54,6 +67,13 @@ export function SettingsBar() {
           </button>
           <button className={ui.secondary} onClick={toggleSfx}>
             {sfxEnabled ? 'Disattiva SFX' : 'Attiva SFX'}
+          </button>
+          {/* Icone dei comandi: Auto segue l'ultimo dispositivo usato; gli altri valori le forzano. */}
+          <button className={ui.secondary} onClick={cycleGlyphs}>
+            Icone: {GLYPH_LABELS[glyphs]}
+          </button>
+          <button className={ui.secondary} onClick={toggleRumble}>
+            {rumble ? 'Disattiva vibrazione' : 'Attiva vibrazione'}
           </button>
           <label className={ui.pill}>
             {/* `ui.label` e non testo nudo: era l'unica etichetta rimasta in

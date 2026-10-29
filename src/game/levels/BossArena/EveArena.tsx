@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import gsap from 'gsap';
 import type { Group } from 'three';
 import { CharacterAnimator2D, type CharacterAnimState } from '@/game/render2d/CharacterAnimator2D';
+import { inputManager } from '@/input/inputManager';
 import { useArenaStore } from '@/store/arenaStore';
 import type { ArenaWorld } from './arenaState';
 import {
@@ -66,15 +67,15 @@ export function EveArena({ world }: { world: ArenaWorld }) {
     });
   };
 
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key.toLowerCase() !== 'f' || event.repeat) return;
-      riseUp();
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+  // Richiamare Eve (F, o LT sul controller).
+  useEffect(
+    () =>
+      inputManager.subscribe((action, down) => {
+        if (down && action === 'summon') riseUp();
+      }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `riseUp` legge solo ref e `world`, stabili
-  }, [world]);
+    [world]
+  );
 
   useFrame((_, rawDelta) => {
     const g = group.current;

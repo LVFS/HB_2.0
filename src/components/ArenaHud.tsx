@@ -1,5 +1,8 @@
 import { useEffect, useRef } from 'react';
+import { formatActionText } from '@/input/glyphLabels';
+import { useGlyphDevice } from '@/input/useInputHooks';
 import { useArenaStore } from '@/store/arenaStore';
+import { ActionGlyph } from './ActionGlyph';
 import { QteChallenge } from './QteChallenge';
 import { PowerUpChoice } from './PowerUpChoice';
 import { PowerUpIntro } from './PowerUpIntro';
@@ -54,6 +57,8 @@ export function ArenaHud({ mode = 'boss' }: ArenaHudProps = {}) {
   const message = useArenaStore((s) => s.message);
   const hint = useArenaStore((s) => s.hint);
   const evePromptVisible = useArenaStore((s) => s.evePromptVisible);
+  // I testi dei messaggi hanno segnaposto come {attack}: si scrivono col tasto del dispositivo attuale.
+  const { device, family } = useGlyphDevice();
 
   const pct = (value: number, max: number) => `${Math.max(0, Math.min(100, (value / max) * 100))}%`;
 
@@ -142,7 +147,9 @@ export function ArenaHud({ mode = 'boss' }: ArenaHudProps = {}) {
                   Berserk <span className={styles.combo}>×{combo.toFixed(2)}</span>
                 </>
               ) : rage >= 100 ? (
-                'Furia piena — premi Q'
+                <>
+                  Furia piena — premi <ActionGlyph action="berserk" />
+                </>
               ) : (
                 `Furia ${rage}`
               )}
@@ -176,14 +183,16 @@ export function ArenaHud({ mode = 'boss' }: ArenaHudProps = {}) {
               <div className={styles.cat}>
                 <span className={styles.catLabel}>Gatto</span>
                 <span className={styles.catBars}>
-                  <span className={styles.catBar} title="Coccole (J)">
-                    <span className={tunnelStatus.cat.affection < 30 ? styles.catFillLow : styles.catFill} style={{ width: `%` }} />
+                  <span className={styles.catBar} title={formatActionText('Coccole ({attack})', device, family)}>
+                    <span className={tunnelStatus.cat.affection < 30 ? styles.catFillLow : styles.catFill} style={{ width: `${tunnelStatus.cat.affection}%` }} />
                   </span>
-                  <span className={styles.catBar} title="Pappa (R)">
-                    <span className={tunnelStatus.cat.hunger < 30 ? styles.catFillLow : styles.catFill} style={{ width: `%` }} />
+                  <span className={styles.catBar} title={formatActionText('Pappa ({heal})', device, family)}>
+                    <span className={tunnelStatus.cat.hunger < 30 ? styles.catFillLow : styles.catFill} style={{ width: `${tunnelStatus.cat.hunger}%` }} />
                   </span>
                 </span>
-                <span className={styles.catKeys}>J coccole · R pappa</span>
+                <span className={styles.catKeys}>
+                  <ActionGlyph action="attack" bare /> coccole · <ActionGlyph action="heal" bare /> pappa
+                </span>
               </div>
             )}
             {/* Stili permanenti lasciati dagli ospiti (e la carica del volo, se si può volare). */}
@@ -206,7 +215,7 @@ export function ArenaHud({ mode = 'boss' }: ArenaHudProps = {}) {
                   </span>
                 ))}
                 {tunnelStatus.wishes.instinct > 0 && <span className={styles.wishChipUse}>Istinto ×{tunnelStatus.wishes.instinct}</span>}
-                {tunnelStatus.wishes.reserve > 0 && <span className={styles.wishChipUse}>Zoltraak ×{tunnelStatus.wishes.reserve} (Q)</span>}
+                {tunnelStatus.wishes.reserve > 0 && <span className={styles.wishChipUse}>Zoltraak ×{tunnelStatus.wishes.reserve} (<ActionGlyph action="berserk" bare />)</span>}
               </div>
             )}
             {/* Casella bonus (stile Mario Kart): un solo bonus, si usa con E. */}
@@ -216,7 +225,9 @@ export function ArenaHud({ mode = 'boss' }: ArenaHudProps = {}) {
                 <>
                   <img className={styles.slotIcon} src={tunnelStatus.slot.icon} alt="" />
                   <span className={styles.slotName}>{tunnelStatus.slot.label}</span>
-                  <kbd className={styles.slotKey}>E</kbd>
+                  <kbd className={styles.slotKey}>
+                    <ActionGlyph action="skill" bare />
+                  </kbd>
                 </>
               ) : (
                 <span className={styles.slotName}>vuota</span>
@@ -243,8 +254,8 @@ export function ArenaHud({ mode = 'boss' }: ArenaHudProps = {}) {
       {message && (
         // Nel tunnel i messaggi sono battute piccole sotto le barre: quelle grandi coprirebbero le minacce.
         <div className={tunnel ? styles.bark : styles.message} key={message}>
-          <div className={styles.messageTitle}>{message}</div>
-          {hint && <div className={styles.messageHint}>{hint}</div>}
+          <div className={styles.messageTitle}>{formatActionText(message, device, family)}</div>
+          {hint && <div className={styles.messageHint}>{formatActionText(hint, device, family)}</div>}
         </div>
       )}
 
@@ -274,7 +285,7 @@ export function ArenaHud({ mode = 'boss' }: ArenaHudProps = {}) {
         <div className={tunnelStatus.mode.id === 'camino' ? styles.modeCamino : styles.modeAnime}>
           <span>{tunnelStatus.mode.id === 'camino' ? 'Modalità Buen Camino' : tunnelStatus.mode.finale ? 'Kamehameha!' : 'Modalità shonen'}</span>
           <span className={styles.modeTrack}>
-            <span className={styles.modeFill} style={{ width: `%` }} />
+            <span className={styles.modeFill} style={{ width: `${tunnelStatus.mode.pct}%` }} />
           </span>
         </div>
       )}
@@ -301,7 +312,11 @@ export function ArenaHud({ mode = 'boss' }: ArenaHudProps = {}) {
       <PowerUpChoice />
       {!tunnel && <PowerUpIntro />}
 
-      {!tunnel && evePromptVisible && <div className={styles.evePrompt}>Premi F per richiamare Eve</div>}
+      {!tunnel && evePromptVisible && (
+        <div className={styles.evePrompt}>
+          Premi <ActionGlyph action="summon" /> per richiamare Eve
+        </div>
+      )}
     </div>
   );
 }

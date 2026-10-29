@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActionGlyph } from '@/components/ActionGlyph';
 import { SkipCutscene } from '@/components/SkipCutscene';
 import { CREDITS, DEDICATION_MESSAGE_PLACEHOLDER, DEDICATION_PLACEHOLDER } from '@/data/credits';
 import { levels } from '@/data/levels';
@@ -158,7 +159,9 @@ export function SceneManagerPunteggio() {
             <div className={styles.grade}>{result.grade}</div>
             <div className={styles.comment}>{GRADE_COMMENTS[result.grade]}</div>
           </div>
-          <div className={`${styles.prompt} ${canContinue ? styles.promptShown : ''}`}>premi un tasto per continuare</div>
+          <div className={`${styles.prompt} ${canContinue ? styles.promptShown : ''}`}>
+            premi <ActionGlyph action="confirm" /> o un tasto qualsiasi per continuare
+          </div>
         </div>
       )}
 

@@ -23,6 +23,7 @@ import {
   PLAYER_HEIGHT,
   WORLD_HALF_WIDTH
 } from './level1Config';
+import { ControlsHint } from '@/components/ActionGlyph';
 import styles from './SceneManager2D.module.css';
 
 const { eveArrivalX, aristonEntranceX } = LEVEL1_TRIGGERS_PLACEHOLDER;
@@ -191,7 +192,14 @@ export function SceneManager2D({ onWhiteout }: SceneManager2DProps) {
 
       {phase === 'cammino_libero_ariston' && (
         <div className={styles.hint}>
-          <span className={styles.hintPill}>WASD / frecce per muoverti · Spazio per saltare</span>
+          <span className={styles.hintPill}>
+            <ControlsHint
+              items={[
+                { actions: ['left', 'right'], label: 'muoviti' },
+                { actions: ['jump'], label: 'salta' }
+              ]}
+            />
+          </span>
         </div>
       )}
     </div>

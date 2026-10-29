@@ -1,4 +1,5 @@
 import { useCutsceneSkip } from '@/hooks/useCutsceneSkip';
+import { ActionGlyph } from './ActionGlyph';
 import styles from './SkipCutscene.module.css';
 
 interface SkipCutsceneProps {
@@ -18,7 +19,9 @@ export function SkipCutscene({ onSkip, enabled = true }: SkipCutsceneProps) {
 
   return (
     <button type="button" className={styles.button} aria-label="Tieni premuto per saltare la scena" {...buttonProps}>
-      <span className={styles.label}>Tieni premuto Esc per saltare</span>
+      <span className={styles.label}>
+        Tieni premuto <ActionGlyph action="skip" /> per saltare
+      </span>
       <span className={styles.track}>
         <span className={styles.fill} style={{ width: `${Math.round(progress * 100)}%` }} />
       </span>

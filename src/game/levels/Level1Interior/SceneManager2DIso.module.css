@@ -5,6 +5,12 @@
   left: var(--space-4);
 }
 
+.hint.hint {
+  top: auto;
+  bottom: var(--space-4);
+  left: var(--space-4);
+}
+
 .hintPill {
   composes: pill from '../../../styles/ui.module.css';
   pointer-events: auto;

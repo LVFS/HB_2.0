@@ -28,6 +28,8 @@ export type PressListener =(action: GameAction, down: boolean, token: string) =>
 export interface InputChannel {
   /** L'azione è tenuta da tastiera o da pad adesso. */
   isHeld: (action: GameAction) => boolean;
+  /** Come `isHeld`, ma guardando UN solo dispositivo (tastiera/mouse o controller): serve dove due azioni condividono un bottone del pad. */
+  isHeldOn: (action: GameAction, device: InputDevice) => boolean;
   /** L'azione è stata premuta da quando si è svuotata la coda (senza auto-repeat). */
   justPressed: (action: GameAction) => boolean;
   /** Pressione di un tasto grezzo di tastiera (anteprime dev). */
@@ -109,6 +111,8 @@ class InputManager {
     const anyOf = (set: ReadonlySet<string>, tokens: readonly string[]) => tokens.some((token) => set.has(token));
     return {
       isHeld: (action) => anyOf(this.keyHeld, keyboardTokens(action)) || anyOf(this.padHeld, GAMEPAD_BINDINGS[action]),
+      isHeldOn: (action, device) =>
+        device === 'keyboard' ? anyOf(this.keyHeld, keyboardTokens(action)) : anyOf(this.padHeld, GAMEPAD_BINDINGS[action]),
       justPressed: (action) => anyOf(entry.pressed, keyboardTokens(action)) || anyOf(entry.pressed, GAMEPAD_BINDINGS[action]),
       keyJustPressed: (key) => entry.pressed.has(key),
       moveX: () => {

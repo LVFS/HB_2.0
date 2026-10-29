@@ -69,6 +69,7 @@ function IntroStaging() {
 interface CamminoLiberoProps {
   playerPositionRef: MutableRefObject<PlayerPosition>;
   inZoneRef: MutableRefObject<boolean>;
+  nearDoorRef: MutableRefObject<boolean>;
   promptRef: RefObject<HTMLDivElement>;
   /** `false` dopo che si è premuto «Entra»: il suggerimento sparisce. */
   doorEnabled: boolean;
@@ -78,14 +79,19 @@ interface CamminoLiberoProps {
 
 /** Gameplay vero: D comandabile, Eve che lo segue; l'ingresso nell'Ariston è sulla porta centrale (`DoorPromptDriver` + pressione di
  *  «interagisci» in `SceneManager2D`). */
-function CamminoLibero({ playerPositionRef, inZoneRef, promptRef, doorEnabled, eveWithParty }: CamminoLiberoProps) {
+function CamminoLibero({ playerPositionRef, inZoneRef, nearDoorRef, promptRef, doorEnabled, eveWithParty }: CamminoLiberoProps) {
   // `playerPositionRef.current.x` è già `lateralSpawnX` (seminato al mount di `SceneManager2D`): sia la prima volta (= `startX`) sia
   // tornando dall'interno isometrico (= `aristonExitX`), senza bisogno di distinguere i due casi qui — salvo il verso in cui guardano:
   // all'inizio verso il cinema (sinistra), uscendo dalla porta verso la strada (destra).
   const facing = playerPositionRef.current.x === startX ? -1 : 1;
   return (
     <>
-      <Player2D positionRef={playerPositionRef} initialX={playerPositionRef.current.x} initialFacing={facing} />
+      <Player2D
+        positionRef={playerPositionRef}
+        initialX={playerPositionRef.current.x}
+        initialFacing={facing}
+        suppressPadJumpRef={nearDoorRef}
+      />
       {eveWithParty && (
         <EveCompanion
           targetPositionRef={playerPositionRef}
@@ -93,7 +99,13 @@ function CamminoLibero({ playerPositionRef, inZoneRef, promptRef, doorEnabled, e
           initialDirection={facing}
         />
       )}
-      <DoorPromptDriver playerPositionRef={playerPositionRef} inZoneRef={inZoneRef} promptRef={promptRef} enabled={doorEnabled} />
+      <DoorPromptDriver
+        playerPositionRef={playerPositionRef}
+        inZoneRef={inZoneRef}
+        nearDoorRef={nearDoorRef}
+        promptRef={promptRef}
+        enabled={doorEnabled}
+      />
     </>
   );
 }
@@ -102,7 +114,7 @@ interface Level1Scene2DProps extends CamminoLiberoProps {
   phase: LevelPhase;
 }
 
-function Level1Scene2D({ phase, playerPositionRef, inZoneRef, promptRef, doorEnabled, eveWithParty }: Level1Scene2DProps) {
+function Level1Scene2D({ phase, playerPositionRef, inZoneRef, nearDoorRef, promptRef, doorEnabled, eveWithParty }: Level1Scene2DProps) {
   const size = useThree((state) => state.size);
   const zoom = zoomForHeight(size.height);
   // Solo al mount: la camera parte già centrata su D/Eve (poi la segue `CameraRig`), non vola dall'angolo.
@@ -120,6 +132,7 @@ function Level1Scene2D({ phase, playerPositionRef, inZoneRef, promptRef, doorEna
         <CamminoLibero
           playerPositionRef={playerPositionRef}
           inZoneRef={inZoneRef}
+          nearDoorRef={nearDoorRef}
           promptRef={promptRef}
           doorEnabled={doorEnabled}
           eveWithParty={eveWithParty}
@@ -189,6 +202,7 @@ export function SceneManager2D({ onWhiteout }: SceneManager2DProps) {
   // Ingresso sulla porta centrale: «interagisci» con D nella zona (la calcola `DoorPromptDriver`). UNA sola attivazione; in pausa il
   // gestore dell'input non consegna le pressioni, e fuori da `cammino_libero_ariston` (video, interno) l'ascolto è spento.
   const inZoneRef = useRef(false);
+  const nearDoorRef = useRef(false);
   const promptRef = useRef<HTMLDivElement>(null);
   const [entering, setEntering] = useState(false);
   const enteringRef = useRef(false);
@@ -211,6 +225,7 @@ export function SceneManager2D({ onWhiteout }: SceneManager2DProps) {
             phase={phase}
             playerPositionRef={playerPositionRef}
             inZoneRef={inZoneRef}
+            nearDoorRef={nearDoorRef}
             promptRef={promptRef}
             doorEnabled={!entering}
             eveWithParty={eveWithParty}

@@ -4,6 +4,7 @@ import { useFrame } from '@react-three/fiber';
 import type { Group } from 'three';
 import { usePlayerActions } from '@/game/shared/usePlayerActions';
 import { CharacterAnimator2D } from '@/game/render2d/CharacterAnimator2D';
+import { jumpRequested } from './interactZone';
 import {
   GRAVITY,
   GROUND_Y,
@@ -33,6 +34,8 @@ interface Player2DProps {
   initialX?: number;
   /** Verso cui guarda all'inizio (-1 = sinistra); poi cambia con il movimento. */
   initialFacing?: 1 | -1;
+  /** Vero mentre D è davanti alla porta: il salto da controller (A, lo stesso bottone di «Entra») viene ignorato. Letto ogni frame. */
+  suppressPadJumpRef?: MutableRefObject<boolean>;
 }
 
 /**
@@ -43,7 +46,7 @@ interface Player2DProps {
  * possiede da solo la posa/lo specchiamento — questo componente non tocca
  * più `scale.x`/texture, gli passa solo `facing`/`state`.
  */
-export function Player2D({ positionRef, initialX = 0, initialFacing = 1 }: Player2DProps) {
+export function Player2D({ positionRef, initialX = 0, initialFacing = 1, suppressPadJumpRef }: Player2DProps) {
   const group = useRef<Group>(null);
   const velocityY = useRef(0);
   const onGround = useRef(true);
@@ -75,7 +78,12 @@ export function Player2D({ positionRef, initialX = 0, initialFacing = 1 }: Playe
     group.current.position.x = Math.min(SIDEWALK_MAX_X, Math.max(SIDEWALK_MIN_X, nextX));
 
     // Salto solo se il giocatore è a terra.
-    if (actions.isHeld('jump') && onGround.current) {
+    const jumpRequest = jumpRequested(
+      actions.isHeldOn('jump', 'keyboard'),
+      actions.isHeldOn('jump', 'gamepad'),
+      suppressPadJumpRef?.current ?? false
+    );
+    if (jumpRequest && onGround.current) {
       velocityY.current = PLAYER_JUMP_SPEED;
       onGround.current = false;
     }

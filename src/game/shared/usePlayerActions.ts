@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { inputManager, type InputChannel } from '@/input/inputManager';
 import type { KeyboardOverrides } from '@/input/keyboardBindings';
+import type { InputDevice } from '@/input/inputActions';
 
 /**
  * Input del giocatore tradotto in AZIONI: da FASE 14 è un ADATTATORE sottile sul gestore unico `src/input/inputManager.ts`
@@ -32,6 +33,8 @@ export interface PlayerActions {
   moveX: () => -1 | 0 | 1;
   /** L'azione è tenuta premuta adesso. */
   isHeld: (action: PlayerAction) => boolean;
+  /** Come `isHeld` ma solo da un dispositivo (dove due azioni condividono un bottone del pad: es. salto e «interagisci» sul pad A). */
+  isHeldOn: (action: PlayerAction, device: InputDevice) => boolean;
   /** L'azione è stata premuta da quando si è svuotata la coda (senza auto-repeat). */
   justPressed: (action: PlayerAction) => boolean;
   /** Pressione di un tasto grezzo di TASTIERA (es. le anteprime di sviluppo `1`/`2`/`3`). */
@@ -51,6 +54,7 @@ export function usePlayerActions(overrides: BindingOverrides = {}, { blockContex
     stable.current = {
       moveX: () => channel.current?.moveX() ?? 0,
       isHeld: (action) => channel.current?.isHeld(action) ?? false,
+      isHeldOn: (action, device) => channel.current?.isHeldOn(action, device) ?? false,
       justPressed: (action) => channel.current?.justPressed(action) ?? false,
       keyJustPressed: (key) => channel.current?.keyJustPressed(key) ?? false,
       consume: () => channel.current?.consume()

@@ -32,7 +32,7 @@ export const CAMERA_EYE_Y = BACKDROP_BOTTOM_Y + CAMERA_VIEW_HEIGHT / 2;
 /** Smorzamento dell'inseguimento camera→giocatore sull'asse X. */
 export const CAMERA_FOLLOW_SMOOTHING = 0.12;
 
-// ---- Luoghi dell'esterno (X di mondo, da px/80 dell'immagine) ----
+// ---- Luoghi dell'esterno (X di mondo, da px/54 dell'immagine, cioè BACKDROP_PX_PER_UNIT) ----
 
 /** Porta CENTRALE dell'Ariston (quella sotto l'insegna): centro X e mezza larghezza della zona d'interazione (porta ~135 px dell'immagine + un po' di margine). */
 export const ARISTON_DOOR_X = 1047 / BACKDROP_PX_PER_UNIT;

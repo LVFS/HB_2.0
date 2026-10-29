@@ -1,7 +1,7 @@
 // Esterno dell'Ariston (Livello 1): zona d'interazione della porta e coerenza delle posizioni di messa in scena.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { isInsideZone } from '../src/game/levels/Level1/interactZone.ts';
+import { isInsideZone, jumpRequested } from '../src/game/levels/Level1/interactZone.ts';
 import {
   ARISTON_DOOR_HALF_WIDTH,
   ARISTON_DOOR_X,
@@ -68,3 +68,12 @@ test('«interagisci»: E e Invio da tastiera, A/Croce sul pad; Spazio resta solo
   assert.equal(actionLabel('interact', 'gamepad', 'playstation'), '✕');
   assert.equal(actionLabel('interact', 'gamepad', 'xbox'), 'A');
 });
+
+test("salto davanti alla porta: da controller (A, come «Entra») non salta, da tastiera sì, fuori dalla zona tutto com'è", () => {
+  assert.equal(jumpRequested(false, true, true), false, 'pad A in zona: solo entra');
+  assert.equal(jumpRequested(true, false, true), true, 'Spazio in zona: salta');
+  assert.equal(jumpRequested(false, true, false), true, 'pad A fuori zona: salta');
+  assert.equal(jumpRequested(true, true, true), true, 'tastiera e pad insieme: vale la tastiera');
+  assert.equal(jumpRequested(false, false, false), false);
+});
+

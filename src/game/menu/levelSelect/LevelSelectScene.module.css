@@ -9,6 +9,16 @@
   pointer-events: auto;
 }
 
+/* «Prossimamente»: testo di STATO al posto del tasto di avvio (un livello `soon` non si avvia), non un pulsante spento. */
+.soonLabel {
+  composes: label from '../../../styles/ui.module.css';
+  align-self: center;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line-strong);
+  color: var(--text);
+  background: var(--surface-control);
+}
+
 /* Angolo in alto a destra: `HomeButton` e `SettingsBar` nella stessa riga,
    stesso angolo — il posizionamento vive qui (non in `SettingsBar`, vedi il
    commento in `SettingsBar.module.css`) proprio per poter affiancare un

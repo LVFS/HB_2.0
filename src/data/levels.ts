@@ -2,8 +2,15 @@
 // Nello store resta solo il livello attualmente selezionato (`gameStore`) e
 // quali sono già stati completati (`progressStore`).
 
+/**
+ * `playable`: il livello ha una scena e si può avviare. `soon`: resta visibile nella mappa (isola, marker, elenco) ma non
+ * si avvia — mostra «Prossimamente». Riattivarlo = cambiare lo stato e collegare la scena del livello in `App.tsx`.
+ */
+export type LevelStatus = 'playable' | 'soon';
+
 export interface LevelInfo {
   id: string;
+  status: LevelStatus;
   /** Id del mondo (città) a cui appartiene — vedi `data/worlds.ts`. Oggi
    * ogni mondo ha un solo livello, ma il campo esiste già per reggere un
    * mondo con più livelli in futuro senza bisogno di ristrutturare. */
@@ -56,6 +63,7 @@ export function getLevelMapImageUrl(level: LevelInfo): string {
 export const levels: LevelInfo[] = [
   {
     id: 'oristano-ariston',
+    status: 'playable',
     worldId: 'oristano',
     name: 'Cinema Ariston',
     description: 'Viale Armando Diaz, Oristano — dove tutto è cominciato.',
@@ -67,6 +75,7 @@ export const levels: LevelInfo[] = [
   },
   {
     id: 'sili',
+    status: 'soon',
     worldId: 'sili',
     name: 'Silì',
     description: 'La frazione sul Tirso, a due passi da Oristano.',
@@ -82,6 +91,7 @@ export const levels: LevelInfo[] = [
     // (ricerche inconcludenti), meglio un placeholder onesto che un nome
     // sbagliato per un posto che probabilmente ha un significato preciso.
     id: 'cagliari-bastione',
+    status: 'soon',
     worldId: 'cagliari',
     name: 'Cagliari',
     description: 'Un luogo speciale a Cagliari — nome da confermare.',
@@ -106,6 +116,14 @@ export function isLevelUnlocked(level: LevelInfo, completedLevelIds: string[]): 
   if (level.order === 1) return true;
   const previous = levels.find((candidate) => candidate.order === level.order - 1);
   return previous ? completedLevelIds.includes(previous.id) : true;
+}
+
+/**
+ * Un livello si può AVVIARE solo se ha una scena (`status === 'playable'`) ed è sbloccato. La selezione livelli lo
+ * controlla in un solo punto (`handleStartLevel`) e `App.tsx` ha una difesa in più: nessun percorso deve aggirarlo.
+ */
+export function isLevelPlayable(level: LevelInfo, completedLevelIds: string[]): boolean {
+  return level.status === 'playable' && isLevelUnlocked(level, completedLevelIds);
 }
 
 /**

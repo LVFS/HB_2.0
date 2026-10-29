@@ -421,6 +421,13 @@ arena del boss completa, Sotterraneo e tunnel dell'inseguimento fino alla fuga d
 pausa (nella selezione si metterà «prossimamente»). Per tornarci: `git switch --detach v0.9-tunnel`; cosa è cambiato
 dopo: `git diff v0.9-tunnel..HEAD --stat`. Un tag pubblicato non si sposta mai: se serve un nuovo punto sicuro se ne fa un altro.
 
+**Gli altri livelli sono in pausa (FASE 13)**: Silì e Cagliari hanno `status: 'soon'` in `data/levels.ts` (solo `oristano-ariston` è
+`'playable'`): restano visibili nella mappa (isola, marker, elenco) con «Prossimamente», ma NON si avviano. Il blocco sta in UN punto,
+`LevelSelectScene.handleStartLevel` (via `isLevelPlayable`; nella vista a fuoco il tasto «Avvia livello» è sostituito dal testo), più una difesa
+in `App.tsx` (`screen === 'game'` con un `selectedLevel` diverso dal Livello 1 → torna alla selezione; `null` = ingresso dev, permesso). Motivo:
+`App` monta le scene da `levelPhase`, non da `selectedLevel`, quindi senza il blocco lanciare Silì faceva ripartire il Livello 1. Il codice e le
+mappe delle isole restano intatti: riattivare un livello = cambiare `status` e collegare la sua scena in `App.tsx` (e far scegliere le scene anche da `selectedLevel`).
+
 **Fatto**: scaffolding, menu, selezione livelli, fondamenta 2D del Livello 1 + sprite/animazione
 di D0/D1/Eve + macchina a stati con la prima scena giocabile per intero (Fasi 1, 3a e 4 del
 piano), interno isometrico dell'Ariston da LDtk (Fase 5), **arena del boss completa**

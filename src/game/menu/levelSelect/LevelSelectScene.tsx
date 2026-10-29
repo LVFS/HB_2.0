@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { HomeButton } from '@/components/HomeButton';
 import { SettingsBar } from '@/components/SettingsBar';
-import { getWorldLevel, levels } from '@/data/levels';
+import { getWorldLevel, isLevelPlayable, levels } from '@/data/levels';
 import { useSfx } from '@/hooks/useSfx';
 import { useGameStore } from '@/store/gameStore';
 import { useProgressStore } from '@/store/progressStore';
@@ -160,10 +160,11 @@ export function LevelSelectScene({ onWhiteout }: LevelSelectSceneProps) {
    * come guard) deve poter far ripartire l'effetto in `CapsuleSequence`
    * anche se il valore logico "sto lanciando" non cambierebbe da solo. */
   const handleStartLevel = useCallback(() => {
-    if (launching) return;
+    // UNICO punto di blocco: un livello `soon` (o ancora bloccato) non parte, da qualunque ingresso arrivi la richiesta.
+    if (launching || !isLevelPlayable(displayedLevel, completedLevelIds)) return;
     setLaunching(true);
     setLaunchTrigger((n) => n + 1);
-  }, [launching]);
+  }, [launching, displayedLevel, completedLevelIds]);
 
   const handleImpactFlash = useCallback(() => {
     setFlashActive(true);
@@ -213,9 +214,13 @@ export function LevelSelectScene({ onWhiteout }: LevelSelectSceneProps) {
             <button className={ui.secondary} onClick={() => setFocused(false)}>
               Elenco livelli
             </button>
-            <button className={ui.primary} onClick={handleStartLevel}>
-              Avvia livello
-            </button>
+            {isLevelPlayable(displayedLevel, completedLevelIds) ? (
+              <button className={ui.primary} onClick={handleStartLevel}>
+                Avvia livello
+              </button>
+            ) : (
+              <span className={styles.soonLabel}>Prossimamente</span>
+            )}
           </div>
         ) : (
           <LevelListOverlay

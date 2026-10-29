@@ -21,7 +21,8 @@ interface LevelListOverlayProps {
  * sulla mappa 3D dietro): cliccare un mondo cambia SOLO la città mostrata,
  * cliccare un livello cambia città E fa partire lo zoom. Un livello
  * bloccato resta visibile (si vede cosa manca) ma disabilitato — vedi
- * `isLevelUnlocked` in `data/levels.ts`.
+ * `isLevelUnlocked` in `data/levels.ts`; un livello `soon` mostra «Prossimamente»
+ * e non si avvia (il blocco vero sta in `LevelSelectScene.handleStartLevel`).
  *
  * Il ciclo da controller (L1/R1 tra i pulsanti mondo, ✕/A per confermare)
  * resta qui, non sul marker 3D: oggi ogni mondo ha un solo livello, quindi
@@ -115,19 +116,23 @@ export function LevelListOverlay({ completedLevelIds, activeWorldId, onSelect, o
           {levels.map((level) => {
             const unlocked = isLevelUnlocked(level, completedLevelIds);
             const completed = completedLevelIds.includes(level.id);
+            // Un livello «prossimamente» resta cliccabile (si va a guardare la mappa) ma non si avvia, e non mostra
+            // la descrizione: per ora i dati dei livelli senza scena sono segnaposto.
+            const soon = level.status === 'soon';
             return (
               <button
                 key={level.id}
                 type="button"
                 className={`${styles.card} ${completed ? styles.cardCompleted : ''}`}
-                disabled={!unlocked}
+                disabled={!unlocked && !soon}
                 onClick={() => onSelect(level.id)}
               >
                 <span className={styles.worldLabel}>{getWorldName(level.worldId)}</span>
                 <span className={styles.cardName}>{level.name}</span>
-                <span className={styles.cardDescription}>{level.description}</span>
-                {completed && <span className={styles.completedHint}>Completato</span>}
-                {!unlocked && <span className={styles.lockedHint}>Completa il livello precedente</span>}
+                {!soon && <span className={styles.cardDescription}>{level.description}</span>}
+                {completed && <span className={styles.completedHint}>Completato ✓</span>}
+                {soon && <span className={styles.lockedHint}>Prossimamente</span>}
+                {!soon && !unlocked && <span className={styles.lockedHint}>Completa il livello precedente</span>}
               </button>
             );
           })}

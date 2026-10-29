@@ -97,11 +97,26 @@ const OWN_SCENE_PHASES: LevelPhase[] = [
   'schermata_punteggio'
 ];
 
+/** L'unico livello che ha delle scene (id in `data/levels.ts`): gli altri sono `status: 'soon'`. */
+const LEVEL1_ID = 'oristano-ariston';
+
 // App è il componente principale dell'app React.
 // Decide quale schermo mostrare in base allo stato globale del gioco.
 function App() {
   const screen = useGameStore((state) => state.screen);
+  const selectedLevel = useGameStore((state) => state.selectedLevel);
   const levelPhase = useLevelStore((state) => state.phase);
+
+  // Difesa: le scene qui sotto sono SOLO del Livello 1 e si scelgono da `levelPhase`, non da `selectedLevel`. Se per
+  // qualunque motivo si arriva a `game` con un altro livello scelto, si torna alla selezione invece di far ripartire il
+  // Livello 1 da capo. (`null` = ingresso diretto, es. le scorciatoie dev F2-F9: nessun livello scelto, resta permesso.)
+  const wrongLevel = screen === 'game' && selectedLevel !== null && selectedLevel !== LEVEL1_ID;
+  useEffect(() => {
+    if (!wrongLevel) return;
+    if (import.meta.env.DEV) console.warn(`[App] il livello «${selectedLevel}» non ha una scena: si torna alla selezione`);
+    useGameStore.getState().setScreen('levelSelect');
+  }, [wrongLevel, selectedLevel]);
+  const inLevel1 = screen === 'game' && !wrongLevel;
 
   // Musica di sottofondo: vive quanto l'app, indipendente dallo schermo attivo.
   useBackgroundMusic();
@@ -155,17 +170,15 @@ function App() {
         {/* Livello 1: scorrimento laterale fuori dall'Ariston, interno
             isometrico dentro (decisione presa: `attivita_stupide` VIVE
             nell'isometrico) — mai insieme, `levelPhase` decide quale. */}
-        {screen === 'game' && levelPhase === 'attivita_stupide' && (
-          <SceneManager2DIso onWhiteout={setWhiteout} />
-        )}
-        {screen === 'game' && levelPhase === 'dialogo_pre_boss' && <SceneManagerPreBoss onWhiteout={setWhiteout} />}
-        {screen === 'game' && levelPhase === 'boss_fase1' && <SceneManagerBossArena onWhiteout={setWhiteout} />}
-        {screen === 'game' && levelPhase === 'transizione_seconda_spada' && <SceneManagerSotterraneo />}
-        {screen === 'game' && TUNNEL_PHASES.includes(levelPhase) && <SceneManagerTunnel onWhiteout={setWhiteout} />}
-        {screen === 'game' && SPACE_PHASES.includes(levelPhase) && <SceneManagerSpazio onWhiteout={setWhiteout} />}
-        {screen === 'game' && levelPhase === 'dialogo_finale' && <SceneManagerFinale onWhiteout={setWhiteout} />}
-        {screen === 'game' && levelPhase === 'schermata_punteggio' && <SceneManagerPunteggio />}
-        {screen === 'game' && !OWN_SCENE_PHASES.includes(levelPhase) && <SceneManager2D onWhiteout={setWhiteout} />}
+        {inLevel1 && levelPhase === 'attivita_stupide' && <SceneManager2DIso onWhiteout={setWhiteout} />}
+        {inLevel1 && levelPhase === 'dialogo_pre_boss' && <SceneManagerPreBoss onWhiteout={setWhiteout} />}
+        {inLevel1 && levelPhase === 'boss_fase1' && <SceneManagerBossArena onWhiteout={setWhiteout} />}
+        {inLevel1 && levelPhase === 'transizione_seconda_spada' && <SceneManagerSotterraneo />}
+        {inLevel1 && TUNNEL_PHASES.includes(levelPhase) && <SceneManagerTunnel onWhiteout={setWhiteout} />}
+        {inLevel1 && SPACE_PHASES.includes(levelPhase) && <SceneManagerSpazio onWhiteout={setWhiteout} />}
+        {inLevel1 && levelPhase === 'dialogo_finale' && <SceneManagerFinale onWhiteout={setWhiteout} />}
+        {inLevel1 && levelPhase === 'schermata_punteggio' && <SceneManagerPunteggio />}
+        {inLevel1 && !OWN_SCENE_PHASES.includes(levelPhase) && <SceneManager2D onWhiteout={setWhiteout} />}
       </Suspense>
 
       <div className={`${styles.whiteout} ${whiteout ? styles.whiteoutActive : ''}`} />

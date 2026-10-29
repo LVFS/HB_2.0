@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { CutsceneId } from '@/data/cutscenes/types';
 import { LEVEL1_TRIGGERS_PLACEHOLDER } from '@/data/level1/triggers';
 import { useRunStatsStore } from './runStatsStore';
 
@@ -62,6 +63,9 @@ interface LevelState {
   /** Esito del tunnel (distanza finale dalla marionetta e punteggio della raffica), o null. */
   tunnelResult: TunnelResult | null;
   setTunnelResult: (result: TunnelResult | null) => void;
+  /** Cutscene già viste in QUESTA partita (una volta sola a partita; azzerato da `resetLevel()`). */
+  seenCutscenes: CutsceneId[];
+  markCutsceneSeen: (id: CutsceneId) => void;
   /** Esito dello spazio (supporto a Eve e cannone), o null. */
   spaceResult: SpaceResult | null;
   setSpaceResult: (result: SpaceResult | null) => void;
@@ -85,6 +89,8 @@ export const useLevelStore = create<LevelState>((set) => ({
   setFinalQteSuccess: (success) => set({ finalQteSuccess: success }),
   tunnelResult: null,
   setTunnelResult: (result) => set({ tunnelResult: result }),
+  seenCutscenes: [],
+  markCutsceneSeen: (id) => set((state) => (state.seenCutscenes.includes(id) ? state : { seenCutscenes: [...state.seenCutscenes, id] })),
   spaceResult: null,
   setSpaceResult: (result) => set({ spaceResult: result })
 }));
@@ -101,6 +107,7 @@ export function resetLevel(): void {
     lateralSpawnX: INITIAL_LATERAL_SPAWN_X,
     finalQteSuccess: null,
     tunnelResult: null,
+    seenCutscenes: [],
     spaceResult: null
   });
   // Nuova run: statistiche del punteggio azzerate e cronometro riavviato.

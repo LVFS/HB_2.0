@@ -1,9 +1,10 @@
-import { Suspense, useMemo, useRef, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import type { MutableRefObject } from 'react';
 import { GameCanvas } from '@/components/GameCanvas';
 import { OrthographicCamera } from '@react-three/drei';
 import { useOverlap } from '@/game/render2d/useOverlap';
 import type { AABB } from '@/game/render2d/collision';
+import { prefetchCutsceneVideo } from '@/game/menu/assetPreload';
 import { useLevelStore } from '@/store/levelStore';
 import { LEVEL1_TRIGGERS_PLACEHOLDER } from '@/data/level1/triggers';
 import { InteriorLevelGeometry } from './InteriorLevelGeometry';
@@ -152,6 +153,11 @@ function IsoLevelContent({ levelIdentifier, playerPositionRef, onDoorEnter }: Is
 export function SceneManager2DIso({ onWhiteout }: SceneManager2DIsoProps) {
   const [currentLevel, setCurrentLevel] = useState(ENTRY_LEVEL);
   const playerPositionRef = useRef<PlayerPositionIso>({ x: 0, z: 0 });
+
+  // Il video pre-boss si scarica mentre si gira per l'Ariston: quando si apre la porta della Sala 1 è già pronto.
+  useEffect(() => {
+    prefetchCutsceneVideo('preboss_sala1');
+  }, []);
 
   // Stesso pattern di `SceneManager2D.handleReachAriston`/
   // `LevelSelectScene.handleSequenceComplete`: whiteout acceso subito, il

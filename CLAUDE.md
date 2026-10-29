@@ -39,6 +39,7 @@ toccare un'area, leggi il suo documento:
 | Slancio, bonus, eventi e finestra sulla marionetta del tunnel | `docs/FASE9_TUNNEL_POTENZIAMENTI.md` |
 | distanza fisica, casella bonus, inquadratura fissa, tempo limite, tre vie, onde di Checco e modalità, desideri di Shenron | `docs/FASE10_TUNNEL_DISTANZA_VIE_EVENTI.md` |
 | le cutscene da storyboard (pre-boss `dialogo_pre_boss`, intermezzo del finale dell'arena, `game/cutscenes/`, `data/cutscenes/`) | `docs/FASE11_CUTSCENE_STORYBOARD.md` |
+| le cinematiche video (intro del livello, pre-boss), `VideoCutscene`, sottotitoli, caricamento/errori | `docs/FASE15_CUTSCENE_VIDEO.md` |
 | l'input (tastiera/mouse/controller), le icone dei comandi, i QTE ad azioni, i testi con i tasti, la vibrazione (`src/input/`, `components/ActionGlyph`, `usePlayerActions`) | `docs/FASE14_CONTROLLER.md` |
 | lo spazio (inseguimento, QTE di supporto, cannone), il finale a terra, il punteggio e i titoli di coda (`game/levels/Spazio/`, `game/levels/Finale/`, `game/score/`, `runStatsStore`) | `docs/FASE12_FUGA_SPAZIO_FINALE_PUNTEGGIO.md` (in fondo: stato di esecuzione) |
 | il refactor dell'arena e le primitive condivise | `docs/FASE7_PULIZIA_REFACTOR.md` |
@@ -244,7 +245,7 @@ Mappa del codice (dopo il refactor FASE 7):
 
 ## Cutscene da storyboard (riassunto)
 
-Il pre-boss (`dialogo_pre_boss`) e l'intermezzo del finale dell'arena sono «motion comic»: i disegni di `docs/storyboard/` (convertiti in
+L'intermezzo del finale dell'arena è un «motion comic» (il pre-boss `dialogo_pre_boss` e l'intro del livello sono ora VIDEO, `VideoCutscene`, vedi `docs/FASE15_CUTSCENE_VIDEO.md`; `CutscenePlayer` sceglie fra i due in base al registro): i disegni di `docs/storyboard/` (convertiti in
 `public/cutscenes/` da `scripts/prepare-cutscene-frames.mjs`) a tutto schermo con camera GSAP, effetti e battute. Dettaglio in
 **`docs/FASE11_CUTSCENE_STORYBOARD.md`**. Regole:
 

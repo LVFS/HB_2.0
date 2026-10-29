@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Howl } from 'howler';
 import { useSettingsStore } from '@/store/settingsStore';
+import { useUiStore } from '@/store/uiStore';
 
 const THEME_SRC = `${import.meta.env.BASE_URL}audio/theme.mp3`;
 
@@ -33,12 +34,13 @@ export function useBackgroundMusic() {
     };
   }, []);
 
-  // Play/pause: dipende solo da musicEnabled.
+  // Play/pause: dipende da musicEnabled e dalle cinematiche video (che hanno il loro audio).
+  const videoPlaying = useUiStore((state) => state.videoPlaying);
   useEffect(() => {
     const theme = themeRef.current;
     if (!theme) return;
 
-    if (!musicEnabled) {
+    if (!musicEnabled || videoPlaying) {
       theme.pause();
       return;
     }
@@ -48,7 +50,7 @@ export function useBackgroundMusic() {
       // con la pagina: in quel caso il play viene semplicemente ignorato.
       theme.play();
     }
-  }, [musicEnabled]);
+  }, [musicEnabled, videoPlaying]);
 
   // Volume: applicato a parte, senza toccare play/pause.
   useEffect(() => {

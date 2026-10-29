@@ -6,9 +6,7 @@ import { ParallaxLayer } from '@/game/render2d/ParallaxLayer';
 import { useFollowCameraX } from '@/game/render2d/useFollowCameraX';
 import { useXTrigger } from '@/game/render2d/useXTrigger';
 import { CharacterAnimator2D } from '@/game/render2d/CharacterAnimator2D';
-import { useDialogue } from '@/hooks/useDialogue';
-import { DialogueBox } from '@/components/DialogueBox';
-import { LEVEL1_INTRO_DIALOGUE } from '@/data/dialogues/level1_intro';
+import { CutscenePlayer } from '@/game/cutscenes/CutscenePlayer';
 import { LEVEL1_TRIGGERS_PLACEHOLDER } from '@/data/level1/triggers';
 import { useLevelStore, type LevelPhase } from '@/store/levelStore';
 import { Player2D, type PlayerPosition } from './Player2D';
@@ -162,13 +160,15 @@ export function SceneManager2D({ onWhiteout }: SceneManager2DProps) {
   // locale, vedi il commento su `lateralSpawnX` in `levelStore.ts`.
   const playerPositionRef = useRef<PlayerPosition>({ x: lateralSpawnX, y: GROUND_Y });
 
-  const introDialogue = useDialogue(LEVEL1_INTRO_DIALOGUE, { enabled: phase === 'intro_dialogo' });
-
+  // L'apertura del livello è il video `intro_level1` (che racconta tutto il dialogo d'apertura): a fine o saltando si cammina. Una volta a partita.
+  const introSeen = useLevelStore((state) => state.seenCutscenes.includes('intro_level1'));
+  const handleIntroFinished = () => {
+    useLevelStore.getState().markCutsceneSeen('intro_level1');
+    setPhase('cammino_libero_ariston');
+  };
   useEffect(() => {
-    if (phase === 'intro_dialogo' && introDialogue.isDone) {
-      setPhase('cammino_libero_ariston');
-    }
-  }, [phase, introDialogue.isDone, setPhase]);
+    if (phase === 'intro_dialogo' && introSeen) setPhase('cammino_libero_ariston');
+  }, [phase, introSeen, setPhase]);
 
   // Whiteout acceso SUBITO, cambio fase vero un istante dopo (0.55s, quando
   // il bianco ha già coperto lo schermo — stessa transizione CSS da 0.5s di
@@ -188,7 +188,7 @@ export function SceneManager2D({ onWhiteout }: SceneManager2DProps) {
         </Suspense>
       </GameCanvas>
 
-      {phase === 'intro_dialogo' && introDialogue.currentLine && <DialogueBox line={introDialogue.currentLine} />}
+      {phase === 'intro_dialogo' && !introSeen && <CutscenePlayer id="intro_level1" onFinished={handleIntroFinished} />}
 
       {phase === 'cammino_libero_ariston' && (
         <div className={styles.hint}>

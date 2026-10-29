@@ -45,6 +45,8 @@ export function useDevBossShortcut(): void {
       useGameStore.getState().setScreen('game');
       // F4 (punteggio): riempie le statistiche con valori d'esempio, per vedere la schermata senza giocare tutto.
       if (event.key === 'F4') useRunStatsStore.setState(SAMPLE_RUN_STATS());
+      // F6 (pre-boss): il video si vede una volta a partita, qui si rimette «non visto» per poterlo rivedere.
+      if (event.key === 'F6') useLevelStore.setState((state) => ({ seenCutscenes: state.seenCutscenes.filter((id) => id !== 'preboss_sala1') }));
       // F3 (finale a terra): senza l'esito dello spazio il dialogo prende le righe «di ripiego».
       if (event.key === 'F3') useLevelStore.getState().setSpaceResult({ support: 0.8, cannon: 1 });
       useLevelStore.getState().setPhase(target);

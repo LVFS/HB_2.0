@@ -3,6 +3,8 @@
 // prima viveva sparsa negli `useEffect` di `MenuScene.tsx`/`LevelSelectScene.tsx`,
 // così i due punti di chiamata restano una riga sola.
 import { useTexture } from '@react-three/drei';
+import { CUTSCENES } from '@/data/cutscenes/registry';
+import type { CutsceneId } from '@/data/cutscenes/types';
 import { getLevelMapImageUrl, levels } from '@/data/levels';
 
 /**
@@ -50,6 +52,7 @@ export function prefetchLevel1Assets(): void {
   runWhenIdle(() => {
     import('@/game/levels/Level1/SceneManager2D').catch(() => {});
   });
+  prefetchCutsceneVideo('intro_level1');
 }
 
 /**
@@ -66,5 +69,24 @@ export function prefetchOtherCityMaps(currentLevelId: string): void {
     levels
       .filter((level) => level.id !== currentLevelId)
       .forEach((level) => useTexture.preload(getLevelMapImageUrl(level)));
+  });
+}
+
+const prefetched = new Set<string>();
+
+/**
+ * Scalda la cache HTTP con una cinematica video (e i suoi sottotitoli) PRIMA che serva: quando parte la cutscene il file è già
+ * (in buona parte) scaricato. A riposo e a bassa priorità, una volta sola per id; se il download fallisce non succede nulla
+ * (la cutscene avrà il suo caricamento con «Riprova / Salta»). Intro: da `prefetchLevel1Assets` (selezione livelli);
+ * pre-boss: all'ingresso dell'interno dell'Ariston.
+ */
+export function prefetchCutsceneVideo(id: CutsceneId): void {
+  const video = CUTSCENES[id].video;
+  if (!video || prefetched.has(id)) return;
+  prefetched.add(id);
+  runWhenIdle(() => {
+    for (const path of [video.subtitles, video.src]) {
+      if (path) fetch(`${import.meta.env.BASE_URL}${path}`, { priority: 'low' } as RequestInit).catch(() => prefetched.delete(id));
+    }
   });
 }

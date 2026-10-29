@@ -178,7 +178,7 @@ function App() {
             isometrico dentro (decisione presa: `attivita_stupide` VIVE
             nell'isometrico) — mai insieme, `levelPhase` decide quale. */}
         {inLevel1 && levelPhase === 'attivita_stupide' && <SceneManager2DIso onWhiteout={setWhiteout} />}
-        {inLevel1 && levelPhase === 'dialogo_pre_boss' && <SceneManagerPreBoss onWhiteout={setWhiteout} />}
+        {inLevel1 && levelPhase === 'dialogo_pre_boss' && <SceneManagerPreBoss />}
         {inLevel1 && levelPhase === 'boss_fase1' && <SceneManagerBossArena onWhiteout={setWhiteout} />}
         {inLevel1 && levelPhase === 'transizione_seconda_spada' && <SceneManagerSotterraneo />}
         {inLevel1 && TUNNEL_PHASES.includes(levelPhase) && <SceneManagerTunnel onWhiteout={setWhiteout} />}

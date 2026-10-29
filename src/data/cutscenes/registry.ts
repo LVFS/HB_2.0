@@ -1,13 +1,13 @@
-import type { CutsceneEntry, CutsceneId } from './types';
-import { LEVEL1_POSTBOSS } from './level1_postboss';
-import { LEVEL1_PREBOSS } from './level1_preboss';
+import type { CutsceneEntry, CutsceneId } from './types.ts';
+import { LEVEL1_POSTBOSS } from './level1_postboss.ts';
 
 /**
- * Il registro delle cutscene (FASE 11, sez. 4b): le fasi non montano `StoryboardCutscene` direttamente ma `CutscenePlayer`,
- * che guarda qui. Oggi c'è solo lo `storyboard` (motion comic); quando arriveranno le cinematiche video basterà aggiungere un
- * `video: { src }` alla voce giusta, senza toccare le fasi.
+ * Il registro delle cutscene: le fasi non montano il componente direttamente ma `CutscenePlayer`, che guarda qui e sceglie fra
+ * video (`VideoCutscene`, FASE 15) e storyboard (`StoryboardCutscene`, FASE 11). I master dei video NON stanno nel repo: qui ci sono
+ * le versioni ricompresse a 720p e i sottotitoli `.vtt` in `public/video/cutscenes/`. Niente alias `@/`: lo legge Node nei test.
  */
 export const CUTSCENES: Record<CutsceneId, CutsceneEntry> = {
-  preboss: { storyboard: LEVEL1_PREBOSS },
+  intro_level1: { video: { src: 'video/cutscenes/intro_level1.mp4', subtitles: 'video/cutscenes/intro_level1.vtt' } },
+  preboss_sala1: { video: { src: 'video/cutscenes/preboss_sala1.mp4', subtitles: 'video/cutscenes/preboss_sala1.vtt' } },
   postboss: { storyboard: LEVEL1_POSTBOSS }
 };

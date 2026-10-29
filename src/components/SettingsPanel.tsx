@@ -33,6 +33,8 @@ export function SettingsPanelContent() {
   const setGlyphs = useSettingsStore((state) => state.setGlyphs);
   const rumble = useSettingsStore((state) => state.rumble);
   const toggleRumble = useSettingsStore((state) => state.toggleRumble);
+  const subtitles = useSettingsStore((state) => state.subtitles);
+  const toggleSubtitles = useSettingsStore((state) => state.toggleSubtitles);
   const [rumbleResult, setRumbleResult] = useState<keyof typeof RUMBLE_MESSAGES | null>(null);
   const cycleGlyphs = () => setGlyphs(GLYPH_SETTINGS[(GLYPH_SETTINGS.indexOf(glyphs) + 1) % GLYPH_SETTINGS.length]);
 
@@ -50,6 +52,9 @@ export function SettingsPanelContent() {
       </button>
       <button className={ui.secondary} data-nav onClick={toggleRumble}>
         {rumble ? 'Disattiva vibrazione' : 'Attiva vibrazione'}
+      </button>
+      <button className={ui.secondary} data-nav onClick={toggleSubtitles}>
+        {subtitles ? 'Disattiva sottotitoli' : 'Attiva sottotitoli'}
       </button>
       <button className={ui.secondary} data-nav onClick={() => void testRumble().then(setRumbleResult)}>
         Prova la vibrazione

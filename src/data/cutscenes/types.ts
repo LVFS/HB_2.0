@@ -47,11 +47,18 @@ export interface CutsceneSet {
   beats: CutsceneBeat[];
 }
 
-export type CutsceneId = 'preboss' | 'postboss';
+/** `intro_level1` e `preboss_sala1` sono video; `postboss` è uno storyboard (`preboss` non esiste più: lo ha sostituito il video). */
+export type CutsceneId = 'intro_level1' | 'preboss_sala1' | 'postboss';
 
-/** Una cutscene nel registro: oggi sempre lo storyboard; `video` è il punto di sostituzione (vedi `CutscenePlayer`). */
+/** Una cinematica video: file in `public/` (percorsi relativi a `BASE_URL`) e sottotitoli WebVTT. */
+export interface CutsceneVideo {
+  src: string;
+  /** File `.vtt` dei sottotitoli italiani. */
+  subtitles?: string;
+}
+
+/** Una cutscene nel registro: un video OPPURE uno storyboard (`CutscenePlayer` sceglie in base a cosa c'è). */
 export interface CutsceneEntry {
-  storyboard: CutsceneSet;
-  /** Cinematica video che, quando esisterà, prende il posto dello storyboard. Non ancora usata. */
-  video?: { src: string };
+  storyboard?: CutsceneSet;
+  video?: CutsceneVideo;
 }

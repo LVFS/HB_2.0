@@ -12,11 +12,14 @@ interface SettingsState {
   glyphs: GlyphSetting;
   /** Vibrazione del controller (solo dove il browser la supporta). */
   rumble: boolean;
+  /** Sottotitoli delle cinematiche video. */
+  subtitles: boolean;
   toggleMusic: () => void;
   toggleSfx: () => void;
   setVolume: (value: number) => void;
   setGlyphs: (value: GlyphSetting) => void;
   toggleRumble: () => void;
+  toggleSubtitles: () => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -31,7 +34,9 @@ export const useSettingsStore = create<SettingsState>()(
       glyphs: 'auto',
       rumble: true,
       setGlyphs: (value) => set({ glyphs: value }),
-      toggleRumble: () => set((state) => ({ rumble: !state.rumble }))
+      toggleRumble: () => set((state) => ({ rumble: !state.rumble })),
+      subtitles: true,
+      toggleSubtitles: () => set((state) => ({ subtitles: !state.subtitles }))
     }),
     {
       name: 'epic-birthday-settings',
@@ -40,7 +45,8 @@ export const useSettingsStore = create<SettingsState>()(
         sfxEnabled: state.sfxEnabled,
         volume: state.volume,
         glyphs: state.glyphs,
-        rumble: state.rumble
+        rumble: state.rumble,
+        subtitles: state.subtitles
       })
     }
   )

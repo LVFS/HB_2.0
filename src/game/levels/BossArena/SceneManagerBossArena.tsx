@@ -1,5 +1,6 @@
 import { Suspense, useEffect, useMemo, useState } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
+import { GameCanvas } from '@/components/GameCanvas';
 import { OrthographicCamera } from '@react-three/drei';
 import { ArenaHud } from '@/components/ArenaHud';
 import { CutscenePlayer } from '@/game/cutscenes/CutscenePlayer';
@@ -105,7 +106,7 @@ export function SceneManagerBossArena({ onWhiteout }: SceneManagerBossArenaProps
 
   return (
     <div className="scene-shell">
-      <Canvas>
+      <GameCanvas>
         <Suspense fallback={null}>
           <OrthographicCamera
             makeDefault
@@ -121,7 +122,7 @@ export function SceneManagerBossArena({ onWhiteout }: SceneManagerBossArenaProps
           <PlayerShotsLayer key={`shots-${runId}`} world={world} />
           <DamageNumbers key={`damage-${runId}`} world={world} />
         </Suspense>
-      </Canvas>
+      </GameCanvas>
 
       {/* L'intermezzo copre tutto (opaco, sopra la HUD): in quel momento HUD e comandi non servono. */}
       {intermezzo && (

@@ -1,6 +1,6 @@
 import { Suspense, useMemo, useRef, useState } from 'react';
 import type { MutableRefObject } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { GameCanvas } from '@/components/GameCanvas';
 import { OrthographicCamera } from '@react-three/drei';
 import { useOverlap } from '@/game/render2d/useOverlap';
 import type { AABB } from '@/game/render2d/collision';
@@ -188,7 +188,7 @@ export function SceneManager2DIso({ onWhiteout }: SceneManager2DIsoProps) {
 
   return (
     <div className="scene-shell">
-      <Canvas>
+      <GameCanvas>
         <color attach="background" args={['#1a1a1a']} />
         <ambientLight intensity={0.7} />
         <directionalLight position={[10, 20, 10]} intensity={0.8} />
@@ -207,7 +207,7 @@ export function SceneManager2DIso({ onWhiteout }: SceneManager2DIsoProps) {
             onDoorEnter={handleDoorEnter}
           />
         </Suspense>
-      </Canvas>
+      </GameCanvas>
 
       <div className={styles.hint}>
         <span className={styles.hintPill}>

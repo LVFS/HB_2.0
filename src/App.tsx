@@ -6,6 +6,8 @@ import { useDevBossShortcut } from '@/hooks/useDevBossShortcut';
 import { useAudioUnlockHint } from '@/hooks/useAudioUnlockHint';
 import { useGamepadDetected } from '@/hooks/useGamepadDetected';
 import { LoadingScreen } from '@/components/LoadingScreen';
+import { PauseMenu } from '@/components/PauseMenu';
+import { usePauseStore } from '@/store/pauseStore';
 import styles from './App.module.css';
 
 // Ogni schermata viene scaricata solo quando serve davvero (code splitting).
@@ -118,6 +120,11 @@ function App() {
   }, [wrongLevel, selectedLevel]);
   const inLevel1 = screen === 'game' && !wrongLevel;
 
+  // Fuori dal gioco non si resta in pausa (uscire dal livello, o la difesa qui sopra, riprende il tempo).
+  useEffect(() => {
+    if (screen !== 'game') usePauseStore.getState().setPaused(false);
+  }, [screen]);
+
   // Musica di sottofondo: vive quanto l'app, indipendente dallo schermo attivo.
   useBackgroundMusic();
 
@@ -180,6 +187,9 @@ function App() {
         {inLevel1 && levelPhase === 'schermata_punteggio' && <SceneManagerPunteggio />}
         {inLevel1 && !OWN_SCENE_PHASES.includes(levelPhase) && <SceneManager2D onWhiteout={setWhiteout} />}
       </Suspense>
+
+      {/* Pausa dentro il gioco (Esc / Options): ferma GSAP, input e Canvas, e apre il menu. */}
+      <PauseMenu />
 
       <div className={`${styles.whiteout} ${whiteout ? styles.whiteoutActive : ''}`} />
 

@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { SettingsBar } from '@/components/SettingsBar';
 import { useAnyInput } from '@/hooks/useAnyInput';
+import { useTapAction } from '@/input/useInputHooks';
+import { useUiStore } from '@/store/uiStore';
+import { PadHints } from '@/components/PadHints';
+import { SkipCutscene } from '@/components/SkipCutscene';
 import { useGameStore } from '@/store/gameStore';
 import { prefetchLevelSelectAssets } from './assetPreload';
 import { MainMenuOverlay } from './MainMenuOverlay';
@@ -22,6 +26,8 @@ interface MenuSceneProps {
  * la scena 3D e l'overlay HTML. Tutta la coreografia (camera, audio, fisica)
  * sta dentro la scena; qui restano solo le transizioni di stato.
  */
+const isCommittedPhase = (phase: MenuPhase) => phase === 'punching' || phase === 'breaking';
+
 export function MenuScene({ onWhiteout }: MenuSceneProps) {
   const setScreen = useGameStore((state) => state.setScreen);
 
@@ -82,6 +88,9 @@ export function MenuScene({ onWhiteout }: MenuSceneProps) {
   // servirà comunque per avviare davvero, una volta in `'ready'`); durante
   // `'ready'` avvia la sequenza. Nelle altre fasi l'hook è disattivato
   // (`enabled` sotto), quindi qui non serve nemmeno controllarle.
+  // Con le impostazioni aperte (anche da pad, con Options) le pressioni servono al pannello: la sequenza non parte.
+  const settingsOpen = useUiStore((state) => state.settingsOpen);
+  const setSettingsOpen = useUiStore((state) => state.setSettingsOpen);
   useAnyInput(
     () => {
       if (phase === 'intro') {
@@ -90,8 +99,21 @@ export function MenuScene({ onWhiteout }: MenuSceneProps) {
         handleStart();
       }
     },
-    { enabled: phase === 'intro' || phase === 'ready' }
+    { enabled: (phase === 'intro' || phase === 'ready') && !settingsOpen }
   );
+
+  // Options/Esc: un TOCCO apre le impostazioni; TENUTO (vedi `SkipCutscene` sotto) salta alla selezione livelli.
+  useTapAction('pause', () => setSettingsOpen(!settingsOpen), { enabled: !isCommittedPhase(phase) });
+
+  // Salta il filmato e va alla selezione livelli (stesso bianco di fine sequenza, poi il cambio schermata). UNA volta sola.
+  const leaving = useRef(false);
+  const goToLevelSelect = useCallback(() => {
+    if (leaving.current) return;
+    leaving.current = true;
+    setSettingsOpen(false);
+    onWhiteout(true);
+    window.setTimeout(() => setScreen('levelSelect'), 550);
+  }, [onWhiteout, setScreen, setSettingsOpen]);
 
   // Chiamato da `CharacterIntro` nell'istante in cui il pugno tocca il muro.
   // La sequenza del personaggio, per ora, ha un solo esito narrativo: il
@@ -128,7 +150,7 @@ export function MenuScene({ onWhiteout }: MenuSceneProps) {
 
   // Stessa regola già usata per disabilitare i vecchi controlli: dalla
   // sequenza del personaggio in poi non si torna indietro.
-  const isCommitted = phase === 'punching' || phase === 'breaking';
+  const isCommitted = isCommittedPhase(phase);
 
   return (
     <div className="scene-shell">
@@ -152,6 +174,10 @@ export function MenuScene({ onWhiteout }: MenuSceneProps) {
           <SettingsBar />
         </div>
       )}
+
+      {/* Tenere premuto Esc/Options salta il filmato (intro e sequenza del pugno) e porta alla selezione livelli. */}
+      <SkipCutscene enabled={!settingsOpen} onSkip={goToLevelSelect} target="andare alla selezione livelli" />
+      {!isCommitted && !settingsOpen && <PadHints position="center" items={[{ actions: ['pause'], label: 'impostazioni' }]} />}
 
       {/* Se il file non esiste ancora (vedi `LEAP_VIDEO_URL`), l'errore di
           caricamento è silenzioso e l'overlay resta semplicemente invisibile

@@ -288,7 +288,11 @@ Tastiera, mouse e controller passano da UN gestore (`src/input/inputManager.ts`,
 - **I QTE parlano in azioni** (`QTE_KEYS`, `BARRAGE_KEYS`, `SUPPORT_QTE_KEYS`), mai in lettere; `QteChallenge` mostra `ActionGlyph`. Il cannone accetta attacco/parata/salto/scatto.
 - **Nessun nome di tasto scritto a mano in un testo**: usare `ActionGlyph`/`ControlsHint` nei componenti, e il segnaposto `{attack}`, `{skill}`… nei testi dei messaggi (`formatActionText`
   li sostituisce in `ArenaHud` e `PowerUpChoice`). Le icone seguono l'ULTIMO dispositivo usato (impostazione `glyphs` per forzarle), sono SVG disegnati nel gioco e non dipendono da file.
-- Nell'UI a mouse il controller si aggiunge con `useActionPress(..., { padOnly: true })`, lasciando intatta la tastiera. La vibrazione è `rumble('hit' | 'parry' | 'stagger' | 'slam')`, dietro `settingsStore.rumble`.
+- Nell'UI a mouse il controller si aggiunge con `useActionPress(..., { padOnly: true })`, lasciando intatta la tastiera. La vibrazione è `rumble('tick' | 'hit' | 'parry' | 'stagger' | 'slam')`, dietro `settingsStore.rumble` (nelle impostazioni c'è «Prova la vibrazione»).
+- **Menu e pausa (FASE 14b)**: un pannello HTML navigabile da pad si registra come livello con `usePadNavLayer(ref, enabled, onBack)` (`src/input/padNav.ts`): gli elementi `data-nav` (`data-nav-default` = dove parte il fuoco)
+  si muovono con croce/stick, X/✕ clicca, ○ chiama `onBack`; l'ultimo livello registrato comanda. Esc/Options hanno DUE usi: un TOCCO (`useTapAction('pause')`) apre le impostazioni (menu, selezione livelli) o la pausa
+  (dentro il gioco), TENUTO è il salto (`SkipCutscene`: nel menu porta alla selezione livelli). La pausa (`store/pauseStore.ts`) ferma GSAP, l'input (`inputManager.setSuspended`) e i `<Canvas>`: **le scene dei livelli
+  usano `components/GameCanvas`, mai `Canvas` direttamente**. I listener dei menu che devono ricevere input anche in pausa passano `{ always: true }`.
 
 ## Tunnel dell'inseguimento (`boss_fase2_tunnel` e seguenti) (riassunto)
 

@@ -34,7 +34,8 @@ export const GAMEPAD_BINDINGS: Record<GameAction, readonly string[]> = {
   summon: [`pad:b${PAD_BUTTON.LT}`],
   confirm: [`pad:b${PAD_BUTTON.A}`],
   back: [`pad:b${PAD_BUTTON.B}`],
-  skip: [`pad:b${PAD_BUTTON.Start}`]
+  skip: [`pad:b${PAD_BUTTON.Start}`],
+  pause: [`pad:b${PAD_BUTTON.Start}`]
 };
 
 /** Stick sinistro: si «accende» sopra `STICK_ON` e si «spegne» sotto `STICK_OFF` (isteresi: niente sfarfallio al limite). */

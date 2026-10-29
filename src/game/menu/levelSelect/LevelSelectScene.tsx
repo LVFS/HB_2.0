@@ -1,9 +1,13 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { PadHints } from '@/components/PadHints';
 import { HomeButton } from '@/components/HomeButton';
 import { SettingsBar } from '@/components/SettingsBar';
 import { getWorldLevel, isLevelPlayable, levels } from '@/data/levels';
 import { useSfx } from '@/hooks/useSfx';
-import { useActionPress } from '@/input/useInputHooks';
+import { usePadNavLayer } from '@/input/padNav';
+import { useTapAction } from '@/input/useInputHooks';
+import { useUiStore } from '@/store/uiStore';
 import { useGameStore } from '@/store/gameStore';
 import { useProgressStore } from '@/store/progressStore';
 import ui from '@/styles/ui.module.css';
@@ -167,18 +171,14 @@ export function LevelSelectScene({ onWhiteout }: LevelSelectSceneProps) {
     setLaunchTrigger((n) => n + 1);
   }, [launching, displayedLevel, completedLevelIds]);
 
-  // Controller (FASE 14): nella vista a fuoco A avvia il livello (se è giocabile) e B torna all'elenco; nell'elenco B torna al menu.
-  // (L1/R1 e A per scegliere un livello dall'elenco restano in `LevelListOverlay`.) Solo i token del pad: la tastiera ha già i suoi pulsanti.
-  useActionPress(
-    (action) => {
-      if (action === 'confirm' && focused) handleStartLevel();
-      else if (action === 'back') {
-        if (focused) setFocused(false);
-        else setScreen('menu');
-      }
-    },
-    { enabled: !launching, padOnly: true }
-  );
+  // Controller: croce/stick muovono il fuoco, X/✕ conferma, ○ torna indietro (vedi `usePadNavLayer`): dal dettaglio all'elenco, dall'elenco
+  // al menu principale previa conferma; con le impostazioni aperte ○ le chiude. Options (un tocco) apre/chiude le impostazioni.
+  const settingsOpen = useUiStore((state) => state.settingsOpen);
+  const setSettingsOpen = useUiStore((state) => state.setSettingsOpen);
+  const [confirmMenu, setConfirmMenu] = useState(false);
+  const controlsRef = useRef<HTMLDivElement>(null);
+  usePadNavLayer(controlsRef, focused && !launching, () => setFocused(false));
+  useTapAction('pause', () => setSettingsOpen(!settingsOpen), { enabled: !launching && !confirmMenu });
 
   const handleImpactFlash = useCallback(() => {
     setFlashActive(true);
@@ -224,12 +224,12 @@ export function LevelSelectScene({ onWhiteout }: LevelSelectSceneProps) {
 
       {!launching &&
         (focused ? (
-          <div className={styles.controls}>
-            <button className={ui.secondary} onClick={() => setFocused(false)}>
+          <div ref={controlsRef} className={styles.controls}>
+            <button className={ui.secondary} data-nav onClick={() => setFocused(false)}>
               Elenco livelli
             </button>
             {isLevelPlayable(displayedLevel, completedLevelIds) ? (
-              <button className={ui.primary} onClick={handleStartLevel}>
+              <button className={ui.primary} data-nav data-nav-default onClick={handleStartLevel}>
                 Avvia livello
               </button>
             ) : (
@@ -242,8 +242,30 @@ export function LevelSelectScene({ onWhiteout }: LevelSelectSceneProps) {
             activeWorldId={displayedLevel.worldId}
             onSelect={handleSelectLevel}
             onSelectWorld={handleSelectWorld}
+            onBack={() => setConfirmMenu(true)}
           />
         ))}
+
+      {/* Promemoria dei comandi (icone del dispositivo in uso). */}
+      {!launching && !confirmMenu && (
+        <PadHints
+          items={[
+            { actions: ['confirm'], label: 'conferma' },
+            { actions: ['back'], label: focused ? 'elenco livelli' : 'menu principale' },
+            { actions: ['pause'], label: 'impostazioni' }
+          ]}
+        />
+      )}
+
+      {confirmMenu && (
+        <ConfirmDialog
+          title="Tornare al menu principale?"
+          confirmLabel="Sì, torna al menu"
+          cancelLabel="Resta qui"
+          onConfirm={() => setScreen('menu')}
+          onCancel={() => setConfirmMenu(false)}
+        />
+      )}
 
       {!launching && (
         <div className={styles.topRightBar}>

@@ -79,7 +79,8 @@ canvas {
    sovrascrivono con una versione che segue la loro smussatura.
    Senza questa regola, un elemento non previsto resterebbe con l'outline di
    sistema — o, peggio, senza alcuna indicazione visibile. */
-:focus-visible {
+:focus-visible,
+[data-pad-focus] {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }

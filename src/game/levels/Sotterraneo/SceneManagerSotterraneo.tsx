@@ -1,5 +1,5 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { GameCanvas } from '@/components/GameCanvas';
 import { OrthographicCamera } from '@react-three/drei';
 import gsap from 'gsap';
 import type { Group } from 'three';
@@ -89,7 +89,7 @@ export function SceneManagerSotterraneo() {
 
   return (
     <div className="scene-shell">
-      <Canvas>
+      <GameCanvas>
         <Suspense fallback={null}>
           <OrthographicCamera
             makeDefault
@@ -129,7 +129,7 @@ export function SceneManagerSotterraneo() {
 
           <FallenD />
         </Suspense>
-      </Canvas>
+      </GameCanvas>
 
       {currentLine && <DialogueBox line={currentLine} />}
       {/* Tenere premuto Esc/Invio (o il bottone) salta il dialogo: vedi `applyFinalState`. */}

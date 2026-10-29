@@ -20,7 +20,10 @@ import { actionsForToken } from './tokenActions';
  * (nessun tasto «incollato»).
  */
 
-export type PressListener = (action: GameAction, down: boolean, token: string) => void;
+/** `ok`: il browser ha eseguito la vibrazione; `unsupported`: il pad o il browser non la supportano; `no-pad`: nessun controller. */
+export type RumbleResult = 'ok' | 'unsupported' | 'no-pad';
+
+export type PressListener =(action: GameAction, down: boolean, token: string) => void;
 
 export interface InputChannel {
   /** L'azione è tenuta da tastiera o da pad adesso. */
@@ -45,7 +48,8 @@ class InputManager {
   private readonly keyHeld = new Set<string>();
   private padHeld = new Set<string>();
   private readonly channels = new Set<{ pressed: Set<string> }>();
-  private readonly listeners = new Set<PressListener>();
+  private readonly listeners = new Set<{ fn: PressListener; always: boolean }>();
+  private suspended = false;
   private readonly tokenListeners = new Set<(token: string, down: boolean) => void>();
   private readonly deviceListeners = new Set<() => void>();
   private refs = 0;
@@ -121,14 +125,26 @@ class InputManager {
     };
   }
 
-  /** Riceve ogni pressione (`down: true`, senza auto-repeat) e rilascio di un token, una volta per azione a cui corrisponde. */
-  subscribe(listener: PressListener): () => void {
+  /**
+   * Riceve ogni pressione (`down: true`, senza auto-repeat) e rilascio di un token, una volta per azione a cui corrisponde.
+   * Durante la PAUSA le pressioni arrivano solo a chi chiede `always` (i menu): il gioco non deve vedere ciò che si preme nel menu
+   * di pausa. I rilasci arrivano sempre, così nessun «tieni premuto» resta appeso.
+   */
+  subscribe(listener: PressListener, options: { always?: boolean } = {}): () => void {
     const release = this.retain();
-    this.listeners.add(listener);
+    const entry = { fn: listener, always: !!options.always };
+    this.listeners.add(entry);
     return () => {
-      this.listeners.delete(listener);
+      this.listeners.delete(entry);
       release();
     };
+  }
+
+  /** Pausa del gioco: finché è vera il gioco non riceve pressioni (canali, QTE, richiami). Le pressioni già in coda si scartano. */
+  setSuspended(suspended: boolean): void {
+    if (this.suspended === suspended) return;
+    this.suspended = suspended;
+    for (const channel of this.channels) channel.pressed.clear();
   }
 
   /** Come `subscribe`, ma una volta per TOKEN (non per azione): per chi traduce il token a modo suo (QTE, cannone). */
@@ -154,16 +170,31 @@ class InputManager {
   };
 
   /** Fa vibrare i controller collegati (Chrome/Edge; altrove non fa nulla, senza errori). */
-  rumble(durationMs: number, strong: number, weak: number): void {
-    if (typeof navigator === 'undefined' || typeof navigator.getGamepads !== 'function') return;
-    for (const pad of navigator.getGamepads()) {
-      const actuator = (pad as (Gamepad & { vibrationActuator?: { playEffect?: (type: string, params: object) => Promise<unknown> } }) | null)?.vibrationActuator;
+  rumble(durationMs: number, strong: number, weak: number): Promise<RumbleResult> {
+    if (typeof navigator === 'undefined' || typeof navigator.getGamepads !== 'function') return Promise.resolve('no-pad');
+    type Actuator = { playEffect?: (type: string, params: object) => Promise<unknown>; pulse?: (value: number, ms: number) => Promise<unknown> };
+    type RumblePad = Gamepad & { vibrationActuator?: Actuator; hapticActuators?: Actuator[] };
+    const results: Array<Promise<RumbleResult>> = [];
+    for (const pad of navigator.getGamepads() as Array<RumblePad | null>) {
+      if (!pad) continue;
       try {
-        void actuator?.playEffect?.('dual-rumble', { startDelay: 0, duration: durationMs, strongMagnitude: strong, weakMagnitude: weak })?.catch?.(() => undefined);
+        if (pad.vibrationActuator?.playEffect) {
+          results.push(
+            pad.vibrationActuator
+              .playEffect('dual-rumble', { startDelay: 0, duration: durationMs, strongMagnitude: strong, weakMagnitude: weak })
+              .then((outcome) => (outcome === 'complete' ? 'ok' : 'unsupported') as RumbleResult, () => 'unsupported' as RumbleResult)
+          );
+        } else if (pad.hapticActuators?.[0]) {
+          results.push(pad.hapticActuators[0].pulse!(Math.max(strong, weak), durationMs).then(() => 'ok' as RumbleResult, () => 'unsupported' as RumbleResult));
+        } else {
+          results.push(Promise.resolve('unsupported'));
+        }
       } catch {
-        // un pad che non sa vibrare non è un errore
+        results.push(Promise.resolve('unsupported'));
       }
     }
+    if (results.length === 0) return Promise.resolve('no-pad');
+    return Promise.all(results).then((all) => (all.includes('ok') ? 'ok' : 'unsupported'));
   }
 
   // ---------- Interno ----------
@@ -175,14 +206,20 @@ class InputManager {
   }
 
   private press(token: string): void {
-    for (const channel of this.channels) channel.pressed.add(token);
-    this.tokenListeners.forEach((listener) => listener(token, true));
-    for (const action of actionsForToken(token)) this.listeners.forEach((listener) => listener(action, true, token));
+    if (!this.suspended) {
+      for (const channel of this.channels) channel.pressed.add(token);
+      this.tokenListeners.forEach((listener) => listener(token, true));
+    }
+    for (const action of actionsForToken(token)) {
+      this.listeners.forEach((entry) => {
+        if (!this.suspended || entry.always) entry.fn(action, true, token);
+      });
+    }
   }
 
   private release(token: string): void {
     this.tokenListeners.forEach((listener) => listener(token, false));
-    for (const action of actionsForToken(token)) this.listeners.forEach((listener) => listener(action, false, token));
+    for (const action of actionsForToken(token)) this.listeners.forEach((entry) => entry.fn(action, false, token));
   }
 
   private readonly onKeyDown = (event: KeyboardEvent): void => {

@@ -166,3 +166,21 @@ test('formatActionText: sostituisce i segnaposto e lascia stare gli altri', () =
   assert.equal(formatActionText('{attack}: coccola · {heal}: pappa', 'gamepad', 'playstation'), '□: coccola · △: pappa');
   assert.equal(formatActionText('Zoltraak {boh}', 'keyboard', 'generic'), 'Zoltraak {boh}');
 });
+
+// ---------- pausa e salto (FASE 14b) ----------
+test('Esc e Start sono sia «pausa» (tocco) sia «salta» (tenuto): stessi token, azioni diverse', () => {
+  assert.deepEqual(actionsForToken('escape'), ['skip', 'pause']);
+  assert.deepEqual(actionsForToken('pad:b9'), ['skip', 'pause']);
+  assert.ok(!actionsForToken('enter').includes('pause'), 'Invio non mette in pausa');
+  assert.equal(qteActionForToken('pad:b9'), null);
+  assert.ok(!isCannonToken('pad:b9'));
+  assert.equal(actionLabel('pause', 'gamepad', 'playstation'), 'Options');
+  assert.equal(actionLabel('pause', 'keyboard', 'generic'), 'Esc');
+});
+
+test('croce e stick sono le direzioni dei menu; A conferma e B torna indietro', () => {
+  assert.deepEqual(actionsForToken('pad:left'), ['left']);
+  assert.deepEqual(actionsForToken('pad:down'), ['laneDown']);
+  assert.ok(actionsForToken('pad:b0').includes('confirm'));
+  assert.ok(actionsForToken('pad:b1').includes('back'));
+});

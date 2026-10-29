@@ -1,6 +1,7 @@
 import { useArenaStore, type QteView } from '@/store/arenaStore';
 import { SPACE_SUPPORT_CHATTER } from '@/data/dialogues/level1_spazio';
 import type { DialogueLine } from '@/data/dialogues/level1_intro';
+import { rumble } from '@/input/rumble';
 import { createQte, isQteFinished, pickQteKeys, updateQte, type QteState } from '../BossArena/qte';
 import { chargeOutcome, createChargeMeter, tap, updateChargeMeter } from './chargeMeter';
 import {
@@ -135,12 +136,14 @@ export function updateSupport(world: SpazioWorld, delta: number, hooks: SpazioHo
         const from = { x: mother.x + (event.index % 2 === 0 ? -1.6 : 1.6), y: mother.y - 1.1 };
         const eve = world.eve;
         if (hit) {
+          rumble('tick');
           support.hits += 1;
           eve.dodge = 1;
           addRing(world, eve.x, eve.y, 0.7, 0.3, '#7dd3fc');
           // Il colpo passa dove la navicella era un attimo fa.
           world.bolts.push({ fromX: from.x, fromY: from.y, toX: eve.x - 0.4, toY: eve.y - 0.1, t: 0, hit: false });
         } else {
+          rumble('hit');
           support.misses += 1;
           world.bolts.push({ fromX: from.x, fromY: from.y, toX: eve.x, toY: eve.y, t: 0, hit: true });
         }
@@ -204,6 +207,7 @@ export function updateCannon(world: SpazioWorld, delta: number): 'running' | 'do
         cannon.forced = outcome.forced;
         cannon.phase = 'fire';
         cannon.t = 0;
+        rumble('slam');
         world.flash = Math.max(world.flash, 0.5);
         addRing(world, world.eve.x + 1.5, world.eve.y, 1.6, 0.5, '#c4b5fd');
       }

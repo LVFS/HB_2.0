@@ -1,0 +1,21 @@
+/* Promemoria dei comandi dei menu, in basso a destra: piccoli e discreti, ma sempre leggibili. */
+
+.hints {
+  position: absolute;
+  right: var(--space-4);
+  bottom: var(--space-4);
+  z-index: 22;
+  padding: 0.4rem 0.7rem;
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 0.78rem;
+  background: rgba(8, 10, 18, 0.7);
+  border: 1px solid var(--line);
+  pointer-events: none;
+}
+
+.hints.center {
+  right: auto;
+  left: 50%;
+  transform: translateX(-50%);
+}

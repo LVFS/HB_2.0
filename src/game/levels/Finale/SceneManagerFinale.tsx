@@ -1,5 +1,6 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import { useFrame } from '@react-three/fiber';
+import { GameCanvas } from '@/components/GameCanvas';
 import { OrthographicCamera } from '@react-three/drei';
 import gsap from 'gsap';
 import { Color, type Group, type Mesh, type MeshBasicMaterial } from 'three';
@@ -253,14 +254,14 @@ export function SceneManagerFinale({ onWhiteout }: SceneManagerFinaleProps) {
 
   return (
     <div className="scene-shell">
-      <Canvas>
+      <GameCanvas>
         <Suspense fallback={null}>
           <OrthographicCamera makeDefault position={[0, ARENA_CAMERA_EYE_Y, ARENA_CAMERA_Z]} zoom={ARENA_CAMERA_ZOOM} />
           <Backdrop dawn={dawn} />
           <EveActor leaving={leaving} />
           <DWalker dawn={dawn} anim={dAnim} onArrived={applyWalkFinal} registerSkip={registerSkip} />
         </Suspense>
-      </Canvas>
+      </GameCanvas>
 
       {currentLine && <DialogueBox line={currentLine} />}
       {/* Tenere premuto Esc/Invio (o il bottone) salta la camminata: il dialogo comincia subito. */}

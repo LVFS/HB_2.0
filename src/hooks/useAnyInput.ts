@@ -1,4 +1,8 @@
 import { useEffect, useRef } from 'react';
+import { isPaused } from '@/store/pauseStore';
+
+/** Select (8) e Start/Options (9): servono alle impostazioni, alla pausa e al salto delle cutscene, non fanno avanzare i dialoghi. */
+const IGNORED_PAD_BUTTONS = new Set([8, 9]);
 
 interface UseAnyInputOptions {
   /** Ascolta solo quando `true` — niente listener/polling nelle altre fasi. */
@@ -34,10 +38,12 @@ export function useAnyInput(onInput: () => void, { enabled }: UseAnyInputOptions
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.repeat) return; // tasto tenuto premuto: un solo trigger, non uno al frame
+      // Esc/Options hanno un significato loro (impostazioni, pausa, salto tenuti): non contano come «un tasto qualsiasi».
+      if (event.key === 'Escape' || isPaused()) return;
       callback.current();
     };
     const handlePointerDown = () => {
-      callback.current();
+      if (!isPaused()) callback.current();
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -55,7 +61,7 @@ export function useAnyInput(onInput: () => void, { enabled }: UseAnyInputOptions
             if (!button.pressed) return;
             const key = `${pad.index}:${index}`;
             nextPressed.add(key);
-            if (!prevPressed.has(key)) callback.current();
+            if (!prevPressed.has(key) && !IGNORED_PAD_BUTTONS.has(index) && !isPaused()) callback.current();
           });
         }
         prevPressed = nextPressed;

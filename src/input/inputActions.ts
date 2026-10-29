@@ -16,7 +16,8 @@ export type GameAction =
   | 'summon'
   | 'confirm'
   | 'back'
-  | 'skip';
+  | 'skip'
+  | 'pause';
 
 export const GAME_ACTIONS: readonly GameAction[] = [
   'left',
@@ -33,7 +34,8 @@ export const GAME_ACTIONS: readonly GameAction[] = [
   'summon',
   'confirm',
   'back',
-  'skip'
+  'skip',
+  'pause'
 ];
 
 /** Le azioni che un QTE può chiedere: ciò che si preme dipende dal dispositivo, la sequenza parla in azioni. */

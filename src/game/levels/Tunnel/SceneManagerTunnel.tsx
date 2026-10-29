@@ -1,5 +1,6 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
+import { GameCanvas } from '@/components/GameCanvas';
 import { OrthographicCamera } from '@react-three/drei';
 import type { OrthographicCamera as OrthographicCameraImpl } from 'three';
 import { ArenaHud } from '@/components/ArenaHud';
@@ -94,7 +95,7 @@ function TunnelCameraRig({ world }: { world: TunnelWorld }) {
  * Tunnel dell'inseguimento (vedi `docs/FASE8_TUNNEL_INSEGUIMENTO.md`): UNA scena
  * per `boss_fase2_tunnel`, `combo_doppia_spada_qte` e `fuga_checco`, con una
  * piccola macchina a stati interna (corsa → raffica → fuga), così il passaggio
- * fra fasi non rimonta il `<Canvas>`. La corsa e la raffica vivono nel mondo
+ * fra fasi non rimonta il `<GameCanvas>`. La corsa e la raffica vivono nel mondo
  * (`tunnelDriver`); questo componente collega i passaggi di fase allo store del
  * livello.
  */
@@ -159,7 +160,7 @@ export function SceneManagerTunnel({ onWhiteout }: SceneManagerTunnelProps) {
 
   return (
     <div className="scene-shell">
-      <Canvas>
+      <GameCanvas>
         <Suspense fallback={null}>
           {/* Lo zoom lo imposta `TunnelCameraRig` (stessa inquadratura a ogni risoluzione). */}
           <OrthographicCamera makeDefault position={[0, TUNNEL_CAMERA_EYE_Y, ARENA_CAMERA_Z]} />
@@ -188,7 +189,7 @@ export function SceneManagerTunnel({ onWhiteout }: SceneManagerTunnelProps) {
           <PuppetWindow world={world} />
           <DamageNumbers world={world.arena} />
         </Suspense>
-      </Canvas>
+      </GameCanvas>
       <ArenaHud mode="tunnel" />
 
       {/* Fuga: cutscene saltabile (tenere premuto Esc/Invio o il bottone). */}

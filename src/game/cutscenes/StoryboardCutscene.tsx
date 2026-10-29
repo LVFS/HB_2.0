@@ -6,6 +6,7 @@ import type { DialogueLine } from '@/data/dialogues/level1_intro';
 import type { CutsceneBeat, CutsceneFx, CutsceneSet } from '@/data/cutscenes/types';
 import { useDialogue } from '@/hooks/useDialogue';
 import { isSfxName, useSfx } from '@/hooks/useSfx';
+import { isPaused } from '@/store/pauseStore';
 import styles from './StoryboardCutscene.module.css';
 
 /** Secondi di permanenza di un beat senza battute, se non dice altro. */
@@ -189,7 +190,12 @@ export function StoryboardCutscene({ set, onFinished, enabled = true }: Storyboa
     runFx(beat.fx);
     if (beat.sfx && isSfxName(beat.sfx)) play(beat.sfx);
     let timer: number | undefined;
-    if (!beat.lines || beat.lines.length === 0) timer = window.setTimeout(advance, (beat.hold ?? DEFAULT_HOLD) * 1000);
+    // In pausa il beat non avanza da solo: il timer ricontrolla finché il gioco non riprende.
+    const holdThenAdvance = () => {
+      if (isPaused()) timer = window.setTimeout(holdThenAdvance, 250);
+      else advance();
+    };
+    if (!beat.lines || beat.lines.length === 0) timer = window.setTimeout(holdThenAdvance, (beat.hold ?? DEFAULT_HOLD) * 1000);
     return () => {
       tween?.kill();
       if (timer !== undefined) window.clearTimeout(timer);

@@ -114,7 +114,8 @@
    queste righe non sono ritagliate con clip-path, quindi il contorno non
    viene tagliato via. `outline-offset` negativo lo tiene DENTRO la riga, così
    la voce a fuoco non "cresce" spingendo le altre. */
-.card:focus-visible {
+.card:focus-visible,
+.card[data-pad-focus] {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
   background: var(--surface-inset-hover);

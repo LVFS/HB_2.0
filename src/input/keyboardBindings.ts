@@ -20,7 +20,8 @@ export const KEYBOARD_BINDINGS: Record<GameAction, readonly string[]> = {
   summon: ['f'],
   confirm: ['enter', ' '],
   back: ['backspace'],
-  skip: ['escape', 'enter']
+  skip: ['escape', 'enter'],
+  pause: ['escape']
 };
 
 /** Come si scrive il tasto principale di un'azione (icone e testi con la tastiera). */
@@ -39,7 +40,8 @@ export const KEYBOARD_LABELS: Record<GameAction, string> = {
   summon: 'F',
   confirm: 'Invio',
   back: 'Canc',
-  skip: 'Esc'
+  skip: 'Esc',
+  pause: 'Esc'
 };
 
 /** Binding che un modo di gioco può sostituire a quelli di default (es. il tunnel: salto solo con Spazio). */

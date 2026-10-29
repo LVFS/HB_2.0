@@ -130,6 +130,7 @@ export function hitBoss(
   requestHitStop(world, HITSTOP_LIGHT);
 
   if (hit.source === 'player') {
+    rumble('tick');
     gainSkill(world, SKILL_GAIN_HIT);
     // Berserk: ogni colpo a segno alza il moltiplicatore a catena.
     if (player.berserk) {

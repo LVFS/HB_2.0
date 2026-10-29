@@ -75,8 +75,7 @@ Ispezionato in sola lettura (nessun merge, nessun `checkout`, ramo non toccato).
   in una patch precedente) e quindi non si vedevano; ora usano `affection`, `hunger` e `mode.pct`.
 - **Posizione degli hint**: il riquadro dei comandi ora contiene icone e va a capo; il suo ancoraggio in basso ha specificità doppia (`.hint.hint`) perché in sviluppo l'ordine di iniezione del CSS lo
   faceva a volte comparire in alto sopra la HUD.
-- **Impostazioni da controller**: il pannello delle impostazioni resta a mouse (le icone sono `auto` di default e seguono da sole l'ultimo dispositivo).
-- **Menu e selezione livelli**: già percorribili da pad (`useAnyInput`, L1/R1 + A); aggiunti A/B nella vista a fuoco e B per tornare al menu.
+- **Impostazioni, menu e selezione livelli da controller**: fatti nella tappa 14b (sezione sotto).
 
 ## Stato di esecuzione
 Verificato con Playwright e un `navigator.getGamepads` FINTO iniettato prima del caricamento (`t26`): arena (stick e croce muovono e si fermano, X attacca, LB para e rimanda, B schiva, A doppio salto,
@@ -88,3 +87,29 @@ Firefox), soglia e isteresi dello stick, bordo di salita, pad non standard, bind
 
 **Non provato**: pad veri (Xbox, PlayStation, Switch; Chrome e Firefox) — a cura dell'utente, con un giro completo del Livello 1 solo col pad; la vibrazione (nessun supporto nel browser di prova); la
 build di produzione giocata a mano.
+
+## Tappa 14b: menu, selezione livelli, pausa e vibrazione (dopo la prova con un DualSense via Bluetooth)
+
+| Cosa | Dove |
+|---|---|
+| Azione `pause` (Esc / Start-Options: un TOCCO) e `skip` (gli stessi tasti TENUTI) | `src/input/`, `useTapAction` in `useInputHooks.ts` |
+| Navigazione dei menu col pad: livelli di navigazione, fuoco spaziale sugli elementi `data-nav`, X/✕ conferma, ○ indietro, cursori col sinistra/destra | `src/input/padNav.ts` (`usePadNavLayer`) |
+| Pausa del gioco: GSAP, input e `<Canvas>` fermi | `store/pauseStore.ts`, `components/GameCanvas.tsx` (al posto di `Canvas` in tutte le scene dei livelli), `components/PauseMenu.tsx` |
+| Impostazioni (contenuto riusato da menu, selezione livelli e pausa) | `components/SettingsPanel.tsx`, `SettingsBar.tsx`, `store/uiStore.ts` |
+| Conferma, promemoria dei comandi | `components/ConfirmDialog.tsx`, `components/PadHints.tsx` |
+
+- **Menu iniziale**: Options (un tocco) apre le impostazioni; croce/stick muovono, X/✕ seleziona, ○ chiude. Con le impostazioni aperte la sequenza NON parte (`useAnyInput` è spento e ignora
+  comunque Esc, Select e Options). **Tenendo premuto Options/Esc** (`SkipCutscene`, «per andare alla selezione livelli») il filmato — il volo d'intro e la sequenza del pugno — si salta e si va alla
+  selezione livelli (con il bianco). Il bottone «Seleziona livello» a mouse c'è ancora.
+- **Selezione livelli**: croce/stick scelgono fra mondi e schede, X/✕ conferma (apre il dettaglio), ○ dal dettaglio torna all'elenco, ○ dall'elenco chiede «Tornare al menu principale?» (○ annulla),
+  Options apre le impostazioni e ○ le chiude (il livello più in alto comanda). Nel dettaglio il fuoco parte su «Avvia livello». Rimosso il ciclo L1/R1 (`useGamepadCycleSelect` non è più usato qui).
+- **Pausa**: un tocco di Esc/Options (sotto 350 ms, al rilascio) ferma il gioco e apre «Pausa» (Riprendi / Impostazioni / Esci dal livello con conferma, che porta alla selezione livelli); lo stesso tasto,
+  ○ o «Riprendi» riprende. TENERE premuto resta il salto delle cutscene. In pausa il gioco non vede nessuna pressione (`inputManager.setSuspended`: canali, QTE, richiami; i rilasci passano
+  sempre) e le pressioni fatte nel menu non «trapelano» alla ripresa. I timer `setTimeout` delle scene non si fermano (le cutscene a fumetti sì: ricontrollano la pausa).
+- **Vibrazione**: oltre a colpo subito, parata, stagger e scaraventamento, ora anche un battito leggero quando D colpisce Checco, a ogni tasto riuscito dei QTE, e un colpo forte allo sparo del cannone.
+  Nelle impostazioni c'è «Prova la vibrazione» (ignora l'interruttore) e dice cosa ha risposto il browser: `ok` (l'ha eseguita: se non si sente è il collegamento/driver, tipico del Bluetooth),
+  `unsupported`, `no-pad`. Provata solo con un pad finto: con un DualSense vero via Bluetooth dipende da browser e sistema.
+
+**Verificato** (Playwright, pad finto): menu (Options apre, X/○ lavorano nel pannello, la sequenza non parte, tenuto → selezione livelli), selezione livelli (fuoco, dettaglio, ○ a cascata, conferma, Options/○ sulle
+impostazioni), pausa (si ferma tutto, la tastiera è ignorata, nessun colpo spurio alla ripresa, impostazioni dentro la pausa, Esci con conferma, Esc apre/chiude), cutscene (tenuto salta, tocco mette in pausa),
+prova della vibrazione (supportata / non supportata). 44 test. Regressioni da tastiera (arena e finale, spazio, selezione livelli bloccata) invariate.

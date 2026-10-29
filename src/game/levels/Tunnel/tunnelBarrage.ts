@@ -1,5 +1,6 @@
 import { useArenaStore, type QteView } from '@/store/arenaStore';
 import { addRing } from '../BossArena/combat';
+import { rumble } from '@/input/rumble';
 import { createQte, isQteFinished, pickQteKeys, updateQte, type QteState } from '../BossArena/qte';
 import type { BarrageState, TunnelWorld } from './tunnelState';
 import {
@@ -92,6 +93,7 @@ export function updateBarrage(world: TunnelWorld, delta: number, hooks: BarrageH
       if (event) {
         const player = world.arena.player;
         if (event.result === 'hit') {
+          rumble('tick');
           barrage.hits += 1;
           barrage.strike = STRIKE_DURATION;
           barrage.strikeSide = barrage.strikeSide === 1 ? -1 : 1;

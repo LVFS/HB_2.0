@@ -165,6 +165,7 @@ export function updateFinale(world: ArenaWorld, delta: number, hooks: FinaleHook
       const event = updateQte(qte, delta, f.pressed.splice(0));
       if (event) {
         if (event.result === 'hit') {
+          rumble('tick');
           f.strikeTimer = STRIKE_DURATION;
           addRing(world, boss.x, 1.2, 1.4, 0.3, '#ffffff');
           world.hitStop = Math.max(world.hitStop, 0.05);

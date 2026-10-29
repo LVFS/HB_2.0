@@ -1,5 +1,6 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
+import { GameCanvas } from '@/components/GameCanvas';
 import { OrthographicCamera } from '@react-three/drei';
 import gsap from 'gsap';
 import type { OrthographicCamera as OrthographicCameraImpl } from 'three';
@@ -127,7 +128,7 @@ function AfterSupportDialogue({ onDone }: { onDone: () => void }) {
 /**
  * Lo spazio (FASE 12): UNA scena per `inseguimento_spaziale_cutscene`, `qte_supporto_eve` e `carica_cannone_qte`, con una
  * piccola macchina a stati interna (apertura → supporto → dialogo → cannone → distruzione) così il passaggio fra fasi non
- * rimonta il `<Canvas>` (stesso schema del tunnel). Apertura e distruzione sono cutscene a timeline GSAP con
+ * rimonta il `<GameCanvas>` (stesso schema del tunnel). Apertura e distruzione sono cutscene a timeline GSAP con
  * `applyFinalState()` IDEMPOTENTE e `SkipCutscene`; i due QTE NON sono saltabili e NON sono fallibili: l'esito cambia solo
  * punteggio e una riga del dialogo finale. Segnaposto a tinte unite. A fine, `setPhase('dialogo_finale')`.
  */
@@ -345,7 +346,7 @@ export function SceneManagerSpazio({ onWhiteout }: SceneManagerSpazioProps) {
 
   return (
     <div className="scene-shell">
-      <Canvas>
+      <GameCanvas>
         <Suspense fallback={null}>
           <OrthographicCamera makeDefault position={[0, 0, SPACE_CAMERA_Z]} />
           <SpaceCameraRig world={world} />
@@ -357,7 +358,7 @@ export function SceneManagerSpazio({ onWhiteout }: SceneManagerSpazioProps) {
           <CannonBeam world={world} />
           <SpaceFx world={world} />
         </Suspense>
-      </Canvas>
+      </GameCanvas>
 
       {stage === 'support' && <QteChallenge />}
       {stage === 'cannon' && <CannonHud world={world} />}

@@ -1,0 +1,49 @@
+/* Finestra di conferma e menu di pausa: velo scuro a tutto schermo con un pannello al centro. Sopra a tutto il resto. */
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: rgba(4, 6, 10, 0.72);
+  pointer-events: auto;
+}
+
+.panel {
+  composes: panel from '../styles/ui.module.css';
+  display: grid;
+  gap: var(--space-3);
+  width: min(26rem, 92vw);
+  max-height: 92vh;
+  overflow-y: auto;
+}
+
+.title {
+  composes: title from '../styles/ui.module.css';
+  margin: 0;
+}
+
+.text {
+  margin: 0;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+.row {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.column {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.hints {
+  margin-top: var(--space-1);
+  color: var(--text-faint);
+  font-size: 0.8rem;
+}

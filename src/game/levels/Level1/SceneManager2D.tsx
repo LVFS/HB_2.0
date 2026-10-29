@@ -1,6 +1,6 @@
 import { Suspense, useEffect, useRef } from 'react';
 import type { MutableRefObject } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { GameCanvas } from '@/components/GameCanvas';
 import { OrthographicCamera } from '@react-three/drei';
 import { ParallaxLayer } from '@/game/render2d/ParallaxLayer';
 import { useFollowCameraX } from '@/game/render2d/useFollowCameraX';
@@ -144,7 +144,7 @@ interface SceneManager2DProps {
 
 /**
  * Scena di gioco del Livello 1 in 2D a scorrimento laterale (vedi
- * docs/PIANO_LIVELLO1_2D.md): stesso `<Canvas>` R3F di sempre, camera
+ * docs/PIANO_LIVELLO1_2D.md): stesso `<GameCanvas>` R3F di sempre, camera
  * ortografica invece che prospettica, niente Rapier — collisioni a mano via
  * `@/game/render2d`. La macchina a stati (`levelStore`, Fase 4) decide cosa
  * montare: oggi solo `intro_dialogo` (dialogo vero) e
@@ -182,11 +182,11 @@ export function SceneManager2D({ onWhiteout }: SceneManager2DProps) {
 
   return (
     <div className="scene-shell">
-      <Canvas>
+      <GameCanvas>
         <Suspense fallback={null}>
           <Level1Scene2D phase={phase} playerPositionRef={playerPositionRef} onReachAriston={handleReachAriston} />
         </Suspense>
-      </Canvas>
+      </GameCanvas>
 
       {phase === 'intro_dialogo' && introDialogue.currentLine && <DialogueBox line={introDialogue.currentLine} />}
 

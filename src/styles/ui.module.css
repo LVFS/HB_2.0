@@ -128,7 +128,8 @@
 /* `:focus-visible` e non `:focus`: l'anello compare per tastiera e navigazione
    assistita, NON al click del mouse — che è il motivo per cui gli anelli di
    fuoco venivano disattivati a mano prima che esistesse questa pseudo-classe. */
-.button:focus-visible {
+.button:focus-visible,
+.button[data-pad-focus] {
   outline: none;
   --rim: 2px;
   background: var(--focus-ring);

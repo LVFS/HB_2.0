@@ -10,7 +10,8 @@ import {
   PLAYER_HEIGHT,
   PLAYER_JUMP_SPEED,
   PLAYER_SPEED,
-  WORLD_HALF_WIDTH
+  SIDEWALK_MAX_X,
+  SIDEWALK_MIN_X
 } from './level1Config';
 
 // Dalla FASE 14 i tasti non si leggono più qui: `usePlayerActions` (gestore unico `src/input/`) li traduce in AZIONI per tastiera E
@@ -24,12 +25,14 @@ export interface PlayerPosition {
 
 interface Player2DProps {
   /** Scritta ad ogni frame: letta dalla camera e dagli altri sistemi (es.
-   *  `DemoObstacle`, `EveCompanion`) senza passare da uno stato React. */
+   *  `DoorPromptDriver`, `EveCompanion`) senza passare da uno stato React. */
   positionRef: MutableRefObject<PlayerPosition>;
   /** Posizione X di spawn — di default 0, ma `SceneManager2D` la passa
-   *  uguale a dove si è fermato il dialogo di apertura (`eveArrivalX`), così
-   *  D non "salta" indietro quando il giocatore riprende il controllo. */
+   *  uguale al punto di partenza davanti al cinema (`startX`), così
+   *  D non "salta" quando il giocatore riprende il controllo. */
   initialX?: number;
+  /** Verso cui guarda all'inizio (-1 = sinistra); poi cambia con il movimento. */
+  initialFacing?: 1 | -1;
 }
 
 /**
@@ -40,16 +43,16 @@ interface Player2DProps {
  * possiede da solo la posa/lo specchiamento — questo componente non tocca
  * più `scale.x`/texture, gli passa solo `facing`/`state`.
  */
-export function Player2D({ positionRef, initialX = 0 }: Player2DProps) {
+export function Player2D({ positionRef, initialX = 0, initialFacing = 1 }: Player2DProps) {
   const group = useRef<Group>(null);
   const velocityY = useRef(0);
   const onGround = useRef(true);
-  const facingLeft = useRef(false);
+  const facingLeft = useRef(initialFacing === -1);
   // `facing`/`walking` sono le uniche cose che devono passare da uno stato
   // React (cambiano solo quando il valore LOGICO cambia — freccia/tasto
   // premuto o rilasciato — mai una volta a frame): tutto il resto del moto
   // resta su ref/oggetti Three, come sempre in questo progetto.
-  const [facing, setFacing] = useState<1 | -1>(1);
+  const [facing, setFacing] = useState<1 | -1>(initialFacing);
   const [walking, setWalking] = useState(false);
 
   // Il click destro qui non ha significato di gioco: il menu del browser resta com'è.
@@ -69,7 +72,7 @@ export function Player2D({ positionRef, initialX = 0 }: Player2DProps) {
     setWalking(moveX !== 0);
 
     const nextX = group.current.position.x + moveX * PLAYER_SPEED * delta;
-    group.current.position.x = Math.min(WORLD_HALF_WIDTH, Math.max(-WORLD_HALF_WIDTH, nextX));
+    group.current.position.x = Math.min(SIDEWALK_MAX_X, Math.max(SIDEWALK_MIN_X, nextX));
 
     // Salto solo se il giocatore è a terra.
     if (actions.isHeld('jump') && onGround.current) {

@@ -15,6 +15,7 @@ export type GameAction =
   | 'berserk'
   | 'summon'
   | 'confirm'
+  | 'interact'
   | 'back'
   | 'skip'
   | 'pause';
@@ -33,6 +34,7 @@ export const GAME_ACTIONS: readonly GameAction[] = [
   'berserk',
   'summon',
   'confirm',
+  'interact',
   'back',
   'skip',
   'pause'

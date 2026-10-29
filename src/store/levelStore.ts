@@ -55,6 +55,10 @@ interface LevelState {
    *  (vedi `aristonExitX` in `data/level1/triggers.ts`). */
   lateralSpawnX: number;
   setLateralSpawnX: (x: number) => void;
+  /** Eve cammina ancora con D fuori dall'Ariston. Per storia, appena D entra nel cinema lei va da Checco: da lì in poi (anche
+   *  uscendo) l'esterno non la monta più. Azzerato da `resetLevel()`. */
+  eveWithParty: boolean;
+  setEveWithParty: (withParty: boolean) => void;
   /** Esito del QTE cooperativo del finale del boss (null = non ancora giocato):
    *  cambia una riga del dialogo nel Sotterraneo e, quando esisterà
    *  `boss_fase2_tunnel`, un piccolo bonus/malus di partenza. */
@@ -71,7 +75,7 @@ interface LevelState {
   setSpaceResult: (result: SpaceResult | null) => void;
 }
 
-const INITIAL_LATERAL_SPAWN_X: number = LEVEL1_TRIGGERS_PLACEHOLDER.eveArrivalX;
+const INITIAL_LATERAL_SPAWN_X: number = LEVEL1_TRIGGERS_PLACEHOLDER.startX;
 
 /**
  * Stato del livello IN CORSO — separato da `gameStore.ts` (fase/schermata
@@ -85,6 +89,8 @@ export const useLevelStore = create<LevelState>((set) => ({
   setPhase: (next) => set({ phase: next }),
   lateralSpawnX: INITIAL_LATERAL_SPAWN_X,
   setLateralSpawnX: (x) => set({ lateralSpawnX: x }),
+  eveWithParty: true,
+  setEveWithParty: (withParty) => set({ eveWithParty: withParty }),
   finalQteSuccess: null,
   setFinalQteSuccess: (success) => set({ finalQteSuccess: success }),
   tunnelResult: null,
@@ -105,6 +111,7 @@ export function resetLevel(): void {
   useLevelStore.setState({
     phase: INITIAL_PHASE,
     lateralSpawnX: INITIAL_LATERAL_SPAWN_X,
+    eveWithParty: true,
     finalQteSuccess: null,
     tunnelResult: null,
     seenCutscenes: [],

@@ -43,9 +43,7 @@ Menu e selezione livelli restano 3D, invariati.
   cancellato invece di essere adattato — era codice morto una volta tolta la scena 3D che lo
   usava. `resetProgress` in `gameStore.ts` resta come punto d'aggancio (oggi no-op) per lo
   stato che la Fase 4 del piano dovrà reimpostare a ogni (ri)avvio di un livello.
-- `DemoObstacle.tsx` è un placeholder che dimostra `useOverlap` end-to-end (il rettangolo
-  diventa verde mentre il giocatore ci cammina sopra) — da rimuovere quando arriva il primo
-  trigger/pickup vero (Fase 2 del piano).
+- `DemoObstacle.tsx` (placeholder di `useOverlap`) è stato rimosso: vedi «Esterno dell'Ariston» in fondo. `useOverlap`/`collision.ts` restano.
 - **Sprite/animazione dei personaggi (Fase 3a)**: 12 PNG con trasparenza in
   `public/sprites/characters/{D0,D1,Eve}/{variant}_{front,back,side,action}.png` (ritagliati
   dalle turnaround sheet, sfondo tolto con alpha sfumata sui bordi). Sono POSE INTERE, non un
@@ -124,3 +122,16 @@ Menu e selezione livelli restano 3D, invariati.
   Verificato a schermo (Playwright headless): l'intera catena
   `intro_dialogo` (dialogo reale, 13 battute) → `cammino_libero_ariston` (D comandabile, Eve
   che segue) → `attivita_stupide` (placeholder) gioca per intero senza errori console.
+
+## Esterno dell'Ariston: sfondo, navicella, ingresso con tasto
+
+Il livello inizia davanti al cinema, D ed Eve già sul marciapiede accanto alla navicella schiantata; si entra premendo «interagisci» sulla porta centrale (non più a una X).
+
+- **Sfondo** (`Level1Backdrop.tsx`): UNA immagine (`public/sprites/backgrounds/ariston_ingresso.webp`, 3002×703, WebP lossless da `scripts/prepare-level1-art.mjs`, sorgenti fuori dal repo), `NearestFilter`, ferma nel mondo (niente `ParallaxLayer`, ora inutilizzato). **54 px dell'immagine = 1 unità** (D ~103 px, le porte interne ~120), X = px/54 con l'origine sul bordo sinistro; i piedi poggiano sulla riga `BACKDROP_GROUND_ROW_PX` (= `GROUND_Y`). Lo zoom è `altezza schermo / CAMERA_VIEW_HEIGHT` (10 u dal fondo dell'immagine in su: il cielo in cima resta fuori campo; scala uniforme, niente stretching) e la camera non esce dai bordi (`clampCameraX`). Il canvas è `flat` (niente tone mapping: i colori sono quelli del file).
+- **Posizioni** (`level1Config.ts`): `ARISTON_DOOR_X` (+`_HALF_WIDTH`, la zona), `SHIP_X`/`SHIP_BASE_Y`/`SHIP_HEIGHT` (la navicella sta in mezzo all'incrocio, oltre il limite del cammino), `SIDEWALK_MIN_X`/`_MAX_X` (i limiti del cammino: a destra dove finiscono le colonnine, prima delle strisce). Le partenze stanno in `data/level1/triggers.ts` (`startX`, `eveStartX`, `aristonExitX`, fuori dalla zona della porta: lo verifica `tests/level1Exterior.test.mjs`).
+- **Navicella** (`Spaceship.tsx`): sprite dietro ai personaggi (z −0.5), non è un ostacolo. Il fumo è in codice (6 sbuffi con una texture a cerchio sfumato, un solo `useFrame`). La PNG ha già qualche filo di fumo disegnato.
+- **Ingresso**: `DoorPromptDriver` (nel Canvas) calcola ogni frame se D è nella zona (`interactZone.ts`, puro) e posiziona il suggerimento HTML `DoorPrompt` («Entra» + `ActionGlyph action="interact"`) sopra l'insegna, scrivendo su ref/`dataset` (niente `setState` a 60 fps). La pressione è `useActionPress` in `SceneManager2D`: vale solo in `cammino_libero_ariston`, con D nella zona e una volta sola (`enteringRef`); in pausa il gestore non consegna le pressioni. Poi whiteout e `attivita_stupide`, come prima.
+- **Inizio**: il video chiude col nero, la scena ne esce con una dissolvenza (`fadeIn`, solo dopo il video). D parte rivolto a sinistra (`Player2D.initialFacing`); uscendo dall'interno riappare a `aristonExitX` rivolto a destra.
+- **Eve se ne va**: entrando nell'Ariston `SceneManager2D` mette `levelStore.eveWithParty = false` (sotto il whiteout; per storia va da Checco), e l'esterno non la monta più, nemmeno quando D riesce. Si azzera con `resetLevel()`.
+- **Eve** (`EveCompanion`, finché c'è) sta «dietro» rispetto alla direzione di D (cambia lato dopo 0,8 u nel nuovo verso), non più sempre a sinistra: ora si cammina nei due versi.
+

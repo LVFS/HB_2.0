@@ -115,7 +115,7 @@ test('mappatura del pad come da piano', () => {
 });
 
 test('actionsForToken: un token può essere più azioni; le sostituzioni valgono solo per la tastiera', () => {
-  assert.deepEqual(actionsForToken('pad:b0'), ['jump', 'confirm']);
+  assert.deepEqual(actionsForToken('pad:b0'), ['jump', 'confirm', 'interact']);
   assert.ok(actionsForToken('w').includes('jump'));
   assert.ok(!actionsForToken('w', { jump: [' '] }).includes('jump'));
   assert.ok(actionsForToken('pad:b0', { jump: [' '] }).includes('jump'));

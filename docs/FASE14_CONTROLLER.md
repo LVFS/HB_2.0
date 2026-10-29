@@ -92,6 +92,7 @@ build di produzione giocata a mano.
 
 | Cosa | Dove |
 |---|---|
+| Azione `interact` (E / Invio / A-✕: entrare dalla porta del cinema; NON Spazio, che è il salto) | `keyboardBindings.ts`, `gamepadBindings.ts`; la legge `useActionPress` in `SceneManager2D` |
 | Azione `pause` (Esc / Start-Options: un TOCCO) e `skip` (gli stessi tasti TENUTI) | `src/input/`, `useTapAction` in `useInputHooks.ts` |
 | Navigazione dei menu col pad: livelli di navigazione, fuoco spaziale sugli elementi `data-nav`, X/✕ conferma, ○ indietro, cursori col sinistra/destra | `src/input/padNav.ts` (`usePadNavLayer`) |
 | Pausa del gioco: GSAP, input e `<Canvas>` fermi | `store/pauseStore.ts`, `components/GameCanvas.tsx` (al posto di `Canvas` in tutte le scene dei livelli), `components/PauseMenu.tsx` |

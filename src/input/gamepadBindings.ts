@@ -33,6 +33,7 @@ export const GAMEPAD_BINDINGS: Record<GameAction, readonly string[]> = {
   berserk: [`pad:b${PAD_BUTTON.RT}`],
   summon: [`pad:b${PAD_BUTTON.LT}`],
   confirm: [`pad:b${PAD_BUTTON.A}`],
+  interact: [`pad:b${PAD_BUTTON.A}`],
   back: [`pad:b${PAD_BUTTON.B}`],
   skip: [`pad:b${PAD_BUTTON.Start}`],
   pause: [`pad:b${PAD_BUTTON.Start}`]

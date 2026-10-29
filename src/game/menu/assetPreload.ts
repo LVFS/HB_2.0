@@ -53,6 +53,12 @@ export function prefetchLevel1Assets(): void {
     import('@/game/levels/Level1/SceneManager2D').catch(() => {});
   });
   prefetchCutsceneVideo('intro_level1');
+  // Sfondo e navicella dell'esterno: scaldano la cache mentre si guarda il video (nessuna decodifica qui).
+  for (const path of ['sprites/backgrounds/ariston_ingresso.webp', 'sprites/props/navicella.webp']) {
+    runWhenIdle(() => {
+      fetch(`${import.meta.env.BASE_URL}${path}`, { priority: 'low' }).catch(() => {});
+    });
+  }
 }
 
 /**

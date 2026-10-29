@@ -15,3 +15,44 @@
   composes: pill from '../../../styles/ui.module.css';
   pointer-events: auto;
 }
+
+/* Suggerimento «Entra» sopra la porta: posizione scritta ogni frame da DoorPromptDriver (ancorato in basso al centro). */
+.doorPrompt {
+  position: absolute;
+  z-index: 20;
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--dur-fast, 0.18s) ease;
+}
+
+.doorPrompt .hintPill {
+  background: var(--surface-raised);
+  border-color: var(--accent-line);
+  color: var(--text);
+  font-size: 1.05rem;
+  filter: var(--drop-control);
+}
+
+.doorPrompt[data-visible='true'] {
+  opacity: 1;
+}
+
+/* Dissolvenza dal nero sulla scena, alla fine del video d'apertura. */
+.fadeIn {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  background: #000;
+  pointer-events: none;
+  animation: fadeInFromBlack 0.9s ease-out forwards;
+}
+
+@keyframes fadeInFromBlack {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}

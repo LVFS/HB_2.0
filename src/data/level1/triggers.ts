@@ -1,15 +1,12 @@
-// TODO_LDTK: sostituire con lettura da LDtk quando la Fase 2 del piano
-// (docs/PIANO_LIVELLO1_2D.md) è pronta. Numeri onestamente a caso, da
-// tarare a occhio quando c'è davvero qualcosa da camminarci sopra — quello
-// che conta è che il codice che li legge (Fase 4) sia già quello
-// definitivo: il cambio, quando arriveranno le coordinate vere, sarà di
-// questo file solo, dati, zero logica da riscrivere.
+// Posizioni di messa in scena dell'esterno dell'Ariston (X di mondo; la mappa sta in `game/levels/Level1/level1Config.ts`, qui solo i dati che
+// leggono anche gli store). TODO_LDTK: sostituire con la lettura da LDtk se la pipeline arriverà anche al livello laterale.
+// L'ingresso nel cinema NON è più un trigger di cammino: si entra premendo «interagisci» sulla porta centrale (zona in level1Config).
 export const LEVEL1_TRIGGERS_PLACEHOLDER = {
-  eveArrivalX: 6, // punto in cui D incontra Eve, avvia intro_dialogo → cammino_libero
-  aristonEntranceX: 22, // ingresso edificio, avvia attivita_stupide
-  // Uscendo dall'interno isometrico (vedi Level1Interior/SceneManager2DIso.tsx)
-  // D riappare qui, non esattamente su `aristonEntranceX`: altrimenti
-  // rientrerebbe subito nel trigger d'ingresso appena tornato fuori.
-  aristonExitX: 20,
-  sala1EntranceX: 30 // ingresso sala 1, avvia dialogo_pre_boss → boss_fase1
+  // Le X sono px/54 dell'immagine di sfondo (`BACKDROP_PX_PER_UNIT` in level1Config.ts).
+  startX: 1910 / 54, // D all'inizio del livello: all'estremità destra del marciapiede, rivolto verso il cinema
+  eveStartX: 1980 / 54, // Eve accanto/dietro a D (alla sua destra: guardano a sinistra)
+  // Uscendo dall'interno isometrico (vedi Level1Interior/SceneManager2DIso.tsx) D riappare qui, davanti alla porta ma FUORI dalla zona
+  // d'interazione: altrimenti comparirebbe subito il suggerimento «Entra».
+  aristonExitX: 1200 / 54,
+  sala1EntranceX: 30 // ingresso sala 1, avvia dialogo_pre_boss → boss_fase1 (non letto da nessuno: la porta sta nell'interno)
 } as const;

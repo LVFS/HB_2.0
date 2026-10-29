@@ -19,6 +19,8 @@ export const KEYBOARD_BINDINGS: Record<GameAction, readonly string[]> = {
   berserk: ['q'],
   summon: ['f'],
   confirm: ['enter', ' '],
+  /** Usa/entra (la porta del cinema): non comprende Spazio, che è il salto. */
+  interact: ['e', 'enter'],
   back: ['backspace'],
   skip: ['escape', 'enter'],
   pause: ['escape']
@@ -39,6 +41,7 @@ export const KEYBOARD_LABELS: Record<GameAction, string> = {
   berserk: 'Q',
   summon: 'F',
   confirm: 'Invio',
+  interact: 'E',
   back: 'Canc',
   skip: 'Esc',
   pause: 'Esc'

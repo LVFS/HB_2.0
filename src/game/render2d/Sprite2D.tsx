@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import type { MutableRefObject } from 'react';
 import { useTexture } from '@react-three/drei';
-import type { MeshBasicMaterial } from 'three';
+import { NearestFilter, type MeshBasicMaterial } from 'three';
 
 export interface Sprite2DProps {
   /** URL della texture: singola immagine, o sprite-sheet a griglia uniforme. */
@@ -29,6 +29,8 @@ export interface Sprite2DProps {
    *  state React, che con un valore che cambia ad ogni fotogramma di un
    *  tween causerebbe un render al secondo per ogni frame del tween. */
   materialRef?: MutableRefObject<MeshBasicMaterial | null>;
+  /** Pixel art: ingrandisce senza sfumare (`NearestFilter`, niente mipmap). */
+  pixelated?: boolean;
 }
 
 /**
@@ -53,15 +55,21 @@ export function Sprite2D({
   height,
   flipX = false,
   position = [0, 0, 0],
-  materialRef
+  materialRef,
+  pixelated = false
 }: Sprite2DProps) {
   const baseTexture = useTexture(textureUrl);
 
   const texture = useMemo(() => {
     const clone = baseTexture.clone();
+    if (pixelated) {
+      clone.magFilter = NearestFilter;
+      clone.minFilter = NearestFilter;
+      clone.generateMipmaps = false;
+    }
     clone.needsUpdate = true;
     return clone;
-  }, [baseTexture]);
+  }, [baseTexture, pixelated]);
 
   useEffect(() => () => texture.dispose(), [texture]);
 
